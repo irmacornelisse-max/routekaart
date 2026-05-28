@@ -1,0 +1,525 @@
+/* ── Reset & Base ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:       #E06C20;
+  --primary-dark:  #B8521A;
+  --primary-light: #FFF3EC;
+  --secondary:     #1A3A5C;
+  --bg:            #F4F6F9;
+  --card:          #FFFFFF;
+  --border:        #E2E6EA;
+  --text:          #1A2332;
+  --text-mid:      #4A5568;
+  --text-soft:     #718096;
+  --green:         #2E7D32;
+  --green-light:   #E8F5E9;
+  --amber:         #E65100;
+  --amber-light:   #FFF3E0;
+  --red:           #C62828;
+  --red-light:     #FFEBEE;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:     0 4px 12px rgba(0,0,0,.10);
+  --shadow-hover:  0 8px 24px rgba(224,108,32,.20);
+  --radius:        12px;
+  --radius-sm:     8px;
+  font-size: 16px;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+
+button { cursor: pointer; border: none; background: none; font-family: inherit; font-size: inherit; }
+a { color: inherit; }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.app-header {
+  background: var(--secondary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+
+.header-left  { display: flex; align-items: center; gap: 12px; flex: 1; }
+.header-mid   { flex: 2; text-align: center; }
+.header-right { flex: 1; display: flex; justify-content: flex-end; }
+
+.header-logo {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.logo-x     { color: var(--primary); }
+.logo-plore { color: #fff; }
+
+.header-paginanaam {
+  font-size: .9rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+}
+
+.header-terug {
+  color: rgba(255,255,255,.85);
+  font-size: .9rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: background .15s;
+}
+.header-terug:hover { background: rgba(255,255,255,.15); }
+
+.header-afmelden {
+  color: rgba(255,255,255,.7);
+  font-size: .8rem;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 20px;
+  transition: all .15s;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-afmelden:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+/* ── Main layout ──────────────────────────────────────────────────────── */
+.page { display: flex; flex-direction: column; min-height: 100vh; }
+.main-content { max-width: 900px; width: 100%; margin: 0 auto; padding: 24px 16px 48px; flex: 1; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: .9rem;
+  transition: all .15s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover  { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+.btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+.btn-outline:hover { background: var(--primary-light); }
+.btn-full { width: 100%; }
+.btn-sm { padding: 7px 14px; font-size: .85rem; }
+
+/* ── Badges ───────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: .75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-groen  { background: var(--green-light); color: var(--green); }
+.badge-amber  { background: var(--amber-light); color: var(--amber); }
+.badge-oranje { background: #FFF3E0; color: #E65100; }
+.badge-blauw  { background: #E3F2FD; color: #1565C0; }
+.badge-paars  { background: #F3E5F5; color: #6A1B9A; }
+.badge-teal   { background: #E0F2F1; color: #00695C; }
+.badge-grijs  { background: #ECEFF1; color: #546E7A; }
+.badge-auto   { font-size: .7rem; vertical-align: middle; }
+
+/* ── Login page ───────────────────────────────────────────────────────── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--secondary) 0%, #2D5986 100%);
+}
+
+.login-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+
+.login-logo { text-align: center; margin-bottom: 32px; }
+.logo-xplore {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.logo-sub { font-size: .95rem; color: var(--text-soft); margin-top: 4px; }
+
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-weight: 600; font-size: .9rem; color: var(--text-mid); }
+.form-group input {
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color .15s;
+  background: var(--bg);
+}
+.form-group input:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+.login-existing { margin-top: 24px; }
+.login-existing-label { font-size: .85rem; color: var(--text-soft); margin-bottom: 10px; text-align: center; }
+.login-existing-list  { display: flex; flex-direction: column; gap: 8px; }
+.btn-existing {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  transition: all .15s;
+}
+.btn-existing:hover { border-color: var(--primary); background: var(--primary-light); }
+.existing-naam { font-weight: 600; font-size: .9rem; }
+.existing-klas { font-size: .8rem; color: var(--text-soft); }
+
+/* ── Home page ────────────────────────────────────────────────────────── */
+.home-intro { margin-bottom: 24px; }
+.home-title { font-size: 1.6rem; font-weight: 800; color: var(--secondary); }
+.home-sub   { color: var(--text-mid); margin-top: 4px; }
+
+.secties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.sectie-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px 16px 16px;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid transparent;
+  transition: all .2s;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+}
+.sectie-card:hover {
+  border-color: var(--sectie-kleur, var(--primary));
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  transform: translateY(-2px);
+}
+
+.sectie-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectie-id-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.sectie-card-naam { font-weight: 700; font-size: 1rem; color: var(--text); }
+.sectie-card-sub  { font-size: .8rem; color: var(--text-soft); }
+.sectie-card-bezig { font-size: .78rem; color: var(--amber); font-weight: 600; }
+
+.progress-circle { display: block; }
+
+/* ── Sectie page ──────────────────────────────────────────────────────── */
+.sectie-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.sectie-header-id {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.sectie-title { font-size: 1.2rem; font-weight: 800; color: var(--secondary); }
+.sectie-progress-tekst { font-size: .85rem; color: var(--text-soft); }
+.sectie-circle { margin-left: auto; flex-shrink: 0; }
+
+.leerdoelen-list { display: flex; flex-direction: column; gap: 8px; }
+
+.leerdoel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid transparent;
+  transition: all .15s;
+  text-align: left;
+  width: 100%;
+  gap: 12px;
+  cursor: pointer;
+}
+.leerdoel-item:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
+
+.ld-behaald { border-left-color: var(--green); background: var(--green-light); }
+.ld-amber   { border-left-color: var(--amber); background: var(--amber-light); }
+.ld-bezig   { border-left-color: var(--red); background: var(--red-light); }
+
+.ld-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.ld-nummer {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ld-tekst   { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ld-naam    { font-weight: 600; font-size: .9rem; color: var(--text); }
+.ld-voorkennis { font-size: .75rem; color: var(--text-soft); }
+.ld-right   { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ld-arrow   { color: var(--text-soft); font-size: 1.2rem; }
+
+/* ── Leerdoel page ────────────────────────────────────────────────────── */
+.leerdoel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.ld-nummer-lg {
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: .9rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.leerdoel-title  { font-size: 1.1rem; font-weight: 800; color: var(--secondary); line-height: 1.3; }
+.ld-huidig-score { margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.ld-nog-niet     { font-size: .85rem; color: var(--text-soft); margin-top: 4px; }
+
+.ld-vk-info {
+  background: #F8F9FA;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: .85rem;
+  color: var(--text-mid);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.vk-chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.vk-behaald { background: var(--green-light); color: var(--green); }
+.vk-open    { background: #ECEFF1; color: #546E7A; }
+
+.activiteiten-titel {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 12px;
+}
+
+.activiteiten-list { display: flex; flex-direction: column; gap: 12px; }
+
+.activiteit-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid transparent;
+  transition: border-color .15s;
+}
+.activiteit-card:hover { border-color: var(--border); }
+.act-gedaan { border-color: #C8E6C9; }
+
+.act-top  { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.act-info { flex: 1; min-width: 0; }
+.act-naam { font-weight: 700; font-size: .95rem; display: block; margin-bottom: 6px; }
+.act-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.act-bron { font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+.act-niveau { font-size: .78rem; color: var(--text-soft); }
+.act-bijzonderheden { font-size: .82rem; color: var(--text-mid); margin-top: 6px; font-style: italic; }
+.act-acties { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.act-bewijs-preview {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.act-bewijs-preview img {
+  max-height: 120px;
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.geen-activiteiten {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: .9rem;
+  box-shadow: var(--shadow-sm);
+}
+.geen-activiteiten p:first-child { font-weight: 600; margin-bottom: 8px; }
+
+/* ── Afronden page ────────────────────────────────────────────────────── */
+.afronden-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sm);
+  max-width: 560px;
+  margin: 0 auto;
+}
+.afronden-title    { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; color: var(--secondary); }
+.afronden-act-naam { font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.afronden-ld-naam  { font-size: .85rem; color: var(--text-soft); margin-bottom: 24px; }
+
+.score-vraag      { margin-bottom: 24px; }
+.score-label-titel { font-weight: 700; margin-bottom: 12px; }
+.score-knoppen    { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.score-optie {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.score-optie:hover { border-color: currentColor; transform: translateY(-1px); }
+.score-optie.selected { border-width: 3px; }
+
+.score-rood  { color: var(--red); }
+.score-rood.selected  { background: var(--red-light); border-color: var(--red); }
+.score-amber { color: var(--amber); }
+.score-amber.selected { background: var(--amber-light); border-color: var(--amber); }
+.score-groen { color: var(--green); }
+.score-groen.selected { background: var(--green-light); border-color: var(--green); }
+
+.score-radio { display: none; }
+.score-pct   { font-size: 1.2rem; font-weight: 800; }
+.score-desc  { font-size: .75rem; color: var(--text-soft); margin-top: 4px; }
+
+.bewijs-sectie   { margin-bottom: 24px; }
+.bewijs-label    { font-weight: 700; margin-bottom: 10px; }
+.optioneel       { font-weight: 400; color: var(--text-soft); font-size: .85rem; }
+
+.upload-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 24px;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+  min-height: 80px;
+}
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: var(--primary-light); }
+.upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-content { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-soft); pointer-events: none; }
+.upload-icon { font-size: 1.8rem; }
+.upload-tekst { font-size: .85rem; text-align: center; }
+
+.bewijs-preview {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bewijs-preview img { max-height: 100px; border-radius: 6px; box-shadow: var(--shadow-sm); }
+.bewijs-naam { font-size: .85rem; color: var(--text-mid); }
+
+.afronden-acties { display: flex; gap: 12px; justify-content: flex-end; }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .secties-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sectie-card  { padding: 14px 10px 12px; }
+  .sectie-card-naam { font-size: .85rem; }
+  .score-knoppen { flex-direction: column; }
+  .afronden-card { padding: 20px 16px; }
+  .leerdoel-header { flex-wrap: wrap; }
+  .act-acties { flex-direction: column; }
+  .act-acties .btn { width: 100%; }
+  .main-content { padding: 16px 12px 40px; }
+  .sectie-header { flex-wrap: wrap; }
+  .sectie-circle { display: none; }
+  .afronden-acties { flex-direction: column-reverse; }
+  .afronden-acties .btn { width: 100%; }
+}
+
+@media (max-width: 360px) {
+  .secties-grid { grid-template-columns: 1fr; }
+}
