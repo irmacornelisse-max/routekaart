@@ -4,8 +4,6 @@ function initMathKeyboard() {
   const kbd = document.createElement('div');
   kbd.id = 'math-keyboard';
   kbd.className = 'math-keyboard';
-  // Layout: numbers + operators needed for free-text fraction input
-  // Students type e.g. "3/4", "1 3/4", "2:3", "0,75"
   kbd.innerHTML = `
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>
@@ -28,32 +26,14 @@ function initMathKeyboard() {
     <div class="kbd-row">
       <button class="kbd-btn kbd-btn-zero" data-val="0">0</button>
       <button class="kbd-btn" data-val=",">,</button>
-      <button class="kbd-btn kbd-btn-op" data-val="SPC">␣</button>
+      <button class="kbd-btn kbd-btn-frac" data-val="FRAC">a/b</button>
       <button class="kbd-btn kbd-btn-clear" data-val="CLR">C</button>
     </div>
   `;
   document.body.appendChild(kbd);
 
-  let activeInput = null;
-
-  const INPUT_SEL = 'input.math-input, input.math-input-single';
-
-  document.addEventListener('focusin', e => {
-    if (e.target.matches(INPUT_SEL)) {
-      activeInput = e.target;
-      kbd.classList.add('visible');
-    }
-  });
-
-  document.addEventListener('focusout', () => {
-    setTimeout(() => {
-      if (!kbd.contains(document.activeElement) &&
-          !document.activeElement.matches(INPUT_SEL)) {
-        kbd.classList.remove('visible');
-        activeInput = null;
-      }
-    }, 200);
-  });
+  window.showKbd = () => kbd.classList.add('visible');
+  window.hideKbd = () => kbd.classList.remove('visible');
 
   kbd.addEventListener('mousedown', e => {
     e.preventDefault();
@@ -68,24 +48,14 @@ function initMathKeyboard() {
   }, { passive: false });
 
   function handleKey(val) {
-    if (val === 'NEXT') {
-      const inputs = [...document.querySelectorAll(INPUT_SEL)];
-      const idx = inputs.indexOf(activeInput);
-      if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
-      return;
+    const mq = window.APP?.activeMQField;
+    if (!mq) return;
+    switch (val) {
+      case 'DEL':  mq.keystroke('Backspace'); break;
+      case 'CLR':  mq.latex(''); mq.focus(); break;
+      case 'NEXT': mq.keystroke('Right'); break;
+      case 'FRAC': mq.typedText('/'); break;
+      default:     mq.typedText(val); break;
     }
-    if (!activeInput) return;
-    const max = 10;
-    if (val === 'DEL') {
-      activeInput.value = activeInput.value.slice(0, -1);
-    } else if (val === 'CLR') {
-      activeInput.value = '';
-    } else if (val === 'SPC') {
-      if (activeInput.value.length < max && !activeInput.value.endsWith(' '))
-        activeInput.value += ' ';
-    } else {
-      if (activeInput.value.length < max) activeInput.value += val;
-    }
-    activeInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }

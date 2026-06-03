@@ -107,3 +107,165 @@ function maakGetallenlijnSVG(num, den, showArrow) {
     ${arrowSVG}
   </svg>`;
 }
+
+/* ── LaTeX Expression Evaluator ────────────────────────────────────────────────── */
+
+function tokenizeFracLatex(s) {
+  const tokens = [];
+  let i = 0;
+
+  function readBlock() {
+    if (s[i] !== '{') return '';
+    let depth = 0, j = i;
+    while (j < s.length) {
+      if (s[j] === '{') depth++;
+      else if (s[j] === '}') { if (--depth === 0) break; }
+      j++;
+    }
+    const content = s.slice(i + 1, j);
+    i = j + 1;
+    return content;
+  }
+
+  while (i < s.length) {
+    if (/[\s ]/.test(s[i])) { i++; continue; }
+
+    if (s[i] === '\\') {
+      i++;
+      let cmd = '';
+      while (i < s.length && /[a-zA-Z]/.test(s[i])) cmd += s[i++];
+
+      if (cmd === 'frac') {
+        const nb = readBlock(), db = readBlock();
+        const nv = evaluateLatex(nb), dv = evaluateLatex(db);
+        const prev = tokens[tokens.length - 1];
+        if (prev && prev.t === 'n') {
+          tokens.pop();
+          tokens.push({ t: 'v', v: prev.v + (dv ? nv / dv : 0) });
+        } else {
+          tokens.push({ t: 'v', v: dv ? nv / dv : 0 });
+        }
+      } else if (cmd === 'sqrt') {
+        const ab = readBlock();
+        tokens.push({ t: 'v', v: Math.sqrt(Math.max(0, evaluateLatex(ab) ?? 0)) });
+      } else if (cmd === 'cdot' || cmd === 'times') {
+        tokens.push({ t: 'op', v: '*' });
+      } else if (cmd === 'div') {
+        tokens.push({ t: 'op', v: '/' });
+      } else if (cmd === 'left') {
+        if (i < s.length) { i++; tokens.push({ t: 'lp' }); }
+      } else if (cmd === 'right') {
+        if (i < s.length) { i++; tokens.push({ t: 'rp' }); }
+      }
+      continue;
+    }
+
+    if (/\d/.test(s[i])) {
+      let n = '';
+      while (i < s.length && /\d/.test(s[i])) n += s[i++];
+      if (i < s.length && (s[i] === '.' || s[i] === ',')) {
+        n += '.'; i++;
+        while (i < s.length && /\d/.test(s[i])) n += s[i++];
+      }
+      tokens.push({ t: 'n', v: parseFloat(n) });
+      continue;
+    }
+
+    const ch = s[i++];
+    if (ch === '+') tokens.push({ t: 'op', v: '+' });
+    else if (ch === '-') tokens.push({ t: 'op', v: '-' });
+    else if (ch === '*') tokens.push({ t: 'op', v: '*' });
+    else if (ch === '/') tokens.push({ t: 'op', v: '/' });
+    else if (ch === ':') tokens.push({ t: 'op', v: ':' });
+    else if (ch === '(') tokens.push({ t: 'lp' });
+    else if (ch === ')') tokens.push({ t: 'rp' });
+  }
+
+  return tokens;
+}
+
+function evaluateLatex(latex) {
+  if (latex === null || latex === undefined) return null;
+  const s = latex.trim();
+  if (!s) return null;
+  try {
+    const tokens = tokenizeFracLatex(s);
+    if (!tokens.length) return null;
+    let pos = 0;
+
+    const eat = fn => (pos < tokens.length && fn(tokens[pos])) ? tokens[pos++] : null;
+
+    function parseExpr() {
+      let l = parseTerm();
+      let op;
+      while ((op = eat(t => t.t === 'op' && (t.v === '+' || t.v === '-')))) {
+        l = op.v === '+' ? l + parseTerm() : l - parseTerm();
+      }
+      return l;
+    }
+
+    function parseTerm() {
+      let l = parseAtom();
+      let op;
+      while ((op = eat(t => t.t === 'op' && (t.v === '*' || t.v === '/' || t.v === ':')))) {
+        const r = parseAtom();
+        l = op.v === '*' ? l * r : l / r;
+      }
+      return l;
+    }
+
+    function parseAtom() {
+      if (eat(t => t.t === 'op' && t.v === '-')) return -parseAtom();
+      if (eat(t => t.t === 'lp')) {
+        const v = parseExpr();
+        eat(t => t.t === 'rp');
+        return v;
+      }
+      const tok = eat(t => t.t === 'v' || t.t === 'n');
+      if (tok) return tok.v;
+      throw new Error('unexpected');
+    }
+
+    const result = parseExpr();
+    return isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+function isEindvorm(latex) {
+  const s = (latex || '').trim();
+  if (!s) return false;
+  if (/[+]|(?<![\\])[-]|\\cdot|\\times|\\div|\\sqrt/.test(s)) return false;
+  if (/^\d+$/.test(s)) return true;
+  if (/^\d+[.,]\d+$/.test(s)) return true;
+  const ratioM = s.match(/^(\d+):(\d+)$/);
+  if (ratioM) return gcd(+ratioM[1], +ratioM[2]) === 1;
+  const mixedM = s.match(/^(\d+)\\frac\{(\d+)\}\{(\d+)\}$/);
+  if (mixedM) {
+    const [, , n, d] = mixedM.map(Number);
+    return n > 0 && d > n && gcd(n, d) === 1;
+  }
+  const fracM = s.match(/^\\frac\{(\d+)\}\{(\d+)\}$/);
+  if (fracM) {
+    const [, n, d] = fracM.map(Number);
+    return d > 0 && gcd(n, d) === 1;
+  }
+  return false;
+}
+
+function parseSingleFracFromLatex(latex) {
+  const m = (latex || '').trim().match(/^\\frac\{(\d+)\}\{(\d+)\}$/);
+  return m ? { n: parseInt(m[1]), d: parseInt(m[2]) } : null;
+}
+
+function correcteWaarde(vraag) {
+  const { antwoordType: type, antwoord: a } = vraag;
+  if (type === 'fraction')   return a.teller / a.noemer;
+  if (type === 'mixed')      return a.geheel + a.teller / a.noemer;
+  if (type === 'integer')    return a.waarde;
+  if (type === 'decimal')    return a.waarde;
+  if (type === 'percentage') return a.waarde;
+  if (type === 'ratio')      return a.deel1 / a.deel2;
+  return null;
+}

@@ -8,59 +8,11 @@ const APP = {
   opgaveNr: 1,
   nlMarkerPos: null,
   mcKeuze: null,
+  mqField1: null,
+  mqField2: null,
+  activeMQField: null,
 };
-
-/* ── Input parser ────────────────────────────────────────────────────────── */
-/* Parses free-form student input: "3/4", "1 3/4", "2", "0,75", "2:3" */
-function parseInput(str) {
-  if (!str || !str.trim()) return null;
-  str = str.trim();
-
-  // Ratio: "2:3"
-  if (/^\d+\s*:\s*\d+$/.test(str)) {
-    const parts = str.split(':').map(s => parseInt(s.trim()));
-    if (parts[1] === 0) return null;
-    return { type: 'ratio', deel1: parts[0], deel2: parts[1] };
-  }
-
-  // Mixed number: "1 3/4"
-  const mixedMatch = str.match(/^(\d+)\s+(\d+)\/(\d+)$/);
-  if (mixedMatch) {
-    const [, w, t, n] = mixedMatch.map(Number);
-    if (n === 0) return null;
-    return { type: 'mixed', geheel: w, teller: t, noemer: n };
-  }
-
-  // Fraction: "3/4"
-  if (/^\d+\/\d+$/.test(str)) {
-    const [t, n] = str.split('/').map(Number);
-    if (n === 0) return null;
-    return { type: 'fraction', teller: t, noemer: n };
-  }
-
-  // Decimal: "0,75" or "0.75"
-  const decStr = str.replace(',', '.');
-  if (/^\d+\.\d+$/.test(decStr)) {
-    return { type: 'decimal', waarde: parseFloat(decStr) };
-  }
-
-  // Integer: "2"
-  if (/^\d+$/.test(str)) {
-    return { type: 'integer', waarde: parseInt(str) };
-  }
-
-  return null;
-}
-
-/* Convert any parsed input to an equivalent [numerator, denominator] pair */
-function toFrac(parsed) {
-  if (!parsed) return null;
-  if (parsed.type === 'integer')  return [parsed.waarde, 1];
-  if (parsed.type === 'fraction') return [parsed.teller, parsed.noemer];
-  if (parsed.type === 'mixed')    return mixedToImproper(parsed.geheel, parsed.teller, parsed.noemer);
-  if (parsed.type === 'decimal')  return decimalToFrac(parsed.waarde);
-  return null;
-}
+window.APP = APP;
 
 /* ── Routing ─────────────────────────────────────────────────────────────── */
 function route() {
@@ -261,58 +213,34 @@ function renderAntwoordInput(vraag) {
 
   if (type === 'drag') return '';
 
-  if (type === 'fraction') {
-    return `<div class="frac-input-wrap">
-      <input class="math-input" id="inp-teller" type="text" inputmode="numeric" autocomplete="off" />
-      <div class="frac-line"></div>
-      <input class="math-input" id="inp-noemer" type="text" inputmode="numeric" autocomplete="off" />
-    </div>`;
-  }
-
-  if (type === 'mixed') {
-    return `<div class="mixed-wrap">
-      <input class="math-input math-input-lg" id="inp-geheel" type="text" inputmode="numeric" autocomplete="off" />
-      <div class="frac-input-wrap">
-        <input class="math-input" id="inp-teller" type="text" inputmode="numeric" autocomplete="off" />
-        <div class="frac-line"></div>
-        <input class="math-input" id="inp-noemer" type="text" inputmode="numeric" autocomplete="off" />
-      </div>
-    </div>`;
-  }
-
   if (type === 'two-fracs') {
-    return `<div class="two-fracs-wrap">
+    return `<div class="two-mq-wrap">
       <div>
-        <div class="two-fracs-label">Eerste breuk:</div>
-        <div class="frac-input-wrap">
-          <input class="math-input" id="inp-teller1" type="text" inputmode="numeric" autocomplete="off" />
-          <div class="frac-line"></div>
-          <input class="math-input" id="inp-noemer1" type="text" inputmode="numeric" autocomplete="off" />
-        </div>
+        <div class="two-mq-label">Eerste breuk:</div>
+        <div class="mq-field-box" id="mq-input1"></div>
       </div>
       <div>
-        <div class="two-fracs-label">Tweede breuk:</div>
-        <div class="frac-input-wrap">
-          <input class="math-input" id="inp-teller2" type="text" inputmode="numeric" autocomplete="off" />
-          <div class="frac-line"></div>
-          <input class="math-input" id="inp-noemer2" type="text" inputmode="numeric" autocomplete="off" />
-        </div>
+        <div class="two-mq-label">Tweede breuk:</div>
+        <div class="mq-field-box" id="mq-input2"></div>
       </div>
     </div>`;
   }
 
-  // integer, decimal, percentage, ratio: single text input
-  let placeholder = 'Jouw antwoord';
-  let suffix = '';
-  if (type === 'percentage') { placeholder = 'Bijv. 75'; suffix = '<span class="input-unit">%</span>'; }
-  if (type === 'decimal')    placeholder = 'Bijv. 0,75';
-  if (type === 'ratio')      placeholder = 'Bijv. 2:3';
+  const hints = {
+    fraction:   'Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor ¾ of gebruik <kbd>a/b</kbd>',
+    mixed:      'Typ bijv. <kbd>1</kbd> dan <kbd>a/b</kbd><kbd>3</kbd><kbd>→</kbd><kbd>4</kbd> voor 1¾',
+    integer:    '',
+    decimal:    'Gebruik een komma: <kbd>0</kbd><kbd>,</kbd><kbd>7</kbd><kbd>5</kbd>',
+    percentage: 'Vul alleen het getal in, bijv. <kbd>7</kbd><kbd>5</kbd>',
+    ratio:      'Gebruik <kbd>:</kbd>, bijv. <kbd>2</kbd><kbd>:</kbd><kbd>3</kbd>',
+  };
+  const suffix = type === 'percentage' ? '<span class="input-unit">%</span>' : '';
+  const hint = hints[type] || '';
 
-  return `<div class="single-input-wrap">
-    <input class="math-input-single math-input" id="inp-single" type="text" inputmode="text"
-      placeholder="${placeholder}" autocomplete="off" style="width:200px"/>
+  return `<div class="mq-wrap">
+    <div class="mq-field-box" id="mq-input"></div>
     ${suffix}
-  </div>`;
+  </div>${hint ? `<div class="mq-hint">${hint}</div>` : ''}`;
 }
 
 /* ── Drag area for B.01c ─────────────────────────────────────────────────── */
@@ -337,42 +265,17 @@ function leesAntwoord(vraag) {
   const type = vraag.antwoordType;
   if (type === 'mc')   return { keuze: APP.mcKeuze };
   if (type === 'drag') return { positie: APP.nlMarkerPos };
-
-  if (type === 'fraction') {
-    const t = parseInt(document.getElementById('inp-teller')?.value || '');
-    const n = parseInt(document.getElementById('inp-noemer')?.value || '');
-    if (isNaN(t) || isNaN(n) || n === 0) return { parsed: null };
-    return { parsed: { type: 'fraction', teller: t, noemer: n } };
-  }
-
-  if (type === 'mixed') {
-    const g = parseInt(document.getElementById('inp-geheel')?.value || '0') || 0;
-    const t = parseInt(document.getElementById('inp-teller')?.value || '');
-    const n = parseInt(document.getElementById('inp-noemer')?.value || '');
-    if (isNaN(t) || isNaN(n) || n === 0) return { parsed: null };
-    if (g > 0) return { parsed: { type: 'mixed', geheel: g, teller: t, noemer: n } };
-    return { parsed: { type: 'fraction', teller: t, noemer: n } };
-  }
-
   if (type === 'two-fracs') {
-    const t1 = parseInt(document.getElementById('inp-teller1')?.value || '');
-    const n1 = parseInt(document.getElementById('inp-noemer1')?.value || '');
-    const t2 = parseInt(document.getElementById('inp-teller2')?.value || '');
-    const n2 = parseInt(document.getElementById('inp-noemer2')?.value || '');
-    const p1 = (!isNaN(t1) && !isNaN(n1) && n1 > 0) ? { type: 'fraction', teller: t1, noemer: n1 } : null;
-    const p2 = (!isNaN(t2) && !isNaN(n2) && n2 > 0) ? { type: 'fraction', teller: t2, noemer: n2 } : null;
-    return { parsed1: p1, parsed2: p2 };
+    return { latex1: APP.mqField1?.latex() || '', latex2: APP.mqField2?.latex() || '' };
   }
-
-  const raw = document.getElementById('inp-single')?.value.trim() || '';
-  return { raw, parsed: parseInput(raw) };
+  return { latex: APP.mqField1?.latex() || '' };
 }
 
 function valideerAntwoord(type, gegeven) {
   if (type === 'mc')        return gegeven.keuze !== null && gegeven.keuze !== undefined;
   if (type === 'drag')      return gegeven.positie !== null && gegeven.positie !== undefined;
-  if (type === 'two-fracs') return gegeven.parsed1 !== null && gegeven.parsed2 !== null;
-  return gegeven.parsed !== null && gegeven.parsed !== undefined;
+  if (type === 'two-fracs') return !!(gegeven.latex1?.trim()) && !!(gegeven.latex2?.trim());
+  return !!(gegeven.latex?.trim());
 }
 
 /* ── Check answer ────────────────────────────────────────────────────────── */
@@ -380,122 +283,54 @@ function checkAntwoord(vraag, gegeven) {
   const type = vraag.antwoordType;
   const correct = vraag.antwoord;
 
-  if (type === 'mc')   return gegeven.keuze === correct.correct;
-  if (type === 'drag') return Math.abs(gegeven.positie - correct.positie) <= 0.08;
+  if (type === 'mc')   return gegeven.keuze === correct.correct ? 'goed' : 'fout';
+  if (type === 'drag') return Math.abs(gegeven.positie - correct.positie) <= 0.08 ? 'goed' : 'fout';
 
   if (type === 'two-fracs') {
-    const p1 = gegeven.parsed1, p2 = gegeven.parsed2;
-    if (!p1 || !p2 || p1.type !== 'fraction' || p2.type !== 'fraction') return false;
-    // Both fractions must have the same denominator (that's what gelijknamig means)
-    if (p1.noemer !== p2.noemer) return false;
-    return fracEqual(p1.teller, p1.noemer, correct.teller1, correct.noemer1) &&
-           fracEqual(p2.teller, p2.noemer, correct.teller2, correct.noemer2);
+    const f1 = parseSingleFracFromLatex(gegeven.latex1);
+    const f2 = parseSingleFracFromLatex(gegeven.latex2);
+    if (!f1 || !f2) return 'fout';
+    if (f1.d !== f2.d) return 'fout';
+    const cv1 = correct.teller1 / correct.noemer1;
+    const cv2 = correct.teller2 / correct.noemer2;
+    if (Math.abs(f1.n / f1.d - cv1) > 1e-9 || Math.abs(f2.n / f2.d - cv2) > 1e-9) return 'fout';
+    return f1.d === correct.noemer1 ? 'goed' : 'tussenstap';
   }
 
-  const p = gegeven.parsed;
-  if (!p) return false;
-
-  if (type === 'percentage') {
-    const val = p.type === 'integer' ? p.waarde : p.type === 'decimal' ? p.waarde : null;
-    return val !== null && Math.abs(val - correct.waarde) < 0.01;
-  }
-
-  if (type === 'ratio') {
-    if (p.type !== 'ratio') return false;
-    const [ga, gb] = simplifyFrac(p.deel1, p.deel2);
-    const [ca, cb] = simplifyFrac(correct.deel1, correct.deel2);
-    return ga === ca && gb === cb;
-  }
-
-  if (type === 'decimal') {
-    const f = toFrac(p);
-    if (!f) return false;
-    const [cn, cd] = decimalToFrac(correct.waarde);
-    return fracEqual(f[0], f[1], cn, cd);
-  }
-
-  // fraction, mixed, integer — all compare as fractions (accepts any equivalent form)
-  const f = toFrac(p);
-  if (!f) return false;
-
-  let cf;
-  if (type === 'fraction') cf = [correct.teller, correct.noemer];
-  else if (type === 'mixed')   cf = mixedToImproper(correct.geheel, correct.teller, correct.noemer);
-  else if (type === 'integer') cf = [correct.waarde, 1];
-  else return false;
-
-  if (!fracEqual(f[0], f[1], cf[0], cf[1])) return false;
-
-  // For leerdoelen that require simplified form, reject unsimplified fractions
-  const vereenvoudigVereist = ['B.1', 'B.5', 'B.7', 'B.9', 'B.11', 'BP.2', 'BD.2'];
-  if (vereenvoudigVereist.includes(vraag.leerdoel) && (type === 'fraction' || type === 'mixed')) {
-    if (p.type === 'fraction' || p.type === 'mixed') {
-      const [sn, sd] = simplifyFrac(p.teller, p.noemer);
-      if (sn !== p.teller || sd !== p.noemer) return false;
-    }
-  }
-
-  return true;
+  const sv = evaluateLatex(gegeven.latex);
+  if (sv === null || !isFinite(sv)) return 'fout';
+  const cv = correcteWaarde(vraag);
+  if (cv === null || Math.abs(sv - cv) > 1e-9) return 'fout';
+  return isEindvorm(gegeven.latex) ? 'goed' : 'tussenstap';
 }
 
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
-  const type = vraag.antwoordType;
-  const correct = vraag.antwoord;
-
-  if (type === 'two-fracs') {
-    const p1 = gegeven.parsed1, p2 = gegeven.parsed2;
-    if (!p1 || !p2) return 'Controleer je invoer. Vul beide breuken in als bijv. <em>4/12</em>.';
-    if (p1.type === 'fraction' && p2.type === 'fraction' && p1.noemer !== p2.noemer)
-      return 'De noemers van je twee breuken zijn niet gelijk. Zorg dat beide breuken dezelfde noemer hebben.';
-    const ok1 = p1 && fracEqual(p1.teller, p1.noemer || 1, correct.teller1, correct.noemer1);
-    const ok2 = p2 && fracEqual(p2.teller, p2.noemer || 1, correct.teller2, correct.noemer2);
-    if (ok1 && !ok2) return 'De eerste breuk klopt! Controleer de tweede breuk.';
-    if (!ok1 && ok2) return 'De tweede breuk klopt! Controleer de eerste breuk.';
+  if (vraag.antwoordType === 'two-fracs') {
+    const f1 = parseSingleFracFromLatex(gegeven.latex1 || '');
+    const f2 = parseSingleFracFromLatex(gegeven.latex2 || '');
+    if (!f1 || !f2) return 'Voer twee breuken in, bijv. <em>4/12</em>.';
+    if (f1 && f2 && f1.d !== f2.d) return 'De noemers zijn niet gelijk. Zorg dat beide breuken dezelfde noemer hebben.';
   }
-
-  if (type === 'drag') return 'Niet helemaal goed. Probeer de breuk nauwkeuriger te plaatsen.';
-
-  if (type === 'decimal') return 'Controleer je deling. Gebruik een komma voor decimalen (bijv. 0,75).';
-
-  if (type === 'percentage') return 'Controleer je berekening. Vul alleen het getal in (bijv. 75 voor 75%).';
-
-  if (type === 'ratio') return 'Controleer je verhouding. Gebruik het formaat bijv. 2:3.';
-
-  // For fraction/mixed/integer: check if the student gave an un-simplified fraction
-  const p = gegeven.parsed;
-  if (p && (p.type === 'fraction' || p.type === 'mixed')) {
-    const f = toFrac(p);
-    if (f) {
-      const [sn, sd] = simplifyFrac(f[0], f[1]);
-      let cf;
-      if (type === 'fraction') cf = [correct.teller, correct.noemer];
-      else if (type === 'mixed') cf = mixedToImproper(correct.geheel, correct.teller, correct.noemer);
-      else cf = [correct.waarde, 1];
-      if (fracEqual(f[0], f[1], cf[0], cf[1])) {
-        // Value is correct but not simplified
-        return `Bijna! Je breuk is gelijkwaardig aan het antwoord, maar nog niet vereenvoudigd. Wat is de GGD?`;
-      }
-    }
-  }
-
   const tips = {
+    'B.0':  'De teller staat boven de breukstreep, de noemer eronder.',
+    'B.01a':'Tel de gelijke delen op de getallenlijn — dat is de noemer.',
     'B.1':  'Zoek de GGD van teller en noemer en deel daardoor.',
     'B.3':  'Zoek het KGV van de noemers en verleng beide breuken.',
-    'B.5':  'Maak de noemers gelijk (KGV) en tel de tellers op.',
-    'B.6':  'Zet de gemengde getallen om naar onechte breuken, maak gelijknamig, tel op.',
-    'B.7':  'Maak de noemers gelijk (KGV) en trek de tellers af.',
+    'B.5':  'Maak gelijknamig (KGV), tel tellers op, vereenvoudig.',
+    'B.6':  'Zet om naar onechte breuken, maak gelijknamig, tel op.',
+    'B.7':  'Maak gelijknamig (KGV), trek tellers af, vereenvoudig.',
     'B.8':  'Zet om naar onechte breuken, maak gelijknamig, trek af.',
-    'B.9':  'Vermenigvuldig teller × teller en noemer × noemer, vereenvoudig daarna.',
-    'B.10': 'Zet de gemengde getallen om naar onechte breuken en vermenigvuldig.',
+    'B.9':  'Vermenigvuldig teller × teller en noemer × noemer.',
+    'B.10': 'Zet de gemengde getallen om naar onechte breuken.',
     'B.11': 'Keer de tweede breuk om en vermenigvuldig.',
-    'B.12': 'Zet om naar onechte breuken, keer de tweede om en vermenigvuldig.',
-    'BP.1': 'Bereken teller ÷ noemer × 100.',
-    'BP.2': 'Schrijf als breuk met noemer 100 en vereenvoudig.',
-    'BD.1': 'Deel de teller door de noemer.',
-    'BD.2': 'Schrijf het decimaal als breuk en vereenvoudig.',
-    'BV.1': 'Tel de delen op voor het totaal. De breuk is deel/totaal.',
-    'BV.2': 'De verhouding is teller : (noemer − teller).',
+    'B.12': 'Zet om naar onechte breuken, keer de tweede om, vermenigvuldig.',
+    'BP.1': 'Bereken teller ÷ noemer × 100 voor het percentage.',
+    'BP.2': 'Schrijf procent als breuk met noemer 100 en vereenvoudig.',
+    'BD.1': 'Deel de teller door de noemer (gebruik een komma).',
+    'BD.2': 'Tel decimalen, schrijf als breuk/10 of /100, vereenvoudig.',
+    'BV.1': 'Tel de delen op voor het totaal: breuk = deel/totaal.',
+    'BV.2': 'Breuk n/d → verhouding n:(d−n), vereenvoudig.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
@@ -512,6 +347,39 @@ function renderOplossing(vraag) {
   return `<div class="oplossing-box fade-in"><h4>📖 Uitgewerkte oplossing</h4>${items}</div>`;
 }
 
+/* ── Feedback display ────────────────────────────────────────────────────── */
+function toonFeedback(staat, boodschap) {
+  const zone = document.getElementById('feedback-zone');
+  const klassen = { goed: 'correct', tussenstap: 'tussenstap', fout: 'wrong' };
+  const icons   = { goed: '✓', tussenstap: '→', fout: '✗' };
+  zone.innerHTML = `<div class="feedback-box ${klassen[staat]} fade-in">
+    <span class="feedback-icon">${icons[staat]}</span>
+    <div class="feedback-text">${boodschap}</div>
+  </div>`;
+  renderKatex(zone);
+}
+
+function toonNieuweVraagKnop() {
+  const bar = document.getElementById('actie-bar');
+  if (!bar || bar.querySelector('#btn-nieuw')) return;
+  const btn = document.createElement('button');
+  btn.id = 'btn-nieuw';
+  btn.className = 'btn btn-green';
+  btn.textContent = 'Nieuwe vraag →';
+  btn.addEventListener('click', nieuweVraag);
+  bar.appendChild(btn);
+  const c = document.getElementById('btn-controleer');
+  if (c) c.disabled = true;
+}
+
+function kleurMcKnoppen(vraag) {
+  document.querySelectorAll('.mc-btn').forEach((btn, i) => {
+    if (i === vraag.antwoord.correct) btn.classList.add('correct');
+    else if (i === APP.mcKeuze) btn.classList.add('wrong');
+    btn.disabled = true;
+  });
+}
+
 /* ── New question ────────────────────────────────────────────────────────── */
 function nieuweVraag() {
   APP.huidigVraag = generateVraag(APP.huidigLeerdoel);
@@ -520,6 +388,9 @@ function nieuweVraag() {
   APP.opgaveNr++;
   APP.nlMarkerPos = null;
   APP.mcKeuze = null;
+  APP.mqField1 = null;
+  APP.mqField2 = null;
+  APP.activeMQField = null;
   const app = document.getElementById('app');
   app.innerHTML = renderOefenen(APP.huidigLeerdoel);
   renderKatex(app);
@@ -539,6 +410,50 @@ function bindEvents(page, param) {
 function bindOefenen(leerdoelId) {
   const vraag = APP.huidigVraag;
   if (!vraag) return;
+
+  APP.mqField1 = null;
+  APP.mqField2 = null;
+
+  if (typeof MathQuill !== 'undefined' &&
+      vraag.antwoordType !== 'mc' && vraag.antwoordType !== 'drag') {
+    const MQ = MathQuill.getInterface(2);
+
+    function setupMQ(el, onEnter) {
+      if (!el) return null;
+      const mq = MQ.MathField(el, {
+        spaceBehavesLikeTab: true,
+        handlers: { enter: onEnter || (() => {}) }
+      });
+      const ta = el.querySelector('textarea');
+      if (ta) {
+        ta.addEventListener('focus', () => {
+          APP.activeMQField = mq;
+          window.showKbd?.();
+        });
+        ta.addEventListener('blur', () => {
+          setTimeout(() => {
+            const kbd = document.getElementById('math-keyboard');
+            if (kbd && !kbd.contains(document.activeElement)) window.hideKbd?.();
+          }, 200);
+        });
+      }
+      return mq;
+    }
+
+    if (vraag.antwoordType === 'two-fracs') {
+      APP.mqField1 = setupMQ(document.getElementById('mq-input1'),
+        () => APP.mqField2?.focus());
+      APP.mqField2 = setupMQ(document.getElementById('mq-input2'),
+        () => document.getElementById('btn-controleer')?.click());
+      APP.activeMQField = APP.mqField1;
+      APP.mqField1?.focus();
+    } else {
+      APP.mqField1 = setupMQ(document.getElementById('mq-input'),
+        () => document.getElementById('btn-controleer')?.click());
+      APP.activeMQField = APP.mqField1;
+      APP.mqField1?.focus();
+    }
+  }
 
   if (vraag.antwoordType === 'mc') {
     document.querySelectorAll('.mc-btn').forEach(btn => {
@@ -585,16 +500,19 @@ function controleer(vraag) {
     return;
   }
 
-  APP.pogingen++;
-  const goed = checkAntwoord(vraag, gegeven);
-  slaResultaatOp(APP.student.id, vraag.leerdoel, goed);
+  const staat = checkAntwoord(vraag, gegeven);
 
-  if (goed) {
-    toonFeedback(true, 'Goed zo! Je antwoord is correct. 🎉');
+  if (staat === 'goed') {
+    slaResultaatOp(APP.student.id, vraag.leerdoel, true);
+    toonFeedback('goed', 'Goed zo! Je antwoord is correct. 🎉');
     if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
     toonNieuweVraagKnop();
+  } else if (staat === 'tussenstap') {
+    toonFeedback('tussenstap', 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
   } else {
-    toonFeedback(false, feedbackBoodschap(vraag, gegeven));
+    APP.pogingen++;
+    slaResultaatOp(APP.student.id, vraag.leerdoel, false);
+    toonFeedback('fout', feedbackBoodschap(vraag, gegeven));
     if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
     if (APP.pogingen >= 3) {
       const zone = document.getElementById('oplossing-zone');
@@ -605,36 +523,6 @@ function controleer(vraag) {
       }
     }
   }
-}
-
-function toonFeedback(goed, boodschap) {
-  const zone = document.getElementById('feedback-zone');
-  zone.innerHTML = `<div class="feedback-box ${goed ? 'correct' : 'wrong'} fade-in">
-    <span class="feedback-icon">${goed ? '✓' : '✗'}</span>
-    <div class="feedback-text">${boodschap}</div>
-  </div>`;
-  renderKatex(zone);
-}
-
-function toonNieuweVraagKnop() {
-  const bar = document.getElementById('actie-bar');
-  if (!bar || bar.querySelector('#btn-nieuw')) return;
-  const btn = document.createElement('button');
-  btn.id = 'btn-nieuw';
-  btn.className = 'btn btn-green';
-  btn.textContent = 'Nieuwe vraag →';
-  btn.addEventListener('click', nieuweVraag);
-  bar.appendChild(btn);
-  const c = document.getElementById('btn-controleer');
-  if (c) c.disabled = true;
-}
-
-function kleurMcKnoppen(vraag) {
-  document.querySelectorAll('.mc-btn').forEach((btn, i) => {
-    if (i === vraag.antwoord.correct) btn.classList.add('correct');
-    else if (i === APP.mcKeuze) btn.classList.add('wrong');
-    btn.disabled = true;
-  });
 }
 
 /* ── Drag & Drop (B.01c) ─────────────────────────────────────────────────── */
