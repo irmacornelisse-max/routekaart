@@ -1,4 +1,4 @@
-/* ── App State ───────────────────────────────────────────────────────── */
+/* ── App State ───────────────────────────────────────────────────────────── */
 const APP = {
   student: null,
   huidigLeerdoel: null,
@@ -6,12 +6,63 @@ const APP = {
   hintIdx: 0,
   pogingen: 0,
   opgaveNr: 1,
-  recenteDots: [],  // last 5: 'goed'|'fout'
-  nlMarkerPos: null,   // for drag answer (0..1 float)
-  mcKeuze: null,       // for multiple choice
+  nlMarkerPos: null,
+  mcKeuze: null,
 };
 
-/* ── Render dispatcher ───────────────────────────────────────────────── */
+/* ── Input parser ────────────────────────────────────────────────────────── */
+/* Parses free-form student input: "3/4", "1 3/4", "2", "0,75", "2:3" */
+function parseInput(str) {
+  if (!str || !str.trim()) return null;
+  str = str.trim();
+
+  // Ratio: "2:3"
+  if (/^\d+\s*:\s*\d+$/.test(str)) {
+    const parts = str.split(':').map(s => parseInt(s.trim()));
+    if (parts[1] === 0) return null;
+    return { type: 'ratio', deel1: parts[0], deel2: parts[1] };
+  }
+
+  // Mixed number: "1 3/4"
+  const mixedMatch = str.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixedMatch) {
+    const [, w, t, n] = mixedMatch.map(Number);
+    if (n === 0) return null;
+    return { type: 'mixed', geheel: w, teller: t, noemer: n };
+  }
+
+  // Fraction: "3/4"
+  if (/^\d+\/\d+$/.test(str)) {
+    const [t, n] = str.split('/').map(Number);
+    if (n === 0) return null;
+    return { type: 'fraction', teller: t, noemer: n };
+  }
+
+  // Decimal: "0,75" or "0.75"
+  const decStr = str.replace(',', '.');
+  if (/^\d+\.\d+$/.test(decStr)) {
+    return { type: 'decimal', waarde: parseFloat(decStr) };
+  }
+
+  // Integer: "2"
+  if (/^\d+$/.test(str)) {
+    return { type: 'integer', waarde: parseInt(str) };
+  }
+
+  return null;
+}
+
+/* Convert any parsed input to an equivalent [numerator, denominator] pair */
+function toFrac(parsed) {
+  if (!parsed) return null;
+  if (parsed.type === 'integer')  return [parsed.waarde, 1];
+  if (parsed.type === 'fraction') return [parsed.teller, parsed.noemer];
+  if (parsed.type === 'mixed')    return mixedToImproper(parsed.geheel, parsed.teller, parsed.noemer);
+  if (parsed.type === 'decimal')  return decimalToFrac(parsed.waarde);
+  return null;
+}
+
+/* ── Routing ─────────────────────────────────────────────────────────────── */
 function route() {
   const hash = window.location.hash || '#login';
   const [page, param] = hash.slice(1).split('/');
@@ -25,12 +76,12 @@ function route() {
 
   const app = document.getElementById('app');
   switch (page) {
-    case 'login':     app.innerHTML = renderLogin(); break;
-    case 'dashboard': app.innerHTML = renderDashboard(); break;
-    case 'oefenen':   app.innerHTML = renderOefenen(param); break;
-    case 'resultaten':app.innerHTML = renderResultaten(); break;
-    case 'docent':    app.innerHTML = renderDocent(); break;
-    default:          app.innerHTML = renderLogin();
+    case 'login':      app.innerHTML = renderLogin();      break;
+    case 'dashboard':  app.innerHTML = renderDashboard();  break;
+    case 'oefenen':    app.innerHTML = renderOefenen(param); break;
+    case 'resultaten': app.innerHTML = renderResultaten(); break;
+    case 'docent':     app.innerHTML = renderDocent();     break;
+    default:           app.innerHTML = renderLogin();
   }
 
   renderKatex(app);
@@ -38,12 +89,9 @@ function route() {
 }
 
 window.addEventListener('hashchange', route);
-window.addEventListener('load', () => {
-  initMathKeyboard();
-  route();
-});
+window.addEventListener('load', () => { initMathKeyboard(); route(); });
 
-/* ── Header helper ───────────────────────────────────────────────────── */
+/* ── Header ──────────────────────────────────────────────────────────────── */
 function header(title, backHash, rightHTML = '') {
   const back = backHash
     ? `<button class="btn-header btn-header-back" onclick="window.location.hash='${backHash}'">&#8592;</button>`
@@ -58,11 +106,10 @@ function header(title, backHash, rightHTML = '') {
   </header>`;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    LOGIN
-═══════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 function renderLogin() {
-  const klassen = ['Klas 1 vmbo','Klas 1 havo/vwo','Klas 2 vmbo','Klas 2 havo/vwo','Klas 3 vmbo','Klas 3 havo/vwo'];
   return `<div class="login-page">
     <div class="login-card fade-in">
       <div class="login-logo">
@@ -73,12 +120,6 @@ function renderLogin() {
         <label class="form-label" for="inp-naam">Jouw naam</label>
         <input class="form-input" id="inp-naam" type="text" placeholder="Voornaam" autocomplete="given-name"/>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="inp-klas">Klas</label>
-        <select class="form-input" id="inp-klas">
-          ${klassen.map(k => `<option value="${k}">${k}</option>`).join('')}
-        </select>
-      </div>
       <button class="btn btn-primary btn-block btn-lg" id="btn-login">Inloggen</button>
       <div class="login-teacher-link mt-12">
         <a href="#docent">Docentenomgeving →</a>
@@ -88,43 +129,40 @@ function renderLogin() {
 }
 
 function bindLogin() {
-  document.getElementById('btn-login').addEventListener('click', () => {
-    const naam = document.getElementById('inp-naam').value.trim();
-    const klas = document.getElementById('inp-klas').value;
-    if (!naam) { document.getElementById('inp-naam').focus(); return; }
-    APP.student = registreerStudent(naam, klas);
+  const btn = document.getElementById('btn-login');
+  const inp = document.getElementById('inp-naam');
+  btn.addEventListener('click', () => {
+    const naam = inp.value.trim();
+    if (!naam) { inp.focus(); return; }
+    APP.student = registreerStudent(naam);
     window.location.hash = '#dashboard';
   });
-  document.getElementById('inp-naam').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('btn-login').click();
-  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    DASHBOARD
-═══════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 function renderDashboard() {
   const resultaten = getResultatenVoorStudent(APP.student.id);
 
-  function getStats(leerdoelId) {
-    const r = resultaten.filter(x => x.leerdoel === leerdoelId);
-    const goed = r.filter(x => x.goed).length;
-    return { totaal: r.length, goed };
+  function getStats(id) {
+    const r = resultaten.filter(x => x.leerdoel === id);
+    return { totaal: r.length, goed: r.filter(x => x.goed).length };
   }
 
-  function statusClass(stats) {
-    if (stats.totaal === 0) return '';
-    const pct = stats.goed / stats.totaal;
-    return pct >= 0.7 ? 'goed' : 'started';
+  function statusClass(s) {
+    if (s.totaal === 0) return '';
+    return s.goed / s.totaal >= 0.7 ? 'goed' : 'started';
   }
 
   const groepen = [...new Set(LEERDOELEN.map(l => l.groep))];
-  let html = `${header('Oefenen met breuken', '', `<button class="btn-header" onclick="doUitloggen()">Uitloggen</button>`)}
+  let html = `${header('Oefenen met breuken', '',
+    `<button class="btn-header" onclick="doUitloggen()">Uitloggen</button>`)}
   <div class="main-content">
     <div class="dashboard-welcome">
       <div>
         <div class="welcome-name">👋 Hallo, ${APP.student.naam}!</div>
-        <div class="welcome-klas">${APP.student.klas}</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="window.location.hash='#resultaten'">📊 Mijn resultaten</button>
     </div>`;
@@ -132,91 +170,56 @@ function renderDashboard() {
   groepen.forEach(groep => {
     html += `<div class="groep-header">${groep}</div><div class="leerdoel-grid">`;
     LEERDOELEN.filter(l => l.groep === groep).forEach(ld => {
-      const stats = getStats(ld.id);
-      const sc = statusClass(stats);
-      // Last 5 results
+      const s = getStats(ld.id);
+      const sc = statusClass(s);
       const last5 = resultaten.filter(x => x.leerdoel === ld.id).slice(-5);
-      const dots = last5.map(r => `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}"></span>`).join('');
-      const empty = Array(5 - last5.length).fill('<span class="voortgang-dot"></span>').join('');
+      const dots = last5.map(r =>
+        `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}"></span>`
+      ).join('') + Array(5 - last5.length).fill('<span class="voortgang-dot"></span>').join('');
       html += `<div class="leerdoel-card" onclick="window.location.hash='#oefenen/${ld.id}'">
         <div class="leerdoel-top">
           <span class="leerdoel-badge">${ld.id}</span>
-          <span class="badge-status ${sc}"></span>
+          <span class="badge-status ${sc}" style="margin-left:auto"></span>
         </div>
         <div class="leerdoel-titel">${ld.titel}</div>
         <div class="leerdoel-voortgang">
-          <div class="voortgang-dots">${dots}${empty}</div>
-          <span class="voortgang-label">${stats.goed}/${stats.totaal}</span>
+          <div class="voortgang-dots">${dots}</div>
+          <span class="voortgang-label">${s.goed}/${s.totaal}</span>
         </div>
       </div>`;
     });
     html += `</div>`;
   });
 
-  html += `<div style="margin-top:24px">
-    <button class="btn btn-secondary btn-block" onclick="openDeelModal()">📤 Resultaten delen met docent</button>
-  </div>
-  </div>
-  <div id="deel-modal" style="display:none"></div>`;
+  html += `</div><div id="deel-modal" style="display:none"></div>`;
   return html;
 }
 
-function openDeelModal() {
-  const vollCode = volledigeDeelCode(APP.student.id);
-  const kortCode = maakDeelCode(APP.student.id);
-  const modal = document.getElementById('deel-modal');
-  modal.style.display = 'flex';
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `<div class="modal fade-in">
-    <h3>📤 Resultaten delen</h3>
-    <p>Geef de code hieronder aan je docent. De docent kan deze invoeren in de docentenomgeving.</p>
-    <div class="short-code">${kortCode}</div>
-    <p style="font-size:.82rem;color:var(--text-soft);margin-bottom:8px">Volledige code (voor copy-paste):</p>
-    <div class="code-display" id="vollCode">${vollCode}</div>
-    <div class="modal-btns">
-      <button class="btn btn-primary" id="btn-copy">📋 Kopieer code</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('deel-modal').style.display='none'">Sluiten</button>
-    </div>
-  </div>`;
-  document.getElementById('btn-copy').addEventListener('click', () => {
-    navigator.clipboard.writeText(vollCode).then(() => {
-      document.getElementById('btn-copy').textContent = '✓ Gekopieerd!';
-    });
-  });
-}
+function doUitloggen() { uitloggen(); window.location.hash = '#login'; }
 
-function doUitloggen() {
-  uitloggen();
-  window.location.hash = '#login';
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    OEFENEN
-═══════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 function renderOefenen(leerdoelId) {
   const ld = LEERDOELEN.find(l => l.id === leerdoelId);
   if (!ld) return renderDashboard();
 
-  if (!APP.huidigLeerdoel || APP.huidigLeerdoel !== leerdoelId) {
+  if (APP.huidigLeerdoel !== leerdoelId) {
     APP.huidigLeerdoel = leerdoelId;
     APP.huidigVraag = null;
     APP.hintIdx = 0;
     APP.pogingen = 0;
     APP.opgaveNr = 1;
-    APP.recenteDots = [];
     APP.nlMarkerPos = null;
     APP.mcKeuze = null;
   }
-
-  if (!APP.huidigVraag) {
-    APP.huidigVraag = generateVraag(leerdoelId);
-  }
+  if (!APP.huidigVraag) APP.huidigVraag = generateVraag(leerdoelId);
 
   const resultaten = getResultatenVoorStudent(APP.student.id);
-  const myLast5 = resultaten.filter(r => r.leerdoel === leerdoelId).slice(-5);
-  const dots = myLast5.map(r =>
-    `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}" title="${r.goed ? 'Goed' : 'Fout'}"></span>`
-  ).join('') + Array(Math.max(0, 5 - myLast5.length)).fill('<span class="voortgang-dot"></span>').join('');
+  const last5 = resultaten.filter(r => r.leerdoel === leerdoelId).slice(-5);
+  const dots = last5.map(r =>
+    `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}"></span>`
+  ).join('') + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
 
   const vraag = APP.huidigVraag;
   const antwoordHTML = renderAntwoordInput(vraag);
@@ -228,20 +231,15 @@ function renderOefenen(leerdoelId) {
         <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
         <div class="opgave-dots">${dots}</div>
       </div>
-
       <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
-
       ${vraag.antwoordType === 'drag' ? renderDragArea(vraag) : ''}
-
       <div class="antwoord-sectie" id="antwoord-sectie">
         <div class="antwoord-label">Jouw antwoord:</div>
         ${antwoordHTML}
       </div>
-
       <div id="feedback-zone"></div>
       <div id="hint-zone"></div>
       <div id="oplossing-zone"></div>
-
       <div class="actie-bar" id="actie-bar">
         <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
         <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
@@ -251,88 +249,50 @@ function renderOefenen(leerdoelId) {
   </div>`;
 }
 
-/* ── Answer input widgets ────────────────────────────────────────────── */
+/* ── Answer input widgets ────────────────────────────────────────────────── */
 function renderAntwoordInput(vraag) {
   const type = vraag.antwoordType;
 
-  if (type === 'integer' || type === 'percentage') {
-    const unit = type === 'percentage' ? '<span class="input-unit">%</span>' : '';
-    return `<div class="single-input-wrap">
-      <input class="math-input-single math-input" id="inp-single" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-      ${unit}
-    </div>`;
-  }
-
-  if (type === 'decimal') {
-    return `<div class="single-input-wrap">
-      <input class="math-input-single math-input" id="inp-single" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"/>
-    </div>`;
-  }
-
-  if (type === 'fraction') {
-    return fracInputHTML('inp-t', 'inp-n');
-  }
-
-  if (type === 'mixed') {
-    return mixedInputHTML('inp-g', 'inp-t', 'inp-n');
-  }
-
-  if (type === 'two-fracs') {
-    return `<div class="two-fracs-wrap">
-      <div><div class="two-fracs-label">Eerste breuk:</div>${fracInputHTML('inp-t1','inp-n1')}</div>
-      <div><div class="two-fracs-label">Tweede breuk:</div>${fracInputHTML('inp-t2','inp-n2')}</div>
-    </div>`;
-  }
-
-  if (type === 'ratio') {
-    return `<div class="ratio-wrap">
-      <input class="math-input" id="inp-r1" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-      <span class="ratio-colon">:</span>
-      <input class="math-input" id="inp-r2" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-    </div>`;
-  }
-
   if (type === 'mc') {
-    const opties = vraag.data.opties;
-    return `<div class="mc-grid">${opties.map((o, i) =>
+    return `<div class="mc-grid">${vraag.data.opties.map((o, i) =>
       `<button class="mc-btn" data-idx="${i}" id="mc-${i}">${o.label}</button>`
     ).join('')}</div>`;
   }
 
-  if (type === 'drag') {
-    return ''; // Rendered separately via renderDragArea
+  if (type === 'drag') return '';
+
+  // B.3: two separate fraction inputs (student must show both gelijknamige breuken)
+  if (type === 'two-fracs') {
+    return `<div style="display:flex;flex-direction:column;gap:12px">
+      <div class="single-input-wrap">
+        <span style="font-size:.9rem;color:var(--text-mid);min-width:110px">Eerste breuk:</span>
+        <input class="math-input-single math-input" id="inp-frac1" type="text" inputmode="text"
+          placeholder="bijv. 4/12" autocomplete="off"/>
+      </div>
+      <div class="single-input-wrap">
+        <span style="font-size:.9rem;color:var(--text-mid);min-width:110px">Tweede breuk:</span>
+        <input class="math-input-single math-input" id="inp-frac2" type="text" inputmode="text"
+          placeholder="bijv. 3/12" autocomplete="off"/>
+      </div>
+    </div>`;
   }
 
-  return '<p>Onbekend antwoordtype.</p>';
-}
+  // All other types: single free-text input
+  let placeholder = 'Bijv. 3/4 of 1 3/4 of 2';
+  let suffix = '';
+  if (type === 'percentage') { placeholder = 'Bijv. 75'; suffix = '<span class="input-unit">%</span>'; }
+  if (type === 'decimal')    placeholder = 'Bijv. 0,75';
+  if (type === 'ratio')      placeholder = 'Bijv. 2:3';
+  if (type === 'integer')    placeholder = 'Jouw antwoord';
 
-function fracInputHTML(tid, nid) {
-  return `<div class="frac-input-wrap">
-    <div class="frac-label">teller</div>
-    <input class="math-input" id="${tid}" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-    <div class="frac-line"></div>
-    <input class="math-input" id="${nid}" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-    <div class="frac-label">noemer</div>
+  return `<div class="single-input-wrap">
+    <input class="math-input-single math-input" id="inp-single" type="text" inputmode="text"
+      placeholder="${placeholder}" autocomplete="off" style="width:200px"/>
+    ${suffix}
   </div>`;
 }
 
-function mixedInputHTML(gid, tid, nid) {
-  return `<div class="mixed-wrap">
-    <div>
-      <div class="frac-label" style="text-align:center">geheel</div>
-      <input class="math-input-lg math-input" id="${gid}" type="text" inputmode="numeric" placeholder="0" autocomplete="off"/>
-    </div>
-    <div class="frac-input-wrap">
-      <div class="frac-label">teller</div>
-      <input class="math-input" id="${tid}" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-      <div class="frac-line"></div>
-      <input class="math-input" id="${nid}" type="text" inputmode="numeric" placeholder="?" autocomplete="off"/>
-      <div class="frac-label">noemer</div>
-    </div>
-  </div>`;
-}
-
-/* ── Drag area for B.01c ─────────────────────────────────────────────── */
+/* ── Drag area for B.01c ─────────────────────────────────────────────────── */
 function renderDragArea(vraag) {
   const t = vraag.antwoord.teller;
   const n = vraag.antwoord.noemer;
@@ -340,139 +300,137 @@ function renderDragArea(vraag) {
   const svgStr = maakGetallenlijnSVG(0, den, false);
   return `<div class="nl-drag-area" id="nl-drag-area">
     <div class="nl-drag-tile" id="nl-tile">$\\dfrac{${t}}{${n}}$</div>
-    <div id="nl-svg-wrap" style="position:relative">${svgStr}<div id="nl-marker" class="nl-marker" style="display:none"></div></div>
-    <p style="font-size:.82rem;color:var(--text-soft);margin-top:6px;text-align:center">Sleep de breuk naar de juiste plek op de getallenlijn.</p>
+    <div id="nl-svg-wrap" style="position:relative">${svgStr}
+      <div id="nl-marker" class="nl-marker" style="display:none"></div>
+    </div>
+    <p style="font-size:.82rem;color:var(--text-soft);margin-top:6px;text-align:center">
+      Sleep de breuk naar de juiste plek op de getallenlijn.
+    </p>
   </div>`;
 }
 
-/* ── Answer reading ──────────────────────────────────────────────────── */
+/* ── Read student answer ─────────────────────────────────────────────────── */
 function leesAntwoord(vraag) {
   const type = vraag.antwoordType;
-  const g = id => document.getElementById(id);
+  if (type === 'mc')   return { keuze: APP.mcKeuze };
+  if (type === 'drag') return { positie: APP.nlMarkerPos };
 
-  if (type === 'integer')    return { waarde: parseInt(g('inp-single')?.value || '0') };
-  if (type === 'percentage') return { waarde: parseInt(g('inp-single')?.value || '0') };
-  if (type === 'decimal')    return { waarde: parseFloat((g('inp-single')?.value || '0').replace(',', '.')) };
-  if (type === 'fraction')   return { teller: parseInt(g('inp-t')?.value||'0'), noemer: parseInt(g('inp-n')?.value||'1') };
-  if (type === 'mixed')      return { geheel: parseInt(g('inp-g')?.value||'0'), teller: parseInt(g('inp-t')?.value||'0'), noemer: parseInt(g('inp-n')?.value||'1') };
-  if (type === 'two-fracs')  return { teller1: parseInt(g('inp-t1')?.value||'0'), noemer1: parseInt(g('inp-n1')?.value||'1'), teller2: parseInt(g('inp-t2')?.value||'0'), noemer2: parseInt(g('inp-n2')?.value||'1') };
-  if (type === 'ratio')      return { deel1: parseInt(g('inp-r1')?.value||'0'), deel2: parseInt(g('inp-r2')?.value||'1') };
-  if (type === 'mc')         return { keuze: APP.mcKeuze };
-  if (type === 'drag')       return { positie: APP.nlMarkerPos };
-  return null;
+  if (type === 'two-fracs') {
+    const v1 = document.getElementById('inp-frac1')?.value.trim() || '';
+    const v2 = document.getElementById('inp-frac2')?.value.trim() || '';
+    return { parsed1: parseInput(v1), parsed2: parseInput(v2), raw1: v1, raw2: v2 };
+  }
+
+  const raw = document.getElementById('inp-single')?.value.trim() || '';
+  return { raw, parsed: parseInput(raw) };
 }
 
 function valideerAntwoord(type, gegeven) {
-  if (!gegeven) return false;
-  if (type === 'mc') return gegeven.keuze !== null && gegeven.keuze !== undefined;
-  if (type === 'drag') return gegeven.positie !== null && gegeven.positie !== undefined;
-  if (type === 'integer' || type === 'percentage') return !isNaN(gegeven.waarde);
-  if (type === 'decimal') return !isNaN(gegeven.waarde);
-  if (type === 'fraction') return gegeven.teller && gegeven.noemer && !isNaN(gegeven.teller) && !isNaN(gegeven.noemer) && gegeven.noemer !== 0;
-  if (type === 'mixed') {
-    if (!isNaN(gegeven.geheel) && (gegeven.teller === 0 || isNaN(gegeven.teller))) return true; // whole number answer
-    return !isNaN(gegeven.geheel) && !isNaN(gegeven.teller) && !isNaN(gegeven.noemer) && gegeven.noemer !== 0;
-  }
-  if (type === 'two-fracs') return gegeven.noemer1 !== 0 && gegeven.noemer2 !== 0;
-  if (type === 'ratio') return gegeven.deel2 !== 0;
-  return true;
+  if (type === 'mc')        return gegeven.keuze !== null && gegeven.keuze !== undefined;
+  if (type === 'drag')      return gegeven.positie !== null && gegeven.positie !== undefined;
+  if (type === 'two-fracs') return gegeven.parsed1 !== null && gegeven.parsed2 !== null;
+  return gegeven.parsed !== null && gegeven.parsed !== undefined;
 }
 
-/* ── Answer checking ─────────────────────────────────────────────────── */
+/* ── Check answer ────────────────────────────────────────────────────────── */
 function checkAntwoord(vraag, gegeven) {
   const type = vraag.antwoordType;
   const correct = vraag.antwoord;
 
-  if (type === 'integer')    return gegeven.waarde === correct.waarde;
-  if (type === 'percentage') return gegeven.waarde === correct.waarde;
-  if (type === 'decimal')    return Math.abs(gegeven.waarde - correct.waarde) < 0.001;
-
-  if (type === 'fraction') {
-    return fracEqual(gegeven.teller, gegeven.noemer, correct.teller, correct.noemer);
-  }
-
-  if (type === 'mixed') {
-    // Accept both mixed and improper forms
-    const gn = gegeven.geheel * (gegeven.noemer || 1) + (gegeven.teller || 0);
-    const gd = gegeven.noemer || 1;
-    const cn = correct.geheel * (correct.noemer || 1) + (correct.teller || 0);
-    const cd = correct.noemer || 1;
-    // Also accept if student answers just a whole number when teller=0
-    if (correct.teller === 0 && !isNaN(gegeven.geheel) && gegeven.teller === 0) {
-      return gegeven.geheel === correct.geheel;
-    }
-    return fracEqual(gn, gd, cn, cd);
-  }
+  if (type === 'mc')   return gegeven.keuze === correct.correct;
+  if (type === 'drag') return Math.abs(gegeven.positie - correct.positie) <= 0.08;
 
   if (type === 'two-fracs') {
-    return fracEqual(gegeven.teller1, gegeven.noemer1, correct.teller1, correct.noemer1) &&
-           fracEqual(gegeven.teller2, gegeven.noemer2, correct.teller2, correct.noemer2);
+    const p1 = gegeven.parsed1, p2 = gegeven.parsed2;
+    if (!p1 || !p2 || p1.type !== 'fraction' || p2.type !== 'fraction') return false;
+    // Both fractions must have the same denominator (that's what gelijknamig means)
+    if (p1.noemer !== p2.noemer) return false;
+    return fracEqual(p1.teller, p1.noemer, correct.teller1, correct.noemer1) &&
+           fracEqual(p2.teller, p2.noemer, correct.teller2, correct.noemer2);
+  }
+
+  const p = gegeven.parsed;
+  if (!p) return false;
+
+  if (type === 'percentage') {
+    const val = p.type === 'integer' ? p.waarde : p.type === 'decimal' ? p.waarde : null;
+    return val !== null && Math.abs(val - correct.waarde) < 0.01;
   }
 
   if (type === 'ratio') {
-    const [ga, gb] = simplifyFrac(gegeven.deel1, gegeven.deel2);
+    if (p.type !== 'ratio') return false;
+    const [ga, gb] = simplifyFrac(p.deel1, p.deel2);
     const [ca, cb] = simplifyFrac(correct.deel1, correct.deel2);
     return ga === ca && gb === cb;
   }
 
-  if (type === 'mc') return gegeven.keuze === correct.correct;
-
-  if (type === 'drag') {
-    const pos = gegeven.positie;
-    return Math.abs(pos - correct.positie) <= 0.08;
+  if (type === 'decimal') {
+    const f = toFrac(p);
+    if (!f) return false;
+    const [cn, cd] = decimalToFrac(correct.waarde);
+    return fracEqual(f[0], f[1], cn, cd);
   }
 
-  return false;
+  // fraction, mixed, integer — all compare as fractions (accepts any equivalent form)
+  const f = toFrac(p);
+  if (!f) return false;
+
+  let cf;
+  if (type === 'fraction') cf = [correct.teller, correct.noemer];
+  else if (type === 'mixed')   cf = mixedToImproper(correct.geheel, correct.teller, correct.noemer);
+  else if (type === 'integer') cf = [correct.waarde, 1];
+  else return false;
+
+  return fracEqual(f[0], f[1], cf[0], cf[1]);
 }
 
-/* ── Specific feedback messages ──────────────────────────────────────── */
+/* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
   const type = vraag.antwoordType;
   const correct = vraag.antwoord;
-  const ld = vraag.leerdoel;
-
-  if (type === 'fraction') {
-    const [sGn, sGd] = simplifyFrac(gegeven.teller, gegeven.noemer);
-    const isVereenvoudigd = sGn === gegeven.teller && sGd === gegeven.noemer;
-    if (fracEqual(gegeven.teller, gegeven.noemer, correct.teller, correct.noemer) && !isVereenvoudigd) {
-      return 'Bijna! Je breuk is correct maar nog niet vereenvoudigd. Wat is de GGD van teller en noemer?';
-    }
-    if (gegeven.noemer === correct.noemer && gegeven.teller !== correct.teller) {
-      return `De noemer ${gegeven.noemer} klopt! Controleer je teller.`;
-    }
-    if (gegeven.teller === correct.teller && gegeven.noemer !== correct.noemer) {
-      return `De teller ${gegeven.teller} klopt! Controleer je noemer.`;
-    }
-  }
-
-  if (type === 'mixed') {
-    if (gegeven.geheel === correct.geheel && (gegeven.teller !== correct.teller || gegeven.noemer !== correct.noemer)) {
-      return `Het gehele deel (${gegeven.geheel}) klopt! Controleer de breuk.`;
-    }
-  }
 
   if (type === 'two-fracs') {
-    const ok1 = fracEqual(gegeven.teller1, gegeven.noemer1, correct.teller1, correct.noemer1);
-    const ok2 = fracEqual(gegeven.teller2, gegeven.noemer2, correct.teller2, correct.noemer2);
+    const p1 = gegeven.parsed1, p2 = gegeven.parsed2;
+    if (!p1 || !p2) return 'Controleer je invoer. Vul beide breuken in als bijv. <em>4/12</em>.';
+    if (p1.type === 'fraction' && p2.type === 'fraction' && p1.noemer !== p2.noemer)
+      return 'De noemers van je twee breuken zijn niet gelijk. Zorg dat beide breuken dezelfde noemer hebben.';
+    const ok1 = p1 && fracEqual(p1.teller, p1.noemer || 1, correct.teller1, correct.noemer1);
+    const ok2 = p2 && fracEqual(p2.teller, p2.noemer || 1, correct.teller2, correct.noemer2);
     if (ok1 && !ok2) return 'De eerste breuk klopt! Controleer de tweede breuk.';
     if (!ok1 && ok2) return 'De tweede breuk klopt! Controleer de eerste breuk.';
-    if (gegeven.noemer1 !== gegeven.noemer2) return 'De twee breuken zijn nog niet gelijknamig (noemers zijn niet gelijk).';
   }
 
-  if (type === 'decimal') {
-    return `Controleer je berekening. Deel de teller door de noemer.`;
-  }
+  if (type === 'drag') return 'Niet helemaal goed. Probeer de breuk nauwkeuriger te plaatsen.';
 
-  if (type === 'drag') {
-    return 'Niet helemaal goed. Probeer de breuk nauwkeuriger te plaatsen.';
+  if (type === 'decimal') return 'Controleer je deling. Gebruik een komma voor decimalen (bijv. 0,75).';
+
+  if (type === 'percentage') return 'Controleer je berekening. Vul alleen het getal in (bijv. 75 voor 75%).';
+
+  if (type === 'ratio') return 'Controleer je verhouding. Gebruik het formaat bijv. 2:3.';
+
+  // For fraction/mixed/integer: check if the student gave an un-simplified fraction
+  const p = gegeven.parsed;
+  if (p && (p.type === 'fraction' || p.type === 'mixed')) {
+    const f = toFrac(p);
+    if (f) {
+      const [sn, sd] = simplifyFrac(f[0], f[1]);
+      let cf;
+      if (type === 'fraction') cf = [correct.teller, correct.noemer];
+      else if (type === 'mixed') cf = mixedToImproper(correct.geheel, correct.teller, correct.noemer);
+      else cf = [correct.waarde, 1];
+      if (fracEqual(f[0], f[1], cf[0], cf[1])) {
+        // Value is correct but not simplified
+        return `Bijna! Je breuk is gelijkwaardig aan het antwoord, maar nog niet vereenvoudigd. Wat is de GGD?`;
+      }
+    }
   }
 
   const tips = {
     'B.1':  'Zoek de GGD van teller en noemer en deel daardoor.',
     'B.3':  'Zoek het KGV van de noemers en verleng beide breuken.',
-    'B.5':  'Zorg dat de noemers gelijk zijn (KGV) en tel de tellers op.',
+    'B.5':  'Maak de noemers gelijk (KGV) en tel de tellers op.',
     'B.6':  'Zet de gemengde getallen om naar onechte breuken, maak gelijknamig, tel op.',
-    'B.7':  'Zorg dat de noemers gelijk zijn (KGV) en trek de tellers van elkaar af.',
+    'B.7':  'Maak de noemers gelijk (KGV) en trek de tellers af.',
     'B.8':  'Zet om naar onechte breuken, maak gelijknamig, trek af.',
     'B.9':  'Vermenigvuldig teller × teller en noemer × noemer, vereenvoudig daarna.',
     'B.10': 'Zet de gemengde getallen om naar onechte breuken en vermenigvuldig.',
@@ -485,19 +443,22 @@ function feedbackBoodschap(vraag, gegeven) {
     'BV.1': 'Tel de delen op voor het totaal. De breuk is deel/totaal.',
     'BV.2': 'De verhouding is teller : (noemer − teller).',
   };
-  return tips[ld] || 'Controleer je berekening stap voor stap.';
+  return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
 
-/* ── Oplossing HTML ──────────────────────────────────────────────────── */
+/* ── Solution HTML ───────────────────────────────────────────────────────── */
 function renderOplossing(vraag) {
   const stappen = vraag.oplossing.split('\n').filter(s => s.trim());
   const items = stappen.map((s, i) =>
-    `<div class="oplossing-stap"><span class="stap-nr">Stap ${i+1}</span><span>${s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</span></div>`
+    `<div class="oplossing-stap">
+      <span class="stap-nr">Stap ${i + 1}</span>
+      <span>${s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</span>
+    </div>`
   ).join('');
   return `<div class="oplossing-box fade-in"><h4>📖 Uitgewerkte oplossing</h4>${items}</div>`;
 }
 
-/* ── Nieuwe vraag ────────────────────────────────────────────────────── */
+/* ── New question ────────────────────────────────────────────────────────── */
 function nieuweVraag() {
   APP.huidigVraag = generateVraag(APP.huidigLeerdoel);
   APP.hintIdx = 0;
@@ -511,14 +472,13 @@ function nieuweVraag() {
   bindOefenen(APP.huidigLeerdoel);
 }
 
-/* ── Event binding ───────────────────────────────────────────────────── */
+/* ── Event binding ───────────────────────────────────────────────────────── */
 function bindEvents(page, param) {
   switch (page) {
-    case 'login':     bindLogin(); break;
-    case 'dashboard': /* onclick inline */ break;
-    case 'oefenen':   bindOefenen(param); break;
-    case 'resultaten':bindResultaten(); break;
-    case 'docent':    bindDocent(); break;
+    case 'login':      bindLogin();          break;
+    case 'oefenen':    bindOefenen(param);   break;
+    case 'resultaten': /* inline onclick */  break;
+    case 'docent':     bindDocent();         break;
   }
 }
 
@@ -526,7 +486,6 @@ function bindOefenen(leerdoelId) {
   const vraag = APP.huidigVraag;
   if (!vraag) return;
 
-  // Multiple choice
   if (vraag.antwoordType === 'mc') {
     document.querySelectorAll('.mc-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -535,61 +494,59 @@ function bindOefenen(leerdoelId) {
         APP.mcKeuze = parseInt(btn.dataset.idx);
       });
     });
+    renderKatex(document.querySelector('.mc-grid'));
   }
 
-  // Drag (B.01c)
-  if (vraag.antwoordType === 'drag') {
-    initDrag(vraag);
-  }
+  if (vraag.antwoordType === 'drag') initDrag(vraag);
 
-  // Hint
   document.getElementById('btn-hint')?.addEventListener('click', () => {
-    const hints = vraag.hints;
-    if (APP.hintIdx >= hints.length) { APP.hintIdx = 0; }
-    const hint = hints[APP.hintIdx++];
+    if (APP.hintIdx >= vraag.hints.length) APP.hintIdx = 0;
+    const hint = vraag.hints[APP.hintIdx++];
     const zone = document.getElementById('hint-zone');
-    zone.innerHTML = `<div class="hint-box fade-in"><strong>💡 Hint ${APP.hintIdx} van ${hints.length}</strong>${hint}</div>`;
+    zone.innerHTML = `<div class="hint-box fade-in">
+      <strong>💡 Hint ${APP.hintIdx} van ${vraag.hints.length}</strong>${hint}
+    </div>`;
     renderKatex(zone);
   });
 
-  // Toon oplossing
   document.getElementById('btn-oplossing')?.addEventListener('click', () => {
     const zone = document.getElementById('oplossing-zone');
     zone.innerHTML = renderOplossing(vraag);
     renderKatex(zone);
     document.getElementById('btn-oplossing').disabled = true;
-    // Also show Nieuwe vraag if not yet shown
     toonNieuweVraagKnop();
   });
 
-  // Controleer
   document.getElementById('btn-controleer')?.addEventListener('click', () => controleer(vraag));
 }
 
 function controleer(vraag) {
   const gegeven = leesAntwoord(vraag);
   if (!valideerAntwoord(vraag.antwoordType, gegeven)) {
-    toonFeedback(false, 'Vul eerst je antwoord in!');
+    const zone = document.getElementById('feedback-zone');
+    zone.innerHTML = `<div class="feedback-box wrong fade-in">
+      <span class="feedback-icon">!</span>
+      <div class="feedback-text">Vul eerst je antwoord in.</div>
+    </div>`;
     return;
   }
 
   APP.pogingen++;
   const goed = checkAntwoord(vraag, gegeven);
-  slaResultaatOp(APP.student.id, vraag.leerdoel, { prompt: vraag.vraag }, gegeven, goed, APP.pogingen);
+  slaResultaatOp(APP.student.id, vraag.leerdoel, goed);
 
   if (goed) {
     toonFeedback(true, 'Goed zo! Je antwoord is correct. 🎉');
-    if (vraag.antwoordType === 'mc') kleurMcKnop(vraag);
+    if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
     toonNieuweVraagKnop();
   } else {
-    const uitleg = feedbackBoodschap(vraag, gegeven);
-    toonFeedback(false, uitleg);
-    if (vraag.antwoordType === 'mc') kleurMcKnop(vraag);
+    toonFeedback(false, feedbackBoodschap(vraag, gegeven));
+    if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
     if (APP.pogingen >= 3) {
-      const oplZone = document.getElementById('oplossing-zone');
-      if (!oplZone.innerHTML) {
-        oplZone.innerHTML = renderOplossing(vraag);
-        renderKatex(oplZone);
+      const zone = document.getElementById('oplossing-zone');
+      if (!zone.innerHTML) {
+        zone.innerHTML = renderOplossing(vraag);
+        renderKatex(zone);
         toonNieuweVraagKnop();
       }
     }
@@ -598,10 +555,8 @@ function controleer(vraag) {
 
 function toonFeedback(goed, boodschap) {
   const zone = document.getElementById('feedback-zone');
-  const cls = goed ? 'correct' : 'wrong';
-  const icon = goed ? '✓' : '✗';
-  zone.innerHTML = `<div class="feedback-box ${cls} fade-in">
-    <span class="feedback-icon">${icon}</span>
+  zone.innerHTML = `<div class="feedback-box ${goed ? 'correct' : 'wrong'} fade-in">
+    <span class="feedback-icon">${goed ? '✓' : '✗'}</span>
     <div class="feedback-text">${boodschap}</div>
   </div>`;
   renderKatex(zone);
@@ -609,27 +564,26 @@ function toonFeedback(goed, boodschap) {
 
 function toonNieuweVraagKnop() {
   const bar = document.getElementById('actie-bar');
-  if (!bar) return;
-  if (bar.querySelector('#btn-nieuw')) return;
+  if (!bar || bar.querySelector('#btn-nieuw')) return;
   const btn = document.createElement('button');
   btn.id = 'btn-nieuw';
   btn.className = 'btn btn-green';
   btn.textContent = 'Nieuwe vraag →';
   btn.addEventListener('click', nieuweVraag);
   bar.appendChild(btn);
-  const contrBtn = document.getElementById('btn-controleer');
-  if (contrBtn) contrBtn.disabled = true;
+  const c = document.getElementById('btn-controleer');
+  if (c) c.disabled = true;
 }
 
-function kleurMcKnop(vraag) {
+function kleurMcKnoppen(vraag) {
   document.querySelectorAll('.mc-btn').forEach((btn, i) => {
     if (i === vraag.antwoord.correct) btn.classList.add('correct');
-    else if (i === APP.mcKeuze && i !== vraag.antwoord.correct) btn.classList.add('wrong');
+    else if (i === APP.mcKeuze) btn.classList.add('wrong');
     btn.disabled = true;
   });
 }
 
-/* ── Drag & Drop for number line (B.01c) ────────────────────────────── */
+/* ── Drag & Drop (B.01c) ─────────────────────────────────────────────────── */
 function initDrag(vraag) {
   const tile = document.getElementById('nl-tile');
   const svgWrap = document.getElementById('nl-svg-wrap');
@@ -639,72 +593,55 @@ function initDrag(vraag) {
   renderKatex(tile);
 
   const X0 = 24, X1 = 316, SVG_W = 340;
+  const den = vraag.data.den;
+  let dragging = false;
 
   function posFromEvent(e) {
     const rect = svgWrap.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const relX = clientX - rect.left;
-    const svgScale = rect.width / SVG_W;
-    const lineX0 = X0 * svgScale, lineX1 = X1 * svgScale;
-    let pos = (relX - lineX0) / (lineX1 - lineX0);
+    const scale = rect.width / SVG_W;
+    const pos = ((clientX - rect.left) - X0 * scale) / ((X1 - X0) * scale);
     return Math.max(0, Math.min(1, pos));
-  }
-
-  function snapPos(pos, den) {
-    // Snap to nearest tick (1/den)
-    const snapped = Math.round(pos * den) / den;
-    return Math.max(0, Math.min(1, snapped));
   }
 
   function placeMarker(pos) {
     const rect = svgWrap.getBoundingClientRect();
-    const svgScale = rect.width / SVG_W;
-    const lineX0 = X0 * svgScale, lineX1 = X1 * svgScale;
-    const pixelX = lineX0 + pos * (lineX1 - lineX0);
-    marker.style.left = pixelX + 'px';
-    marker.style.top = (44 * svgScale) + 'px';
+    const scale = rect.width / SVG_W;
+    marker.style.left = (X0 * scale + pos * (X1 - X0) * scale) + 'px';
+    marker.style.top  = (44 * scale) + 'px';
     marker.style.display = 'block';
   }
 
-  let dragging = false;
+  tile.addEventListener('mousedown', e => { e.preventDefault(); dragging = true; tile.style.opacity = '0.5'; });
+  tile.addEventListener('touchstart', e => { e.preventDefault(); dragging = true; tile.style.opacity = '0.5'; }, { passive: false });
 
-  tile.addEventListener('mousedown', startDrag);
-  tile.addEventListener('touchstart', startDrag, { passive: false });
-
-  function startDrag(e) {
-    e.preventDefault();
-    dragging = true;
-    tile.style.opacity = '0.5';
-  }
-
-  function onMove(e) {
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const pos = Math.round(posFromEvent(e) * den) / den;
+    APP.nlMarkerPos = pos;
+    placeMarker(pos);
+  });
+  document.addEventListener('touchmove', e => {
     if (!dragging) return;
     e.preventDefault();
-    const den = vraag.data.den;
-    const raw = posFromEvent(e);
-    const snapped = snapPos(raw, den);
-    APP.nlMarkerPos = snapped;
-    placeMarker(snapped);
-  }
+    const pos = Math.round(posFromEvent(e) * den) / den;
+    APP.nlMarkerPos = pos;
+    placeMarker(pos);
+  }, { passive: false });
 
-  function onUp() {
+  function stopDrag() {
     if (!dragging) return;
     dragging = false;
     tile.style.opacity = '1';
-    if (APP.nlMarkerPos !== null) {
-      tile.style.visibility = 'hidden';
-    }
+    if (APP.nlMarkerPos !== null) tile.style.visibility = 'hidden';
   }
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  document.addEventListener('touchmove', onMove, { passive: false });
-  document.addEventListener('touchend', onUp);
+  document.addEventListener('mouseup', stopDrag);
+  document.addEventListener('touchend', stopDrag);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    RESULTATEN
-═══════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 function renderResultaten() {
   const resultaten = getResultatenVoorStudent(APP.student.id);
 
@@ -715,9 +652,7 @@ function renderResultaten() {
     </div>`;
   }
 
-  const groepen = [...new Set(LEERDOELEN.map(l => l.groep))];
   let tableRows = '';
-
   LEERDOELEN.forEach(ld => {
     const r = resultaten.filter(x => x.leerdoel === ld.id);
     if (r.length === 0) return;
@@ -725,32 +660,34 @@ function renderResultaten() {
     const pct = Math.round((goed / r.length) * 100);
     const fillClass = pct >= 70 ? '' : pct >= 40 ? 'amber' : 'red';
     tableRows += `<tr>
-      <td><strong>${ld.id}</strong><br/><span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span></td>
+      <td><strong>${ld.id}</strong><br/>
+        <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
+      </td>
       <td style="text-align:center">${r.length}</td>
       <td style="text-align:center">${goed}</td>
       <td>
         <div class="pct-bar">
           <div class="pct-track"><div class="pct-fill ${fillClass}" style="width:${pct}%"></div></div>
-          <span style="font-size:.82rem;min-width:30px">${pct}%</span>
+          <span style="font-size:.82rem;min-width:32px">${pct}%</span>
         </div>
       </td>
     </tr>`;
   });
 
-  return `${header('Mijn resultaten', '#dashboard')}
+  return `${header('Mijn resultaten', '#dashboard',
+    `<button class="btn-header" onclick="openDeelModal()">📤 Delen</button>`)}
   <div class="main-content">
     <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-        <div>
-          <strong>${APP.student.naam}</strong> &nbsp;·&nbsp; ${APP.student.klas}<br/>
-          <span style="font-size:.85rem;color:var(--text-soft)">${resultaten.length} opgaven gemaakt</span>
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="openDeelModal()">📤 Delen</button>
+      <div style="margin-bottom:14px">
+        <strong>${APP.student.naam}</strong><br/>
+        <span style="font-size:.85rem;color:var(--text-soft)">${resultaten.length} opgaven gemaakt</span>
       </div>
       <table class="resultaten-tabel">
         <thead><tr>
-          <th>Leerdoel</th><th style="text-align:center">Gemaakt</th>
-          <th style="text-align:center">Goed</th><th>Score</th>
+          <th>Leerdoel</th>
+          <th style="text-align:center">Gemaakt</th>
+          <th style="text-align:center">Goed</th>
+          <th>Score</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
@@ -759,19 +696,47 @@ function renderResultaten() {
   <div id="deel-modal" style="display:none"></div>`;
 }
 
-function bindResultaten() {
-  // openDeelModal is globally available
+/* ── Share modal ─────────────────────────────────────────────────────────── */
+function openDeelModal() {
+  const code = volledigeDeelCode(APP.student.id);
+  const modal = document.getElementById('deel-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal fade-in">
+    <h3>📤 Resultaten delen met docent</h3>
+    <p>Kopieer de code hieronder en geef hem aan je docent. De docent plakt hem in de docentenomgeving.</p>
+    <textarea id="share-code-area" class="code-display" readonly
+      style="min-height:100px;resize:none;cursor:text;font-size:.75rem"
+    >${code}</textarea>
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn btn-primary" id="btn-copy">📋 Kopieer code</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('deel-modal').style.display='none'">Sluiten</button>
+    </div>
+  </div>`;
+  const area = document.getElementById('share-code-area');
+  area.addEventListener('focus', () => area.select());
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    area.select();
+    navigator.clipboard.writeText(code).then(() => {
+      document.getElementById('btn-copy').textContent = '✓ Gekopieerd!';
+    }).catch(() => {
+      // fallback: execCommand for older browsers
+      try { document.execCommand('copy'); document.getElementById('btn-copy').textContent = '✓ Gekopieerd!'; }
+      catch { document.getElementById('btn-copy').textContent = 'Selecteer en kopieer handmatig'; }
+    });
+  });
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    DOCENT
-═══════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 function renderDocent() {
   return `${header('Docentenomgeving', APP.student ? '#dashboard' : '#login')}
   <div class="main-content">
     <div class="card">
       <h2 style="color:var(--secondary);margin-bottom:8px">👩‍🏫 Docentenomgeving</h2>
-      <p class="docent-intro">Plak hieronder de code die een leerling met je heeft gedeeld.</p>
+      <p class="docent-intro">Plak hieronder de code die een leerling met je heeft gedeeld (begint met XPLORE:).</p>
       <textarea class="code-input-area" id="code-invoer" placeholder="XPLORE:..."></textarea>
       <div style="margin-top:12px">
         <button class="btn btn-primary" id="btn-decodeer">Bekijk resultaten</button>
@@ -783,11 +748,14 @@ function renderDocent() {
 
 function bindDocent() {
   document.getElementById('btn-decodeer').addEventListener('click', () => {
-    const code = document.getElementById('code-invoer').value.trim();
+    const code = document.getElementById('code-invoer').value;
     const data = decodeerDeelCode(code);
     const zone = document.getElementById('docent-resultaten');
     if (!data || !data.student) {
-      zone.innerHTML = `<div class="feedback-box wrong"><span class="feedback-icon">✗</span><div>Ongeldige code. Controleer of je de volledige code hebt ingeplakt (begint met XPLORE:).</div></div>`;
+      zone.innerHTML = `<div class="feedback-box wrong fade-in">
+        <span class="feedback-icon">✗</span>
+        <div>Ongeldige code. Zorg dat je de volledige code plakt (begint met XPLORE:).</div>
+      </div>`;
       return;
     }
     toonDocentResultaten(data, zone);
@@ -797,11 +765,11 @@ function bindDocent() {
 function toonDocentResultaten(data, zone) {
   const { student, resultaten } = data;
   if (!resultaten || resultaten.length === 0) {
-    zone.innerHTML = `<div class="card"><p>Geen resultaten gevonden voor ${student.naam}.</p></div>`;
+    zone.innerHTML = `<div class="card"><p>Geen resultaten voor ${student.naam}.</p></div>`;
     return;
   }
 
-  let tableRows = '';
+  let rows = '';
   LEERDOELEN.forEach(ld => {
     const r = resultaten.filter(x => x.leerdoel === ld.id);
     if (r.length === 0) return;
@@ -809,14 +777,16 @@ function toonDocentResultaten(data, zone) {
     const pct = Math.round((goed / r.length) * 100);
     const last = new Date(r[r.length - 1].tijdstip).toLocaleDateString('nl-NL');
     const fillClass = pct >= 70 ? '' : pct >= 40 ? 'amber' : 'red';
-    tableRows += `<tr>
-      <td><strong>${ld.id}</strong><br/><span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span></td>
+    rows += `<tr>
+      <td><strong>${ld.id}</strong><br/>
+        <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
+      </td>
       <td style="text-align:center">${r.length}</td>
       <td style="text-align:center">${goed}</td>
       <td>
         <div class="pct-bar">
           <div class="pct-track"><div class="pct-fill ${fillClass}" style="width:${pct}%"></div></div>
-          <span style="font-size:.82rem;min-width:30px">${pct}%</span>
+          <span style="font-size:.82rem;min-width:32px">${pct}%</span>
         </div>
       </td>
       <td style="font-size:.82rem;color:var(--text-soft)">${last}</td>
@@ -826,14 +796,17 @@ function toonDocentResultaten(data, zone) {
   zone.innerHTML = `<div class="card fade-in">
     <div class="student-header">
       <h3>${student.naam}</h3>
-      <p>${student.klas} &nbsp;·&nbsp; ${resultaten.length} opgaven</p>
+      <p>${resultaten.length} opgaven gemaakt</p>
     </div>
     <table class="resultaten-tabel">
       <thead><tr>
-        <th>Leerdoel</th><th style="text-align:center">Gemaakt</th>
-        <th style="text-align:center">Goed</th><th>Score</th><th>Laatste poging</th>
+        <th>Leerdoel</th>
+        <th style="text-align:center">Gemaakt</th>
+        <th style="text-align:center">Goed</th>
+        <th>Score</th>
+        <th>Laatste poging</th>
       </tr></thead>
-      <tbody>${tableRows}</tbody>
+      <tbody>${rows}</tbody>
     </table>
   </div>`;
 }

@@ -413,7 +413,7 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 .kbd-btn:active { background: var(--primary); }
 .kbd-btn-del   { background: #4A5568; font-size: 1rem; }
 .kbd-btn-clear { background: #4A5568; font-size: .9rem; }
-.kbd-btn-next  { background: var(--primary); font-size: .9rem; }
+.kbd-btn-op    { background: #2C4A6E; font-size: 1.3rem; font-weight: 800; }
 .kbd-btn-zero  { flex: 2; }
 
 /* ── Utility ─────────────────────────────────────────────────────────── */

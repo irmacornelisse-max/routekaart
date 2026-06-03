@@ -30,14 +30,13 @@ function uitloggen() {
   sessionStorage.removeItem('bf_current');
 }
 
-function registreerStudent(naam, klas) {
+function registreerStudent(naam) {
   const data = loadData();
-  let student = data.studenten.find(s => s.naam === naam && s.klas === klas);
+  let student = data.studenten.find(s => s.naam === naam);
   if (!student) {
     student = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       naam,
-      klas,
       aangemeldOp: new Date().toISOString()
     };
     data.studenten.push(student);
@@ -47,16 +46,13 @@ function registreerStudent(naam, klas) {
   return student;
 }
 
-function slaResultaatOp(studentId, leerdoel, opgaveData, antwoord, goed, poging) {
+function slaResultaatOp(studentId, leerdoel, goed) {
   const data = loadData();
   data.resultaten.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     studentId,
     leerdoel,
-    opgaveData,
-    antwoord,
     goed,
-    poging,
     tijdstip: new Date().toISOString()
   });
   saveData(data);
@@ -66,26 +62,26 @@ function getResultatenVoorStudent(studentId) {
   return loadData().resultaten.filter(r => r.studentId === studentId);
 }
 
-function maakDeelCode(studentId) {
-  const data = loadData();
-  const student = data.studenten.find(s => s.id === studentId);
-  const resultaten = data.resultaten.filter(r => r.studentId === studentId);
-  const payload = { student, resultaten };
-  return 'XPL-' + btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).slice(0, 20).replace(/[+/=]/g, c => ({ '+': 'A', '/': 'B', '=': '' }[c]));
-}
-
 function volledigeDeelCode(studentId) {
   const data = loadData();
   const student = data.studenten.find(s => s.id === studentId);
   const resultaten = data.resultaten.filter(r => r.studentId === studentId);
   const payload = { student, resultaten };
-  return 'XPLORE:' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return 'XPLORE:' + btoa(binary);
 }
 
 function decodeerDeelCode(code) {
   try {
-    const b64 = code.replace('XPLORE:', '');
-    return JSON.parse(decodeURIComponent(escape(atob(b64))));
+    const b64 = code.trim().replace(/^XPLORE:/, '');
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const json = new TextDecoder().decode(bytes);
+    return JSON.parse(json);
   } catch {
     return null;
   }
