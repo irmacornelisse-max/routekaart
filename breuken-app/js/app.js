@@ -40,7 +40,8 @@ function leesLeerdoelFilterUitURL() {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('leerdoelen');
   if (raw === null) return;
-  const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+  const bekende = new Set(LEERDOELEN.map(l => l.id));
+  const ids = raw.split(',').map(s => s.trim()).filter(s => bekende.has(s));
   if (ids.length) {
     sessionStorage.setItem(LEERDOEL_FILTER_KEY, JSON.stringify(ids));
   } else {
@@ -94,6 +95,9 @@ function route() {
 
   renderKatex(app);
   bindEvents(page, param);
+
+  const focusTarget = app.querySelector('.main-content, .login-card, .oefenen-grid');
+  if (focusTarget) { focusTarget.setAttribute('tabindex', '-1'); focusTarget.focus(); }
 }
 
 window.addEventListener('hashchange', route);
@@ -102,7 +106,7 @@ window.addEventListener('load', () => { leesLeerdoelFilterUitURL(); initMathKeyb
 /* ── Header ──────────────────────────────────────────────────────────────── */
 function header(title, backHash, rightHTML = '') {
   const back = backHash
-    ? `<button class="btn-header btn-header-back" onclick="window.location.hash='${backHash}'">&#8592;</button>`
+    ? `<button class="btn-header btn-header-back" aria-label="Terug" onclick="window.location.hash='${backHash}'">&#8592;</button>`
     : '';
   return `<header class="app-header">
     <div style="display:flex;align-items:center;gap:10px;min-width:60px">
@@ -141,7 +145,7 @@ function bindLogin() {
   const inp = document.getElementById('inp-naam');
   btn.addEventListener('click', () => {
     const naam = inp.value.trim();
-    if (!naam) { inp.focus(); return; }
+    if (!naam || naam.length > 60) { inp.focus(); return; }
     APP.student = registreerStudent(naam);
     window.location.hash = '#dashboard';
   });
@@ -173,7 +177,7 @@ function renderDashboard() {
   <div class="main-content">
     <div class="dashboard-welcome">
       <div>
-        <div class="welcome-name">👋 Hallo, ${APP.student.naam}!</div>
+        <div class="welcome-name">👋 Hallo, ${escHtml(APP.student.naam)}!</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="window.location.hash='#resultaten'">📊 Mijn resultaten</button>
     </div>`;
@@ -184,16 +188,16 @@ function renderDashboard() {
       const s = getStats(ld.id);
       const sc = statusClass(s);
       const dots = maakDots(ld.id);
-      html += `<div class="leerdoel-card" onclick="window.location.hash='#oefenen/${ld.id}'">
+      html += `<button class="leerdoel-card" aria-label="${escHtml(ld.titel)} oefenen" onclick="window.location.hash='#oefenen/${ld.id}'">
         <div class="leerdoel-top">
-          <div class="leerdoel-titel">${ld.titel}</div>
-          <span class="badge-status ${sc}" style="margin-left:auto"></span>
+          <div class="leerdoel-titel">${escHtml(ld.titel)}</div>
+          <span class="badge-status ${sc}" aria-hidden="true" style="margin-left:auto"></span>
         </div>
-        <div class="leerdoel-voortgang">
-          <div class="voortgang-dots">${dots}</div>
+        <div class="leerdoel-voortgang" aria-label="${s.goed} van ${s.totaal} goed">
+          <div class="voortgang-dots" aria-hidden="true">${dots}</div>
           <span class="voortgang-label">${s.goed}/${s.totaal}</span>
         </div>
-      </div>`;
+      </button>`;
     });
     html += `</div>`;
   });
@@ -267,9 +271,9 @@ function renderOefenen(leerdoelId) {
           <div id="feedback-zone"></div>
           ${needsKbd ? getKeyboardHTML() : ''}
           <div class="actie-bar" id="actie-bar">
-            <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
-            <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
-            <button class="btn btn-primary" id="btn-controleer">✓ Controleer</button>
+            <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
+            <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
+            <button class="btn btn-primary" id="btn-controleer" aria-label="Controleer antwoord">✓ Controleer</button>
           </div>
         </div>
       </div>
@@ -731,7 +735,7 @@ function renderResultaten() {
     <div class="card">
       <div class="resultaten-kop">
         <div>
-          <strong>${APP.student.naam}</strong><br/>
+          <strong>${escHtml(APP.student.naam)}</strong><br/>
           <span style="font-size:.85rem;color:var(--text-soft)">${resultaten.length} opgaven gemaakt · ${totaalGoed} goed</span>
         </div>
         <button class="btn btn-outline btn-sm" onclick="openDeelModal()">📤 Delen</button>
@@ -775,9 +779,7 @@ function openDeelModal() {
     navigator.clipboard.writeText(code).then(() => {
       document.getElementById('btn-copy').textContent = '✓ Gekopieerd!';
     }).catch(() => {
-      // fallback: execCommand for older browsers
-      try { document.execCommand('copy'); document.getElementById('btn-copy').textContent = '✓ Gekopieerd!'; }
-      catch { document.getElementById('btn-copy').textContent = 'Selecteer en kopieer handmatig'; }
+      document.getElementById('btn-copy').textContent = 'Selecteer en kopieer handmatig';
     });
   });
 }
@@ -856,8 +858,7 @@ function bindDocent() {
       navigator.clipboard.writeText(link).then(() => {
         document.getElementById('btn-copy-link').textContent = '✓ Gekopieerd!';
       }).catch(() => {
-        try { document.execCommand('copy'); document.getElementById('btn-copy-link').textContent = '✓ Gekopieerd!'; }
-        catch { document.getElementById('btn-copy-link').textContent = 'Selecteer en kopieer handmatig'; }
+        document.getElementById('btn-copy-link').textContent = 'Selecteer en kopieer handmatig';
       });
     });
   });
@@ -880,7 +881,7 @@ function bindDocent() {
 function toonDocentResultaten(data, zone) {
   const { student, resultaten } = data;
   if (!resultaten || resultaten.length === 0) {
-    zone.innerHTML = `<div class="card"><p>Geen resultaten voor ${student.naam}.</p></div>`;
+    zone.innerHTML = `<div class="card"><p>Geen resultaten voor ${escHtml(student.naam)}.</p></div>`;
     return;
   }
 
@@ -904,7 +905,7 @@ function toonDocentResultaten(data, zone) {
 
   zone.innerHTML = `<div class="card fade-in">
     <div class="student-header">
-      <h3>${student.naam}</h3>
+      <h3>${escHtml(student.naam)}</h3>
       <p>${resultaten.length} opgaven gemaakt · ${totaalGoed} goed</p>
     </div>
     <table class="resultaten-tabel">
