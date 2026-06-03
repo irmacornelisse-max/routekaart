@@ -17,7 +17,7 @@ function initMathKeyboard() {
       <button class="kbd-btn" data-val="4">4</button>
       <button class="kbd-btn" data-val="5">5</button>
       <button class="kbd-btn" data-val="6">6</button>
-      <button class="kbd-btn kbd-btn-op" data-val="/">/</button>
+      <button class="kbd-btn kbd-btn-op" data-val="NEXT">→</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="1">1</button>
@@ -68,8 +68,14 @@ function initMathKeyboard() {
   }, { passive: false });
 
   function handleKey(val) {
+    if (val === 'NEXT') {
+      const inputs = [...document.querySelectorAll(INPUT_SEL)];
+      const idx = inputs.indexOf(activeInput);
+      if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
+      return;
+    }
     if (!activeInput) return;
-    const max = 20; // allow longer strings for "1 3/4" type input
+    const max = 10;
     if (val === 'DEL') {
       activeInput.value = activeInput.value.slice(0, -1);
     } else if (val === 'CLR') {

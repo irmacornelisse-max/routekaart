@@ -261,29 +261,52 @@ function renderAntwoordInput(vraag) {
 
   if (type === 'drag') return '';
 
-  // B.3: two separate fraction inputs (student must show both gelijknamige breuken)
-  if (type === 'two-fracs') {
-    return `<div style="display:flex;flex-direction:column;gap:12px">
-      <div class="single-input-wrap">
-        <span style="font-size:.9rem;color:var(--text-mid);min-width:110px">Eerste breuk:</span>
-        <input class="math-input-single math-input" id="inp-frac1" type="text" inputmode="text"
-          placeholder="bijv. 4/12" autocomplete="off"/>
-      </div>
-      <div class="single-input-wrap">
-        <span style="font-size:.9rem;color:var(--text-mid);min-width:110px">Tweede breuk:</span>
-        <input class="math-input-single math-input" id="inp-frac2" type="text" inputmode="text"
-          placeholder="bijv. 3/12" autocomplete="off"/>
+  if (type === 'fraction') {
+    return `<div class="frac-input-wrap">
+      <input class="math-input" id="inp-teller" type="text" inputmode="numeric" autocomplete="off" />
+      <div class="frac-line"></div>
+      <input class="math-input" id="inp-noemer" type="text" inputmode="numeric" autocomplete="off" />
+    </div>`;
+  }
+
+  if (type === 'mixed') {
+    return `<div class="mixed-wrap">
+      <input class="math-input math-input-lg" id="inp-geheel" type="text" inputmode="numeric" autocomplete="off" />
+      <div class="frac-input-wrap">
+        <input class="math-input" id="inp-teller" type="text" inputmode="numeric" autocomplete="off" />
+        <div class="frac-line"></div>
+        <input class="math-input" id="inp-noemer" type="text" inputmode="numeric" autocomplete="off" />
       </div>
     </div>`;
   }
 
-  // All other types: single free-text input
-  let placeholder = 'Bijv. 3/4 of 1 3/4 of 2';
+  if (type === 'two-fracs') {
+    return `<div class="two-fracs-wrap">
+      <div>
+        <div class="two-fracs-label">Eerste breuk:</div>
+        <div class="frac-input-wrap">
+          <input class="math-input" id="inp-teller1" type="text" inputmode="numeric" autocomplete="off" />
+          <div class="frac-line"></div>
+          <input class="math-input" id="inp-noemer1" type="text" inputmode="numeric" autocomplete="off" />
+        </div>
+      </div>
+      <div>
+        <div class="two-fracs-label">Tweede breuk:</div>
+        <div class="frac-input-wrap">
+          <input class="math-input" id="inp-teller2" type="text" inputmode="numeric" autocomplete="off" />
+          <div class="frac-line"></div>
+          <input class="math-input" id="inp-noemer2" type="text" inputmode="numeric" autocomplete="off" />
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // integer, decimal, percentage, ratio: single text input
+  let placeholder = 'Jouw antwoord';
   let suffix = '';
   if (type === 'percentage') { placeholder = 'Bijv. 75'; suffix = '<span class="input-unit">%</span>'; }
   if (type === 'decimal')    placeholder = 'Bijv. 0,75';
   if (type === 'ratio')      placeholder = 'Bijv. 2:3';
-  if (type === 'integer')    placeholder = 'Jouw antwoord';
 
   return `<div class="single-input-wrap">
     <input class="math-input-single math-input" id="inp-single" type="text" inputmode="text"
@@ -315,10 +338,30 @@ function leesAntwoord(vraag) {
   if (type === 'mc')   return { keuze: APP.mcKeuze };
   if (type === 'drag') return { positie: APP.nlMarkerPos };
 
+  if (type === 'fraction') {
+    const t = parseInt(document.getElementById('inp-teller')?.value || '');
+    const n = parseInt(document.getElementById('inp-noemer')?.value || '');
+    if (isNaN(t) || isNaN(n) || n === 0) return { parsed: null };
+    return { parsed: { type: 'fraction', teller: t, noemer: n } };
+  }
+
+  if (type === 'mixed') {
+    const g = parseInt(document.getElementById('inp-geheel')?.value || '0') || 0;
+    const t = parseInt(document.getElementById('inp-teller')?.value || '');
+    const n = parseInt(document.getElementById('inp-noemer')?.value || '');
+    if (isNaN(t) || isNaN(n) || n === 0) return { parsed: null };
+    if (g > 0) return { parsed: { type: 'mixed', geheel: g, teller: t, noemer: n } };
+    return { parsed: { type: 'fraction', teller: t, noemer: n } };
+  }
+
   if (type === 'two-fracs') {
-    const v1 = document.getElementById('inp-frac1')?.value.trim() || '';
-    const v2 = document.getElementById('inp-frac2')?.value.trim() || '';
-    return { parsed1: parseInput(v1), parsed2: parseInput(v2), raw1: v1, raw2: v2 };
+    const t1 = parseInt(document.getElementById('inp-teller1')?.value || '');
+    const n1 = parseInt(document.getElementById('inp-noemer1')?.value || '');
+    const t2 = parseInt(document.getElementById('inp-teller2')?.value || '');
+    const n2 = parseInt(document.getElementById('inp-noemer2')?.value || '');
+    const p1 = (!isNaN(t1) && !isNaN(n1) && n1 > 0) ? { type: 'fraction', teller: t1, noemer: n1 } : null;
+    const p2 = (!isNaN(t2) && !isNaN(n2) && n2 > 0) ? { type: 'fraction', teller: t2, noemer: n2 } : null;
+    return { parsed1: p1, parsed2: p2 };
   }
 
   const raw = document.getElementById('inp-single')?.value.trim() || '';
@@ -381,7 +424,18 @@ function checkAntwoord(vraag, gegeven) {
   else if (type === 'integer') cf = [correct.waarde, 1];
   else return false;
 
-  return fracEqual(f[0], f[1], cf[0], cf[1]);
+  if (!fracEqual(f[0], f[1], cf[0], cf[1])) return false;
+
+  // For leerdoelen that require simplified form, reject unsimplified fractions
+  const vereenvoudigVereist = ['B.1', 'B.5', 'B.7', 'B.9', 'B.11', 'BP.2', 'BD.2'];
+  if (vereenvoudigVereist.includes(vraag.leerdoel) && (type === 'fraction' || type === 'mixed')) {
+    if (p.type === 'fraction' || p.type === 'mixed') {
+      const [sn, sd] = simplifyFrac(p.teller, p.noemer);
+      if (sn !== p.teller || sd !== p.noemer) return false;
+    }
+  }
+
+  return true;
 }
 
 /* ── Specific feedback ───────────────────────────────────────────────────── */
