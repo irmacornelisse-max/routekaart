@@ -4,7 +4,11 @@ const STORAGE_KEY = 'bf_v1';
 
 function loadData() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { studenten: [], resultaten: [] };
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { studenten: [], resultaten: [] };
+    data.resultaten = data.resultaten.map(r =>
+      r.staat ? r : { ...r, staat: r.goed ? 'goed' : 'fout' }
+    );
+    return data;
   } catch {
     return { studenten: [], resultaten: [] };
   }

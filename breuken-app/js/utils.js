@@ -1,3 +1,13 @@
+/* ── Utilities ───────────────────────────────────────────────────────────── */
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /* ── Math Utilities ────────────────────────────────────────────────────── */
 
 function gcd(a, b) { return b === 0 ? Math.abs(a) : gcd(b, a % b); }
