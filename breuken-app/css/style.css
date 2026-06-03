@@ -52,7 +52,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .header-logo { font-size: 1.4rem; font-weight: 800; letter-spacing: -.5px; line-height: 1; }
 .logo-x      { color: var(--primary); }
-.logo-rest   { color: #fff; }
+.logo-rest   { color: var(--secondary); }
+.app-header .logo-rest { color: #fff; }
 .header-title { flex: 1; font-size: .95rem; font-weight: 600; color: rgba(255,255,255,.90); text-align: center; }
 .header-right  { display: flex; align-items: center; gap: 8px; }
 
@@ -582,3 +583,61 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 
 /* MC answer choices: sit in card in scroll area */
 .mc-sectie { margin-top: 14px; }
+
+/* ── Oefenen grid layout ─────────────────────────────────────────────── */
+.oefenen-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 700px) {
+  .oefenen-grid {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+}
+
+.oefenen-main { min-width: 0; }
+
+.oefenen-antwoord {
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-top: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.oefenen-antwoord .actie-bar {
+  margin-top: 0;
+  padding: 8px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.oefenen-antwoord #feedback-zone {
+  padding: 0 14px;
+}
+.oefenen-antwoord .feedback-box {
+  margin: 6px 0 0;
+  border-radius: var(--radius-sm);
+}
+
+.oefenen-zij {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Yellow dot (goed na fouten) ─────────────────────────────────────── */
+.voortgang-dot.dot-geel {
+  background: var(--amber);
+}
+
+/* ── Mixed number keyboard button ────────────────────────────────────── */
+.kbd-btn-mixed {
+  background: #1e4d7a !important;
+  font-size: .72rem !important;
+  font-weight: 800;
+  letter-spacing: -.5px;
+}

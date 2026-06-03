@@ -46,13 +46,16 @@ function registreerStudent(naam) {
   return student;
 }
 
-function slaResultaatOp(studentId, leerdoel, goed) {
+function slaResultaatOp(studentId, leerdoel, staat) {
+  const staatStr = typeof staat === 'boolean' ? (staat ? 'goed' : 'fout') : staat;
+  const goed = staatStr === 'goed' || staatStr === 'goed_na_fouten';
   const data = loadData();
   data.resultaten.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     studentId,
     leerdoel,
     goed,
+    staat: staatStr,
     tijdstip: new Date().toISOString()
   });
   saveData(data);

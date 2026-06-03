@@ -21,9 +21,10 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val=":">:</button>
     </div>
     <div class="kbd-row">
-      <button class="kbd-btn kbd-btn-zero" data-val="0">0</button>
+      <button class="kbd-btn" data-val="0">0</button>
       <button class="kbd-btn" data-val=",">,</button>
       <button class="kbd-btn kbd-btn-frac" data-val="FRAC">a/b</button>
+      <button class="kbd-btn kbd-btn-mixed" data-val="MIXED">1 a/b</button>
       <button class="kbd-btn kbd-btn-clear" data-val="CLR">C</button>
     </div>
   </div>`;
@@ -53,8 +54,9 @@ function handleKbdKey(val) {
     case 'DEL':  mq.keystroke('Backspace'); break;
     case 'CLR':  mq.latex(''); mq.focus(); break;
     case 'NEXT': mq.keystroke('Right'); break;
-    case 'FRAC': mq.typedText('/'); break;
-    default:     mq.typedText(val); break;
+    case 'FRAC':  mq.typedText('/'); break;
+    case 'MIXED': mq.cmd('\\frac'); break;
+    default:      mq.typedText(val); break;
   }
 }
 

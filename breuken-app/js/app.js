@@ -12,8 +12,22 @@ const APP = {
   mqField2: null,
   activeMQField: null,
   stappen: [],
+  resultaatOpgeslagen: false,
 };
 window.APP = APP;
+
+function dotKlasse(r) {
+  if (r.staat === 'goed') return 'dot-goed';
+  if (r.staat === 'goed_na_fouten') return 'dot-geel';
+  if (r.goed) return 'dot-goed';
+  return 'dot-fout';
+}
+
+function maakVoortgangDots(resultaten, leerdoelId) {
+  const last5 = resultaten.filter(r => r.leerdoel === leerdoelId).slice(-5);
+  return last5.map(r => `<span class="voortgang-dot ${dotKlasse(r)}"></span>`).join('')
+    + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
+}
 
 /* ── Routing ─────────────────────────────────────────────────────────────── */
 function route() {
@@ -109,6 +123,8 @@ function renderDashboard() {
     return s.goed / s.totaal >= 0.7 ? 'goed' : 'started';
   }
 
+  function maakDots(id) { return maakVoortgangDots(resultaten, id); }
+
   const groepen = [...new Set(LEERDOELEN.map(l => l.groep))];
   let html = `${header('Oefenen met breuken', '',
     `<button class="btn-header" onclick="doUitloggen()">Uitloggen</button>`)}
@@ -125,10 +141,7 @@ function renderDashboard() {
     LEERDOELEN.filter(l => l.groep === groep).forEach(ld => {
       const s = getStats(ld.id);
       const sc = statusClass(s);
-      const last5 = resultaten.filter(x => x.leerdoel === ld.id).slice(-5);
-      const dots = last5.map(r =>
-        `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}"></span>`
-      ).join('') + Array(5 - last5.length).fill('<span class="voortgang-dot"></span>').join('');
+      const dots = maakDots(ld.id);
       html += `<div class="leerdoel-card" onclick="window.location.hash='#oefenen/${ld.id}'">
         <div class="leerdoel-top">
           <span class="leerdoel-badge">${ld.id}</span>
@@ -166,23 +179,21 @@ function renderOefenen(leerdoelId) {
     APP.nlMarkerPos = null;
     APP.mcKeuze = null;
     APP.stappen = [];
+    APP.resultaatOpgeslagen = false;
   }
   if (!APP.huidigVraag) APP.huidigVraag = generateVraag(leerdoelId);
 
   const resultaten = getResultatenVoorStudent(APP.student.id);
-  const last5 = resultaten.filter(r => r.leerdoel === leerdoelId).slice(-5);
-  const dots = last5.map(r =>
-    `<span class="voortgang-dot ${r.goed ? 'dot-goed' : 'dot-fout'}"></span>`
-  ).join('') + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
+  const dots = maakVoortgangDots(resultaten, leerdoelId);
 
   const vraag = APP.huidigVraag;
   const type = vraag.antwoordType;
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
   const needsKbd = useStepList || type === 'two-fracs';
 
-  let bodemInhoud = '';
+  let antwoordInhoud = '';
   if (type === 'two-fracs') {
-    bodemInhoud = `<div class="two-mq-wrap">
+    antwoordInhoud = `<div class="two-mq-wrap" style="padding:10px 14px 4px">
       <div>
         <div class="two-mq-label">Eerste breuk:</div>
         <div class="mq-field-box" id="mq-input1"></div>
@@ -193,34 +204,38 @@ function renderOefenen(leerdoelId) {
       </div>
     </div>`;
   } else if (useStepList) {
-    bodemInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
+    antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
   }
 
   return `${header(ld.id + ' – ' + ld.titel, '#dashboard')}
-  <div class="oefenen-layout">
-    <div class="oefenen-scroll">
-      <div class="card fade-in">
-        <div class="opgave-meta">
-          <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
-          <div class="opgave-dots">${dots}</div>
+  <div class="main-content">
+    <div class="oefenen-grid">
+      <div class="oefenen-main">
+        <div class="card fade-in">
+          <div class="opgave-meta">
+            <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
+            <div class="opgave-dots">${dots}</div>
+          </div>
+          <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
+          ${type === 'drag' ? renderDragArea(vraag) : ''}
+          ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
         </div>
-        <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
-        ${type === 'drag' ? renderDragArea(vraag) : ''}
-        ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
+        <div class="oefenen-antwoord">
+          ${antwoordInhoud}
+          <div id="feedback-zone"></div>
+          ${needsKbd ? getKeyboardHTML() : ''}
+          <div class="actie-bar" id="actie-bar">
+            <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
+            <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
+            <button class="btn btn-primary" id="btn-controleer">✓ Controleer</button>
+          </div>
+        </div>
       </div>
-      <div id="hint-zone"></div>
-      <div id="oplossing-zone"></div>
-    </div>
-    <div class="oefenen-bodem">
-      ${bodemInhoud}
-      <div id="feedback-zone"></div>
-      ${needsKbd ? getKeyboardHTML() : ''}
-      <div class="actie-bar" id="actie-bar">
-        <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
-        <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
-        <button class="btn btn-primary" id="btn-controleer">✓ Controleer</button>
-      </div>
+      <aside class="oefenen-zij">
+        <div id="hint-zone"></div>
+        <div id="oplossing-zone"></div>
+      </aside>
     </div>
   </div>`;
 }
@@ -381,6 +396,7 @@ function nieuweVraag() {
   APP.mqField2 = null;
   APP.activeMQField = null;
   APP.stappen = [];
+  APP.resultaatOpgeslagen = false;
   const app = document.getElementById('app');
   app.innerHTML = renderOefenen(APP.huidigLeerdoel);
   renderKatex(app);
@@ -454,13 +470,20 @@ function bindOefenen(leerdoelId) {
       <strong>💡 Hint ${APP.hintIdx} van ${vraag.hints.length}</strong>${hint}
     </div>`;
     renderKatex(zone);
+    zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
   });
 
   document.getElementById('btn-oplossing')?.addEventListener('click', () => {
     const zone = document.getElementById('oplossing-zone');
+    if (zone.innerHTML) return;
+    if (!APP.resultaatOpgeslagen) {
+      slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+      APP.resultaatOpgeslagen = true;
+    }
     zone.innerHTML = renderOplossing(vraag);
     renderKatex(zone);
     document.getElementById('btn-oplossing').disabled = true;
+    zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
     toonNieuweVraagKnop();
   });
 
@@ -541,7 +564,10 @@ function controleer(vraag) {
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
 
   if (staat === 'goed') {
-    slaResultaatOp(APP.student.id, vraag.leerdoel, true);
+    if (!APP.resultaatOpgeslagen) {
+      slaResultaatOp(APP.student.id, vraag.leerdoel, APP.pogingen > 0 ? 'goed_na_fouten' : 'goed');
+      APP.resultaatOpgeslagen = true;
+    }
     if (useStepList) freezeActiveRow('goed');
     toonFeedback('goed', 'Goed zo! Je antwoord is correct.');
     if (type === 'mc') kleurMcKnoppen(vraag);
@@ -556,14 +582,18 @@ function controleer(vraag) {
     }
   } else {
     APP.pogingen++;
-    slaResultaatOp(APP.student.id, vraag.leerdoel, false);
     toonFeedback('fout', feedbackBoodschap(vraag, gegeven));
     if (type === 'mc') kleurMcKnoppen(vraag);
     if (APP.pogingen >= 3) {
       const zone = document.getElementById('oplossing-zone');
       if (!zone.innerHTML) {
+        if (!APP.resultaatOpgeslagen) {
+          slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+          APP.resultaatOpgeslagen = true;
+        }
         zone.innerHTML = renderOplossing(vraag);
         renderKatex(zone);
+        zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
         toonNieuweVraagKnop();
       }
     }
@@ -643,21 +673,13 @@ function renderResultaten() {
   LEERDOELEN.forEach(ld => {
     const r = resultaten.filter(x => x.leerdoel === ld.id);
     if (r.length === 0) return;
-    const goed = r.filter(x => x.goed).length;
-    const pct = Math.round((goed / r.length) * 100);
-    const fillClass = pct >= 70 ? '' : pct >= 40 ? 'amber' : 'red';
+    const dots = maakVoortgangDots(resultaten, ld.id);
     tableRows += `<tr>
       <td><strong>${ld.id}</strong><br/>
         <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
       </td>
       <td style="text-align:center">${r.length}</td>
-      <td style="text-align:center">${goed}</td>
-      <td>
-        <div class="pct-bar">
-          <div class="pct-track"><div class="pct-fill ${fillClass}" style="width:${pct}%"></div></div>
-          <span style="font-size:.82rem;min-width:32px">${pct}%</span>
-        </div>
-      </td>
+      <td><div class="voortgang-dots">${dots}</div></td>
     </tr>`;
   });
 
@@ -673,8 +695,7 @@ function renderResultaten() {
         <thead><tr>
           <th>Leerdoel</th>
           <th style="text-align:center">Gemaakt</th>
-          <th style="text-align:center">Goed</th>
-          <th>Score</th>
+          <th>Laatste 5</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
@@ -760,22 +781,14 @@ function toonDocentResultaten(data, zone) {
   LEERDOELEN.forEach(ld => {
     const r = resultaten.filter(x => x.leerdoel === ld.id);
     if (r.length === 0) return;
-    const goed = r.filter(x => x.goed).length;
-    const pct = Math.round((goed / r.length) * 100);
     const last = new Date(r[r.length - 1].tijdstip).toLocaleDateString('nl-NL');
-    const fillClass = pct >= 70 ? '' : pct >= 40 ? 'amber' : 'red';
+    const dots = maakVoortgangDots(resultaten, ld.id);
     rows += `<tr>
       <td><strong>${ld.id}</strong><br/>
         <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
       </td>
       <td style="text-align:center">${r.length}</td>
-      <td style="text-align:center">${goed}</td>
-      <td>
-        <div class="pct-bar">
-          <div class="pct-track"><div class="pct-fill ${fillClass}" style="width:${pct}%"></div></div>
-          <span style="font-size:.82rem;min-width:32px">${pct}%</span>
-        </div>
-      </td>
+      <td><div class="voortgang-dots">${dots}</div></td>
       <td style="font-size:.82rem;color:var(--text-soft)">${last}</td>
     </tr>`;
   });
@@ -789,8 +802,7 @@ function toonDocentResultaten(data, zone) {
       <thead><tr>
         <th>Leerdoel</th>
         <th style="text-align:center">Gemaakt</th>
-        <th style="text-align:center">Goed</th>
-        <th>Score</th>
+        <th>Laatste 5</th>
         <th>Laatste poging</th>
       </tr></thead>
       <tbody>${rows}</tbody>
