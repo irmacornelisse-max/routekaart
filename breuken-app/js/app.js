@@ -29,6 +29,47 @@ function maakVoortgangDots(resultaten, leerdoelId) {
     + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
 }
 
+/* ── Leerdoel-filter via URL (?leerdoelen=B.1,B.3,B.5) ────────────────────────
+   De docent kan een link delen waarin alleen bepaalde leerdoelen zichtbaar
+   zijn. Het filter wordt voor de hele sessie bewaard zodat het ook na
+   hash-navigatie of herladen actief blijft. Het filtert puur op id, dus
+   nieuwe leerdoelen in LEERDOELEN werken automatisch mee. */
+const LEERDOEL_FILTER_KEY = 'bf_leerdoel_filter';
+
+function leesLeerdoelFilterUitURL() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('leerdoelen');
+  if (raw === null) return;
+  const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+  if (ids.length) {
+    sessionStorage.setItem(LEERDOEL_FILTER_KEY, JSON.stringify(ids));
+  } else {
+    sessionStorage.removeItem(LEERDOEL_FILTER_KEY);
+  }
+}
+
+function getLeerdoelFilter() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(LEERDOEL_FILTER_KEY));
+    return Array.isArray(v) && v.length ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function getZichtbareLeerdoelen() {
+  const filter = getLeerdoelFilter();
+  if (!filter) return LEERDOELEN;
+  const set = new Set(filter);
+  const zichtbaar = LEERDOELEN.filter(l => set.has(l.id));
+  return zichtbaar.length ? zichtbaar : LEERDOELEN;
+}
+
+function leerdoelZichtbaar(id) {
+  return getZichtbareLeerdoelen().some(l => l.id === id);
+}
+
+
 /* ── Routing ─────────────────────────────────────────────────────────────── */
 function route() {
   const hash = window.location.hash || '#login';
@@ -56,7 +97,7 @@ function route() {
 }
 
 window.addEventListener('hashchange', route);
-window.addEventListener('load', () => { initMathKeyboard(); route(); });
+window.addEventListener('load', () => { leesLeerdoelFilterUitURL(); initMathKeyboard(); route(); });
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 function header(title, backHash, rightHTML = '') {
@@ -125,7 +166,8 @@ function renderDashboard() {
 
   function maakDots(id) { return maakVoortgangDots(resultaten, id); }
 
-  const groepen = [...new Set(LEERDOELEN.map(l => l.groep))];
+  const zichtbareLeerdoelen = getZichtbareLeerdoelen();
+  const groepen = [...new Set(zichtbareLeerdoelen.map(l => l.groep))];
   let html = `${header('Oefenen met breuken', '',
     `<button class="btn-header" onclick="doUitloggen()">Uitloggen</button>`)}
   <div class="main-content">
@@ -138,7 +180,7 @@ function renderDashboard() {
 
   groepen.forEach(groep => {
     html += `<div class="groep-header">${groep}</div><div class="leerdoel-grid">`;
-    LEERDOELEN.filter(l => l.groep === groep).forEach(ld => {
+    zichtbareLeerdoelen.filter(l => l.groep === groep).forEach(ld => {
       const s = getStats(ld.id);
       const sc = statusClass(s);
       const dots = maakDots(ld.id);
@@ -167,7 +209,7 @@ function doUitloggen() { uitloggen(); window.location.hash = '#login'; }
 ═══════════════════════════════════════════════════════════════════════════ */
 function renderOefenen(leerdoelId) {
   const ld = LEERDOELEN.find(l => l.id === leerdoelId);
-  if (!ld) return renderDashboard();
+  if (!ld || !leerdoelZichtbaar(leerdoelId)) return renderDashboard();
 
   if (APP.huidigLeerdoel !== leerdoelId) {
     APP.huidigLeerdoel = leerdoelId;
@@ -744,10 +786,36 @@ function openDeelModal() {
    DOCENT
 ═══════════════════════════════════════════════════════════════════════════ */
 function renderDocent() {
+  const groepen = [...new Set(LEERDOELEN.map(l => l.groep))];
+  let keuzelijst = '';
+  groepen.forEach(groep => {
+    keuzelijst += `<div class="ldsel-groep">${groep}</div><div class="ldsel-grid">`;
+    LEERDOELEN.filter(l => l.groep === groep).forEach(ld => {
+      keuzelijst += `<label class="ldsel-item">
+        <input type="checkbox" class="ldsel-check" value="${ld.id}"/>
+        <span>${ld.titel}</span>
+      </label>`;
+    });
+    keuzelijst += `</div>`;
+  });
+
   return `${header('Docentenomgeving', APP.student ? '#dashboard' : '#login')}
   <div class="main-content">
     <div class="card">
-      <h2 style="color:var(--secondary);margin-bottom:8px">👩‍🏫 Docentenomgeving</h2>
+      <h2 style="color:var(--secondary);margin-bottom:8px">🔗 Oefenlink maken</h2>
+      <p class="docent-intro">Kies de leerdoelen die je leerling te zien moet krijgen. Vink je niets aan, dan krijgt de leerling alle leerdoelen.</p>
+      <div class="ldsel-acties">
+        <button class="btn btn-ghost btn-sm" id="btn-ld-alle">Alles aanvinken</button>
+        <button class="btn btn-ghost btn-sm" id="btn-ld-geen">Alles uitvinken</button>
+      </div>
+      ${keuzelijst}
+      <div style="margin-top:14px">
+        <button class="btn btn-primary" id="btn-genereer-link">Genereer link</button>
+      </div>
+      <div id="link-resultaat"></div>
+    </div>
+    <div class="card">
+      <h2 style="color:var(--secondary);margin-bottom:8px">📊 Resultaten bekijken</h2>
       <p class="docent-intro">Plak hieronder de code die een leerling met je heeft gedeeld (begint met XPLORE:).</p>
       <textarea class="code-input-area" id="code-invoer" placeholder="XPLORE:..."></textarea>
       <div style="margin-top:12px">
@@ -758,7 +826,42 @@ function renderDocent() {
   </div>`;
 }
 
+function genereerOefenLink() {
+  const gekozen = [...document.querySelectorAll('.ldsel-check:checked')].map(c => c.value);
+  const basis = window.location.origin + window.location.pathname;
+  if (!gekozen.length) return basis;
+  return basis + '?leerdoelen=' + gekozen.join(',');
+}
+
 function bindDocent() {
+  document.getElementById('btn-ld-alle')?.addEventListener('click', () => {
+    document.querySelectorAll('.ldsel-check').forEach(c => c.checked = true);
+  });
+  document.getElementById('btn-ld-geen')?.addEventListener('click', () => {
+    document.querySelectorAll('.ldsel-check').forEach(c => c.checked = false);
+  });
+
+  document.getElementById('btn-genereer-link')?.addEventListener('click', () => {
+    const link = genereerOefenLink();
+    const zone = document.getElementById('link-resultaat');
+    zone.innerHTML = `<div class="link-box fade-in">
+      <textarea id="link-area" class="code-display" readonly
+        style="min-height:60px;resize:none;cursor:text;font-size:.8rem">${link}</textarea>
+      <button class="btn btn-primary btn-sm" id="btn-copy-link" style="margin-top:8px">📋 Kopieer link</button>
+    </div>`;
+    const area = document.getElementById('link-area');
+    area.addEventListener('focus', () => area.select());
+    document.getElementById('btn-copy-link').addEventListener('click', () => {
+      area.select();
+      navigator.clipboard.writeText(link).then(() => {
+        document.getElementById('btn-copy-link').textContent = '✓ Gekopieerd!';
+      }).catch(() => {
+        try { document.execCommand('copy'); document.getElementById('btn-copy-link').textContent = '✓ Gekopieerd!'; }
+        catch { document.getElementById('btn-copy-link').textContent = 'Selecteer en kopieer handmatig'; }
+      });
+    });
+  });
+
   document.getElementById('btn-decodeer').addEventListener('click', () => {
     const code = document.getElementById('code-invoer').value;
     const data = decodeerDeelCode(code);
