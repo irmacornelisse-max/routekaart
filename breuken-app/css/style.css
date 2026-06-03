@@ -165,14 +165,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .leerdoel-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--primary); }
 
-.leerdoel-top { display: flex; align-items: center; gap: 8px; }
+.leerdoel-top { display: flex; align-items: flex-start; gap: 8px; }
 .leerdoel-badge {
   background: var(--secondary); color: #fff;
   font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
   white-space: nowrap; flex-shrink: 0;
 }
-.leerdoel-titel { font-size: .9rem; font-weight: 600; color: var(--text); line-height: 1.3; }
-.leerdoel-voortgang { display: flex; align-items: center; gap: 6px; }
+.leerdoel-titel { font-size: .9rem; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
+.leerdoel-voortgang { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
 .voortgang-dots { display: flex; gap: 4px; }
 .voortgang-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
 .dot-goed   { background: var(--green); }
@@ -583,6 +583,15 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 
 /* MC answer choices: sit in card in scroll area */
 .mc-sectie { margin-top: 14px; }
+
+/* Resultaten card header met deel-knop rechtsboven */
+.resultaten-kop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
 
 /* ── Oefenen grid layout ─────────────────────────────────────────────── */
 .oefenen-grid {

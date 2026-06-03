@@ -144,10 +144,9 @@ function renderDashboard() {
       const dots = maakDots(ld.id);
       html += `<div class="leerdoel-card" onclick="window.location.hash='#oefenen/${ld.id}'">
         <div class="leerdoel-top">
-          <span class="leerdoel-badge">${ld.id}</span>
+          <div class="leerdoel-titel">${ld.titel}</div>
           <span class="badge-status ${sc}" style="margin-left:auto"></span>
         </div>
-        <div class="leerdoel-titel">${ld.titel}</div>
         <div class="leerdoel-voortgang">
           <div class="voortgang-dots">${dots}</div>
           <span class="voortgang-label">${s.goed}/${s.totaal}</span>
@@ -208,7 +207,7 @@ function renderOefenen(leerdoelId) {
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
   }
 
-  return `${header(ld.id + ' – ' + ld.titel, '#dashboard')}
+  return `${header(ld.titel, '#dashboard')}
   <div class="main-content">
     <div class="oefenen-grid">
       <div class="oefenen-main">
@@ -674,27 +673,32 @@ function renderResultaten() {
     const r = resultaten.filter(x => x.leerdoel === ld.id);
     if (r.length === 0) return;
     const dots = maakVoortgangDots(resultaten, ld.id);
+    const goedAantal = r.filter(x => x.goed).length;
     tableRows += `<tr>
-      <td><strong>${ld.id}</strong><br/>
-        <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
-      </td>
+      <td>${ld.titel}</td>
       <td style="text-align:center">${r.length}</td>
+      <td style="text-align:center">${goedAantal}</td>
       <td><div class="voortgang-dots">${dots}</div></td>
     </tr>`;
   });
 
-  return `${header('Mijn resultaten', '#dashboard',
-    `<button class="btn-header" onclick="openDeelModal()">📤 Delen</button>`)}
+  const totaalGoed = resultaten.filter(x => x.goed).length;
+
+  return `${header('Mijn resultaten', '#dashboard')}
   <div class="main-content">
     <div class="card">
-      <div style="margin-bottom:14px">
-        <strong>${APP.student.naam}</strong><br/>
-        <span style="font-size:.85rem;color:var(--text-soft)">${resultaten.length} opgaven gemaakt</span>
+      <div class="resultaten-kop">
+        <div>
+          <strong>${APP.student.naam}</strong><br/>
+          <span style="font-size:.85rem;color:var(--text-soft)">${resultaten.length} opgaven gemaakt · ${totaalGoed} goed</span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openDeelModal()">📤 Delen</button>
       </div>
       <table class="resultaten-tabel">
         <thead><tr>
           <th>Leerdoel</th>
           <th style="text-align:center">Gemaakt</th>
+          <th style="text-align:center">Goed</th>
           <th>Laatste 5</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
@@ -783,25 +787,28 @@ function toonDocentResultaten(data, zone) {
     if (r.length === 0) return;
     const last = new Date(r[r.length - 1].tijdstip).toLocaleDateString('nl-NL');
     const dots = maakVoortgangDots(resultaten, ld.id);
+    const goedAantal = r.filter(x => x.goed).length;
     rows += `<tr>
-      <td><strong>${ld.id}</strong><br/>
-        <span style="font-size:.82rem;color:var(--text-soft)">${ld.titel}</span>
-      </td>
+      <td>${ld.titel}</td>
       <td style="text-align:center">${r.length}</td>
+      <td style="text-align:center">${goedAantal}</td>
       <td><div class="voortgang-dots">${dots}</div></td>
       <td style="font-size:.82rem;color:var(--text-soft)">${last}</td>
     </tr>`;
   });
 
+  const totaalGoed = resultaten.filter(x => x.goed).length;
+
   zone.innerHTML = `<div class="card fade-in">
     <div class="student-header">
       <h3>${student.naam}</h3>
-      <p>${resultaten.length} opgaven gemaakt</p>
+      <p>${resultaten.length} opgaven gemaakt · ${totaalGoed} goed</p>
     </div>
     <table class="resultaten-tabel">
       <thead><tr>
         <th>Leerdoel</th>
         <th style="text-align:center">Gemaakt</th>
+        <th style="text-align:center">Goed</th>
         <th>Laatste 5</th>
         <th>Laatste poging</th>
       </tr></thead>
