@@ -1,10 +1,7 @@
 /* ── Math Keyboard ───────────────────────────────────────────────────── */
 
-function initMathKeyboard() {
-  const kbd = document.createElement('div');
-  kbd.id = 'math-keyboard';
-  kbd.className = 'math-keyboard';
-  kbd.innerHTML = `
+function getKeyboardHTML() {
+  return `<div id="math-keyboard" class="math-keyboard">
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>
       <button class="kbd-btn" data-val="8">8</button>
@@ -29,33 +26,39 @@ function initMathKeyboard() {
       <button class="kbd-btn kbd-btn-frac" data-val="FRAC">a/b</button>
       <button class="kbd-btn kbd-btn-clear" data-val="CLR">C</button>
     </div>
-  `;
-  document.body.appendChild(kbd);
+  </div>`;
+}
 
-  window.showKbd = () => kbd.classList.add('visible');
-  window.hideKbd = () => kbd.classList.remove('visible');
+function bindKeyboardHandlers() {
+  const kbd = document.getElementById('math-keyboard');
+  if (!kbd) return;
 
   kbd.addEventListener('mousedown', e => {
     e.preventDefault();
     const btn = e.target.closest('.kbd-btn');
-    if (btn) handleKey(btn.dataset.val);
+    if (btn) handleKbdKey(btn.dataset.val);
   });
 
   kbd.addEventListener('touchstart', e => {
     e.preventDefault();
     const btn = e.target.closest('.kbd-btn');
-    if (btn) handleKey(btn.dataset.val);
+    if (btn) handleKbdKey(btn.dataset.val);
   }, { passive: false });
+}
 
-  function handleKey(val) {
-    const mq = window.APP?.activeMQField;
-    if (!mq) return;
-    switch (val) {
-      case 'DEL':  mq.keystroke('Backspace'); break;
-      case 'CLR':  mq.latex(''); mq.focus(); break;
-      case 'NEXT': mq.keystroke('Right'); break;
-      case 'FRAC': mq.typedText('/'); break;
-      default:     mq.typedText(val); break;
-    }
+function handleKbdKey(val) {
+  const mq = window.APP?.activeMQField;
+  if (!mq) return;
+  switch (val) {
+    case 'DEL':  mq.keystroke('Backspace'); break;
+    case 'CLR':  mq.latex(''); mq.focus(); break;
+    case 'NEXT': mq.keystroke('Right'); break;
+    case 'FRAC': mq.typedText('/'); break;
+    default:     mq.typedText(val); break;
   }
+}
+
+function initMathKeyboard() {
+  window.showKbd = () => {};
+  window.hideKbd = () => {};
 }

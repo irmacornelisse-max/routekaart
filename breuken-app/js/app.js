@@ -11,6 +11,7 @@ const APP = {
   mqField1: null,
   mqField2: null,
   activeMQField: null,
+  stappen: [],
 };
 window.APP = APP;
 
@@ -164,6 +165,7 @@ function renderOefenen(leerdoelId) {
     APP.opgaveNr = 1;
     APP.nlMarkerPos = null;
     APP.mcKeuze = null;
+    APP.stappen = [];
   }
   if (!APP.huidigVraag) APP.huidigVraag = generateVraag(leerdoelId);
 
@@ -174,47 +176,13 @@ function renderOefenen(leerdoelId) {
   ).join('') + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
 
   const vraag = APP.huidigVraag;
-  const antwoordHTML = renderAntwoordInput(vraag);
-
-  return `${header(ld.id + ' – ' + ld.titel, '#dashboard')}
-  <div class="main-content">
-    <div class="card fade-in">
-      <div class="opgave-meta">
-        <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
-        <div class="opgave-dots">${dots}</div>
-      </div>
-      <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
-      ${vraag.antwoordType === 'drag' ? renderDragArea(vraag) : ''}
-      <div class="antwoord-sectie" id="antwoord-sectie">
-        <div class="antwoord-label">Jouw antwoord:</div>
-        ${antwoordHTML}
-      </div>
-      <div id="feedback-zone"></div>
-      <div id="hint-zone"></div>
-      <div id="oplossing-zone"></div>
-      <div class="actie-bar" id="actie-bar">
-        <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
-        <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
-        <button class="btn btn-primary" id="btn-controleer">✓ Controleer</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-/* ── Answer input widgets ────────────────────────────────────────────────── */
-function renderAntwoordInput(vraag) {
   const type = vraag.antwoordType;
+  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
+  const needsKbd = useStepList || type === 'two-fracs';
 
-  if (type === 'mc') {
-    return `<div class="mc-grid">${vraag.data.opties.map((o, i) =>
-      `<button class="mc-btn" data-idx="${i}" id="mc-${i}">${o.label}</button>`
-    ).join('')}</div>`;
-  }
-
-  if (type === 'drag') return '';
-
+  let bodemInhoud = '';
   if (type === 'two-fracs') {
-    return `<div class="two-mq-wrap">
+    bodemInhoud = `<div class="two-mq-wrap">
       <div>
         <div class="two-mq-label">Eerste breuk:</div>
         <div class="mq-field-box" id="mq-input1"></div>
@@ -224,23 +192,44 @@ function renderAntwoordInput(vraag) {
         <div class="mq-field-box" id="mq-input2"></div>
       </div>
     </div>`;
+  } else if (useStepList) {
+    bodemInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
+    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
   }
 
-  const hints = {
-    fraction:   'Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor ¾ of gebruik <kbd>a/b</kbd>',
-    mixed:      'Typ bijv. <kbd>1</kbd> dan <kbd>a/b</kbd><kbd>3</kbd><kbd>→</kbd><kbd>4</kbd> voor 1¾',
-    integer:    '',
-    decimal:    'Gebruik een komma: <kbd>0</kbd><kbd>,</kbd><kbd>7</kbd><kbd>5</kbd>',
-    percentage: 'Vul alleen het getal in, bijv. <kbd>7</kbd><kbd>5</kbd>',
-    ratio:      'Gebruik <kbd>:</kbd>, bijv. <kbd>2</kbd><kbd>:</kbd><kbd>3</kbd>',
-  };
-  const suffix = type === 'percentage' ? '<span class="input-unit">%</span>' : '';
-  const hint = hints[type] || '';
+  return `${header(ld.id + ' – ' + ld.titel, '#dashboard')}
+  <div class="oefenen-layout">
+    <div class="oefenen-scroll">
+      <div class="card fade-in">
+        <div class="opgave-meta">
+          <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
+          <div class="opgave-dots">${dots}</div>
+        </div>
+        <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
+        ${type === 'drag' ? renderDragArea(vraag) : ''}
+        ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
+      </div>
+      <div id="hint-zone"></div>
+      <div id="oplossing-zone"></div>
+    </div>
+    <div class="oefenen-bodem">
+      ${bodemInhoud}
+      <div id="feedback-zone"></div>
+      ${needsKbd ? getKeyboardHTML() : ''}
+      <div class="actie-bar" id="actie-bar">
+        <button class="btn btn-outline btn-sm" id="btn-hint">💡 Hint</button>
+        <button class="btn btn-ghost btn-sm" id="btn-oplossing">📖 Oplossing</button>
+        <button class="btn btn-primary" id="btn-controleer">✓ Controleer</button>
+      </div>
+    </div>
+  </div>`;
+}
 
-  return `<div class="mq-wrap">
-    <div class="mq-field-box" id="mq-input"></div>
-    ${suffix}
-  </div>${hint ? `<div class="mq-hint">${hint}</div>` : ''}`;
+/* ── MC options ──────────────────────────────────────────────────────────── */
+function renderMcOpties(vraag) {
+  return `<div class="mc-grid">${vraag.data.opties.map((o, i) =>
+    `<button class="mc-btn" data-idx="${i}" id="mc-${i}">${o.label}</button>`
+  ).join('')}</div>`;
 }
 
 /* ── Drag area for B.01c ─────────────────────────────────────────────────── */
@@ -391,6 +380,7 @@ function nieuweVraag() {
   APP.mqField1 = null;
   APP.mqField2 = null;
   APP.activeMQField = null;
+  APP.stappen = [];
   const app = document.getElementById('app');
   app.innerHTML = renderOefenen(APP.huidigLeerdoel);
   renderKatex(app);
@@ -414,48 +404,36 @@ function bindOefenen(leerdoelId) {
   APP.mqField1 = null;
   APP.mqField2 = null;
 
-  if (typeof MathQuill !== 'undefined' &&
-      vraag.antwoordType !== 'mc' && vraag.antwoordType !== 'drag') {
+  bindKeyboardHandlers();
+
+  const type = vraag.antwoordType;
+
+  if (typeof MathQuill !== 'undefined' && type !== 'mc' && type !== 'drag') {
     const MQ = MathQuill.getInterface(2);
 
-    function setupMQ(el, onEnter) {
-      if (!el) return null;
-      const mq = MQ.MathField(el, {
-        spaceBehavesLikeTab: true,
-        handlers: { enter: onEnter || (() => {}) }
-      });
-      const ta = el.querySelector('textarea');
-      if (ta) {
-        ta.addEventListener('focus', () => {
-          APP.activeMQField = mq;
-          window.showKbd?.();
+    if (type === 'two-fracs') {
+      function setupTwoFracsMQ(el, onEnter) {
+        if (!el) return null;
+        const mq = MQ.MathField(el, {
+          spaceBehavesLikeTab: true,
+          handlers: { enter: onEnter || (() => {}) }
         });
-        ta.addEventListener('blur', () => {
-          setTimeout(() => {
-            const kbd = document.getElementById('math-keyboard');
-            if (kbd && !kbd.contains(document.activeElement)) window.hideKbd?.();
-          }, 200);
-        });
+        const ta = el.querySelector('textarea');
+        if (ta) ta.addEventListener('focus', () => { APP.activeMQField = mq; });
+        return mq;
       }
-      return mq;
-    }
-
-    if (vraag.antwoordType === 'two-fracs') {
-      APP.mqField1 = setupMQ(document.getElementById('mq-input1'),
+      APP.mqField1 = setupTwoFracsMQ(document.getElementById('mq-input1'),
         () => APP.mqField2?.focus());
-      APP.mqField2 = setupMQ(document.getElementById('mq-input2'),
+      APP.mqField2 = setupTwoFracsMQ(document.getElementById('mq-input2'),
         () => document.getElementById('btn-controleer')?.click());
       APP.activeMQField = APP.mqField1;
       APP.mqField1?.focus();
     } else {
-      APP.mqField1 = setupMQ(document.getElementById('mq-input'),
-        () => document.getElementById('btn-controleer')?.click());
-      APP.activeMQField = APP.mqField1;
-      APP.mqField1?.focus();
+      addNewActiveRow();
     }
   }
 
-  if (vraag.antwoordType === 'mc') {
+  if (type === 'mc') {
     document.querySelectorAll('.mc-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.mc-btn').forEach(b => b.classList.remove('selected'));
@@ -466,7 +444,7 @@ function bindOefenen(leerdoelId) {
     renderKatex(document.querySelector('.mc-grid'));
   }
 
-  if (vraag.antwoordType === 'drag') initDrag(vraag);
+  if (type === 'drag') initDrag(vraag);
 
   document.getElementById('btn-hint')?.addEventListener('click', () => {
     if (APP.hintIdx >= vraag.hints.length) APP.hintIdx = 0;
@@ -489,31 +467,98 @@ function bindOefenen(leerdoelId) {
   document.getElementById('btn-controleer')?.addEventListener('click', () => controleer(vraag));
 }
 
+/* ── Step list helpers ───────────────────────────────────────────────────── */
+function addNewActiveRow() {
+  if (typeof MathQuill === 'undefined') return;
+  const lijst = document.getElementById('stap-lijst');
+  if (!lijst) return;
+
+  const rij = document.createElement('div');
+  rij.className = 'stap-rij stap-actief';
+  rij.innerHTML = `<div class="mq-field-box stap-mq-input"></div><span class="stap-status"></span>`;
+  lijst.appendChild(rij);
+
+  const el = rij.querySelector('.stap-mq-input');
+  const MQ = MathQuill.getInterface(2);
+  const mq = MQ.MathField(el, {
+    spaceBehavesLikeTab: true,
+    handlers: { enter: () => document.getElementById('btn-controleer')?.click() }
+  });
+
+  const ta = el.querySelector('textarea');
+  if (ta) {
+    ta.addEventListener('focus', () => { APP.activeMQField = mq; });
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp' && mq.latex() === '') {
+        const prev = APP.stappen.length ? APP.stappen[APP.stappen.length - 1].latex : null;
+        if (prev) { mq.latex(prev); e.preventDefault(); e.stopPropagation(); }
+      }
+    });
+  }
+
+  APP.mqField1 = mq;
+  APP.activeMQField = mq;
+  rij.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  mq.focus();
+}
+
+function freezeActiveRow(staat) {
+  const lijst = document.getElementById('stap-lijst');
+  if (!lijst) return;
+  const rij = lijst.querySelector('.stap-actief');
+  if (!rij) return;
+
+  const latex = APP.mqField1?.latex() || '';
+  APP.stappen.push({ latex, staat });
+
+  const mqBox = rij.querySelector('.mq-field-box');
+  if (mqBox && typeof MathQuill !== 'undefined') {
+    const MQ = MathQuill.getInterface(2);
+    const staticEl = document.createElement('span');
+    staticEl.className = 'stap-mq-static';
+    mqBox.replaceWith(staticEl);
+    MQ.StaticMath(staticEl).latex(latex);
+  }
+
+  const statusEl = rij.querySelector('.stap-status');
+  if (statusEl) statusEl.textContent = staat === 'goed' ? '✓' : '✓';
+
+  rij.classList.remove('stap-actief');
+  rij.classList.add('stap-frozen', `stap-${staat}`);
+  APP.mqField1 = null;
+  APP.activeMQField = null;
+}
+
 function controleer(vraag) {
   const gegeven = leesAntwoord(vraag);
   if (!valideerAntwoord(vraag.antwoordType, gegeven)) {
-    const zone = document.getElementById('feedback-zone');
-    zone.innerHTML = `<div class="feedback-box wrong fade-in">
-      <span class="feedback-icon">!</span>
-      <div class="feedback-text">Vul eerst je antwoord in.</div>
-    </div>`;
+    toonFeedback('fout', 'Vul eerst je antwoord in.');
     return;
   }
 
   const staat = checkAntwoord(vraag, gegeven);
+  const type = vraag.antwoordType;
+  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
 
   if (staat === 'goed') {
     slaResultaatOp(APP.student.id, vraag.leerdoel, true);
-    toonFeedback('goed', 'Goed zo! Je antwoord is correct. 🎉');
-    if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
+    if (useStepList) freezeActiveRow('goed');
+    toonFeedback('goed', 'Goed zo! Je antwoord is correct.');
+    if (type === 'mc') kleurMcKnoppen(vraag);
     toonNieuweVraagKnop();
   } else if (staat === 'tussenstap') {
-    toonFeedback('tussenstap', 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
+    if (useStepList) {
+      freezeActiveRow('tussenstap');
+      toonFeedback('tussenstap', 'Juist! Schrijf nu het eindantwoord in de meest vereenvoudigde vorm.');
+      addNewActiveRow();
+    } else {
+      toonFeedback('tussenstap', 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
+    }
   } else {
     APP.pogingen++;
     slaResultaatOp(APP.student.id, vraag.leerdoel, false);
     toonFeedback('fout', feedbackBoodschap(vraag, gegeven));
-    if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
+    if (type === 'mc') kleurMcKnoppen(vraag);
     if (APP.pogingen >= 3) {
       const zone = document.getElementById('oplossing-zone');
       if (!zone.innerHTML) {

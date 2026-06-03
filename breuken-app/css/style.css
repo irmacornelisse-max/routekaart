@@ -392,28 +392,26 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 .student-header h3 { font-size: 1.1rem; margin-bottom: 2px; }
 .student-header p  { font-size: .85rem; opacity: .75; }
 
-/* ── Math Keyboard ───────────────────────────────────────────────────── */
+/* ── Math Keyboard (inline, attached to answer area) ─────────────────── */
 .math-keyboard {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: #1A3A5C; padding: 10px 10px 14px;
-  z-index: 500; display: none;
-  box-shadow: 0 -4px 16px rgba(0,0,0,.25);
+  background: #1A3A5C;
+  padding: 6px 6px 4px;
+  border-top: 2px solid rgba(255,255,255,.12);
 }
-.math-keyboard.visible { display: block; }
 .kbd-row {
-  display: flex; gap: 7px; margin-bottom: 7px; justify-content: center; max-width: 340px; margin-inline: auto;
+  display: flex; gap: 5px; margin-bottom: 5px; justify-content: center; max-width: 340px; margin-inline: auto;
 }
 .kbd-btn {
-  flex: 1; height: 52px; background: #2E5B8C; color: #fff;
-  border: none; border-radius: 8px; font-size: 1.25rem; font-weight: 700;
+  flex: 1; height: 42px; background: #2E5B8C; color: #fff;
+  border: none; border-radius: 7px; font-size: 1.05rem; font-weight: 700;
   cursor: pointer; transition: background .1s;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
 .kbd-btn:active { background: var(--primary); }
-.kbd-btn-del   { background: #4A5568; font-size: 1rem; }
-.kbd-btn-clear { background: #4A5568; font-size: .9rem; }
-.kbd-btn-op    { background: #2C4A6E; font-size: 1.3rem; font-weight: 800; }
+.kbd-btn-del   { background: #4A5568; font-size: .9rem; }
+.kbd-btn-clear { background: #4A5568; font-size: .8rem; }
+.kbd-btn-op    { background: #2C4A6E; font-size: 1.1rem; font-weight: 800; }
 .kbd-btn-zero  { flex: 2; }
 
 /* ── Utility ─────────────────────────────────────────────────────────── */
@@ -490,3 +488,97 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 
 /* Fraction keyboard button */
 .kbd-btn-frac { background: var(--primary) !important; font-size: .9rem; font-weight: 800; }
+
+/* ── Oefenen layout: scrollable top + fixed bottom ───────────────────── */
+.oefenen-layout {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 56px);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.oefenen-scroll {
+  flex: 1 1 0;
+  overflow-y: auto;
+  padding: 12px 14px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.oefenen-bodem {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 2px solid var(--border);
+}
+
+/* ── Step list ───────────────────────────────────────────────────────── */
+.stap-lijst {
+  padding: 8px 14px 4px;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.stap-rij {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.stap-rij .mq-field-box {
+  flex: 1;
+  min-height: 46px;
+  padding: 7px 12px;
+  font-size: 1.1rem;
+}
+
+.stap-mq-static {
+  flex: 1;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.1rem;
+  opacity: 0.85;
+}
+
+.stap-status {
+  font-size: 1.2rem;
+  font-weight: 800;
+  min-width: 24px;
+  text-align: center;
+}
+
+.stap-rij.stap-goed .stap-status        { color: var(--green); }
+.stap-rij.stap-tussenstap .stap-status  { color: var(--amber); }
+
+.stap-hint {
+  padding: 0 14px 6px;
+  font-size: .7rem;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+.stap-hint kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: .65rem;
+}
+
+/* feedback inside bottom section */
+.oefenen-bodem #feedback-zone { padding: 0 14px 2px; }
+.oefenen-bodem .feedback-box  { margin: 0; border-radius: var(--radius-sm); }
+
+/* actie-bar inside bottom section */
+.oefenen-bodem .actie-bar {
+  margin-top: 0;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* MC answer choices: sit in card in scroll area */
+.mc-sectie { margin-top: 14px; }
