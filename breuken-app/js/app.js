@@ -96,7 +96,7 @@ function route() {
   renderKatex(app);
   bindEvents(page, param);
 
-  const focusTarget = app.querySelector('.main-content, .login-card, .oefenen-grid');
+  const focusTarget = app.querySelector('.main-content, .login-card, .oefenen-main');
   if (focusTarget) { focusTarget.setAttribute('tabindex', '-1'); focusTarget.focus(); }
 }
 
@@ -253,34 +253,36 @@ function renderOefenen(leerdoelId) {
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
   }
 
+  const kbdBlok = needsKbd
+    ? `<div class="kbd-rij">
+        <div id="hint-zone" class="kbd-zij kbd-zij-links"></div>
+        ${getKeyboardHTML()}
+        <div id="oplossing-zone" class="kbd-zij kbd-zij-rechts"></div>
+      </div>`
+    : `<div id="hint-zone"></div><div id="oplossing-zone"></div>`;
+
   return `${header(ld.titel, '#dashboard')}
   <div class="main-content">
-    <div class="oefenen-grid">
-      <div class="oefenen-main">
-        <div class="card fade-in">
-          <div class="opgave-meta">
-            <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
-            <div class="opgave-dots">${dots}</div>
-          </div>
-          <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
-          ${type === 'drag' ? renderDragArea(vraag) : ''}
-          ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
+    <div class="oefenen-main">
+      <div class="card fade-in">
+        <div class="opgave-meta">
+          <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
+          <div class="opgave-dots">${dots}</div>
         </div>
-        <div class="oefenen-antwoord">
-          ${antwoordInhoud}
-          <div id="feedback-zone"></div>
-          ${needsKbd ? getKeyboardHTML() : ''}
-          <div class="actie-bar" id="actie-bar">
-            <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
-            <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
-            <button class="btn btn-primary" id="btn-controleer" aria-label="Controleer antwoord">✓ Controleer</button>
-          </div>
+        <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
+        ${type === 'drag' ? renderDragArea(vraag) : ''}
+        ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
+      </div>
+      <div class="oefenen-antwoord">
+        ${antwoordInhoud}
+        <div id="feedback-zone"></div>
+        ${kbdBlok}
+        <div class="actie-bar" id="actie-bar">
+          <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
+          <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
+          <button class="btn btn-primary" id="btn-controleer" aria-label="Controleer antwoord">✓ Controleer</button>
         </div>
       </div>
-      <aside class="oefenen-zij">
-        <div id="hint-zone"></div>
-        <div id="oplossing-zone"></div>
-      </aside>
     </div>
   </div>`;
 }
@@ -520,7 +522,6 @@ function bindOefenen(leerdoelId) {
       <strong>💡 Hint ${APP.hintIdx} van ${vraag.hints.length}</strong>${hint}
     </div>`;
     renderKatex(zone);
-    zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
   });
 
   document.getElementById('btn-oplossing')?.addEventListener('click', () => {
@@ -533,7 +534,6 @@ function bindOefenen(leerdoelId) {
     zone.innerHTML = renderOplossing(vraag);
     renderKatex(zone);
     document.getElementById('btn-oplossing').disabled = true;
-    zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
     toonNieuweVraagKnop();
   });
 
@@ -643,7 +643,6 @@ function controleer(vraag) {
         }
         zone.innerHTML = renderOplossing(vraag);
         renderKatex(zone);
-        zone.closest('.oefenen-zij')?.classList.add('heeft-inhoud');
         toonNieuweVraagKnop();
       }
     }
