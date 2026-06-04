@@ -58,6 +58,7 @@ function handleKbdKey(val) {
     case 'CLR':   mq.latex(''); mq.focus(); break;
     case 'NEXT':  mq.keystroke('Right'); break;
     case 'FRAC':  mq.typedText('/'); break;
+    case ':':     mq.typedText('/'); break;
     case 'MIXED': mq.cmd('\\frac'); break;
     case '+':     mq.typedText('+'); break;
     case '-':     mq.typedText('-'); break;
