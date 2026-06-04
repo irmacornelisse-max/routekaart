@@ -592,7 +592,20 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   margin-bottom: 14px;
 }
 
-/* ── Oefenen layout ──────────────────────────────────────────────────── */
+/* ── Oefenen grid layout ─────────────────────────────────────────────── */
+.oefenen-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 700px) {
+  .oefenen-grid {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+}
+
 .oefenen-main { min-width: 0; }
 
 .oefenen-antwoord {
@@ -617,38 +630,10 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   border-radius: var(--radius-sm);
 }
 
-/* ── Toetsenbord met hint links en oplossing rechts ──────────────────── */
-.kbd-rij {
+.oefenen-zij {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 12px;
-  padding: 8px;
-}
-.kbd-rij .math-keyboard {
-  flex: 0 0 auto;
-  width: 360px;
-  border-top: none;
-  border-radius: 10px;
-}
-.kbd-zij {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.kbd-zij .hint-box,
-.kbd-zij .oplossing-box {
-  margin-top: 0;
-}
-
-@media (max-width: 820px) {
-  .kbd-rij {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .kbd-rij .math-keyboard {
-    width: 100%;
-    order: -1;
-  }
-  .kbd-zij { width: 100%; }
 }
 
 /* ── Yellow dot (goed na fouten) ─────────────────────────────────────── */
