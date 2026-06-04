@@ -516,8 +516,6 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 /* ── Step list ───────────────────────────────────────────────────────── */
 .stap-lijst {
   padding: 8px 14px 4px;
-  max-height: 30vh;
-  overflow-y: auto;
 }
 
 .stap-rij {
@@ -615,7 +613,6 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   border-radius: var(--radius);
   border: 1px solid var(--border);
   margin-top: 12px;
-  overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
