@@ -380,6 +380,11 @@ function feedbackBoodschap(vraag, gegeven) {
     'BD.2': 'Tel decimalen, schrijf als breuk/10 of /100, vereenvoudig.',
     'BV.1': 'Tel de delen op voor het totaal: breuk = deel/totaal.',
     'BV.2': 'Breuk n/d → verhouding n:(d−n), vereenvoudig.',
+    'H.B5678':    'Bepaal of het een optelling of aftrekking is en werk stap voor stap.',
+    'H.B9to12':   'Bepaal of het een vermenigvuldiging of deling is en werk stap voor stap.',
+    'H.allBreuk': 'Herken de bewerking en pas de juiste strategie toe.',
+    'H.omrekenen':'Herken de gevraagde omrekening en pas de juiste stappen toe.',
+    'C.allBreuk': 'Let op de volgorde van bewerkingen: × en ÷ gaan vóór + en −.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }

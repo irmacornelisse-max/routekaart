@@ -6,18 +6,21 @@ function getKeyboardHTML() {
       <button class="kbd-btn" data-val="7">7</button>
       <button class="kbd-btn" data-val="8">8</button>
       <button class="kbd-btn" data-val="9">9</button>
+      <button class="kbd-btn kbd-btn-op" data-val="+">+</button>
       <button class="kbd-btn kbd-btn-del" data-val="DEL">⌫</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="4">4</button>
       <button class="kbd-btn" data-val="5">5</button>
       <button class="kbd-btn" data-val="6">6</button>
+      <button class="kbd-btn kbd-btn-op" data-val="-">−</button>
       <button class="kbd-btn kbd-btn-op" data-val="NEXT">→</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="1">1</button>
       <button class="kbd-btn" data-val="2">2</button>
       <button class="kbd-btn" data-val="3">3</button>
+      <button class="kbd-btn kbd-btn-op" data-val="TIMES">×</button>
       <button class="kbd-btn kbd-btn-op" data-val=":">:</button>
     </div>
     <div class="kbd-row">
@@ -51,11 +54,14 @@ function handleKbdKey(val) {
   const mq = window.APP?.activeMQField;
   if (!mq) return;
   switch (val) {
-    case 'DEL':  mq.keystroke('Backspace'); break;
-    case 'CLR':  mq.latex(''); mq.focus(); break;
-    case 'NEXT': mq.keystroke('Right'); break;
+    case 'DEL':   mq.keystroke('Backspace'); break;
+    case 'CLR':   mq.latex(''); mq.focus(); break;
+    case 'NEXT':  mq.keystroke('Right'); break;
     case 'FRAC':  mq.typedText('/'); break;
     case 'MIXED': mq.cmd('\\frac'); break;
+    case '+':     mq.typedText('+'); break;
+    case '-':     mq.typedText('-'); break;
+    case 'TIMES': mq.cmd('\\times'); break;
     default:      mq.typedText(val); break;
   }
 }

@@ -404,8 +404,8 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   display: flex; gap: 5px; margin-bottom: 5px; justify-content: center; max-width: 340px; margin-inline: auto;
 }
 .kbd-btn {
-  flex: 1; height: 42px; background: #2E5B8C; color: #fff;
-  border: none; border-radius: 7px; font-size: 1.05rem; font-weight: 700;
+  flex: 1; height: 40px; min-width: 0; background: #2E5B8C; color: #fff;
+  border: none; border-radius: 7px; font-size: .95rem; font-weight: 700;
   cursor: pointer; transition: background .1s;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;

@@ -512,6 +512,144 @@ function genBV2() {
   };
 }
 
+/* ── H/C-doel helpers ────────────────────────────────────────────────── */
+
+/* Fraction arithmetic on [n, d] pairs. Returns simplified [n, d] or null. */
+function _applyOp([n1, d1], op, [n2, d2]) {
+  let rn, rd;
+  if (op === '+') {
+    const L = lcm(d1, d2);
+    rn = n1 * (L / d1) + n2 * (L / d2); rd = L;
+  } else if (op === '-') {
+    const L = lcm(d1, d2);
+    rn = n1 * (L / d1) - n2 * (L / d2); rd = L;
+  } else if (op === '×') {
+    rn = n1 * n2; rd = d1 * d2;
+  } else {
+    if (n2 === 0) return null;
+    rn = n1 * d2; rd = d1 * n2;
+  }
+  if (rn <= 0 || rd <= 0) return null;
+  const [sn, sd] = simplifyFrac(rn, rd);
+  if (sd > 60) return null;
+  return [sn, sd];
+}
+
+/* Format [n, d] as LaTeX string (auto-detects whole / mixed / proper, always simplified) */
+function _fracTeX([n, d]) {
+  const [sn, sd] = simplifyFrac(n, d);
+  if (sd === 1) return `${sn}`;
+  if (sn > sd) {
+    const [w, rn, rd] = improperToMixed(sn, sd);
+    return rn === 0 ? `${w}` : fmtMixed(w, rn, rd);
+  }
+  return fmtFrac(sn, sd);
+}
+
+/* Build antwoord object + type from [n, d] */
+function _fracAntwoord([n, d]) {
+  if (n % d === 0) return { antwoordType: 'integer', antwoord: { waarde: n / d } };
+  if (n > d) {
+    const [w, rn, rd] = improperToMixed(n, d);
+    return rn === 0
+      ? { antwoordType: 'integer', antwoord: { waarde: w } }
+      : { antwoordType: 'mixed',   antwoord: { geheel: w, teller: rn, noemer: rd } };
+  }
+  return { antwoordType: 'fraction', antwoord: { teller: n, noemer: d } };
+}
+
+/* Random simplified proper fraction, optionally as a mixed number */
+function _randFrac(allowMixed) {
+  const DENS = [2, 3, 4, 5, 6, 8];
+  const d = pick(DENS);
+  const n = rand(1, d - 1);
+  const [sn, sd] = simplifyFrac(n, d); // ensure always reduced
+  if (allowMixed && Math.random() > 0.55) {
+    const w = rand(1, 3);
+    return [w * sd + sn, sd];
+  }
+  return [sn, sd];
+}
+
+/* LaTeX symbol for an operator */
+function _opTeX(op) {
+  if (op === '×') return '\\times';
+  if (op === '÷') return '\\div';
+  return op;
+}
+
+/* ── C.allBreuk – alle 8 breukbewerkingen gecombineerd ──────────────── */
+function genC_allBreuk() {
+  const lowPrec  = ['+', '-'];
+  const highPrec = ['×', '÷'];
+
+  for (let poging = 0; poging < 150; poging++) {
+    /* Kies 2 bewerkingen – bij voorkeur uit verschillende prioriteitsgroepen */
+    const mixPrec = Math.random() > 0.35;
+    let op1, op2;
+    if (mixPrec) {
+      if (Math.random() > 0.5) { op1 = pick(lowPrec);  op2 = pick(highPrec); }
+      else                      { op1 = pick(highPrec); op2 = pick(lowPrec);  }
+    } else {
+      if (Math.random() > 0.5) { op1 = pick(lowPrec);  op2 = pick(lowPrec);  }
+      else                      { op1 = pick(highPrec); op2 = pick(highPrec); }
+    }
+
+    const needsMixed = lowPrec.includes(op1) || lowPrec.includes(op2);
+    const a = _randFrac(needsMixed);
+    const b = _randFrac(needsMixed);
+    const c = _randFrac(needsMixed);
+
+    /* Bereken uitkomst met correcte volgorde van bewerkingen */
+    const orderOfOps = (lowPrec.includes(op1) && highPrec.includes(op2));
+    let stap1val, result;
+
+    if (orderOfOps) {
+      /* a + b × c  →  b × c eerst */
+      stap1val = _applyOp(b, op2, c);
+      if (!stap1val) continue;
+      result = _applyOp(a, op1, stap1val);
+    } else {
+      /* links naar rechts: (a op1 b) op2 c */
+      stap1val = _applyOp(a, op1, b);
+      if (!stap1val) continue;
+      result = _applyOp(stap1val, op2, c);
+    }
+
+    if (!result) continue;
+    const [rn, rd] = result;
+    if (rn > 60 || rd > 24) continue;
+
+    const { antwoordType, antwoord } = _fracAntwoord(result);
+
+    /* Beschrijving van de stappen */
+    let s1, s2;
+    if (orderOfOps) {
+      s1 = `Eerst $${_fracTeX(b)} ${_opTeX(op2)} ${_fracTeX(c)} = ${_fracTeX(stap1val)}$ ($${_opTeX(op2)}$ gaat vóór $${_opTeX(op1)}$)`;
+      s2 = `Dan $${_fracTeX(a)} ${_opTeX(op1)} ${_fracTeX(stap1val)} = ${_fracTeX(result)}$`;
+    } else {
+      s1 = `**Stap 1:** $${_fracTeX(a)} ${_opTeX(op1)} ${_fracTeX(b)} = ${_fracTeX(stap1val)}$`;
+      s2 = `**Stap 2:** $${_fracTeX(stap1val)} ${_opTeX(op2)} ${_fracTeX(c)} = ${_fracTeX(result)}$`;
+    }
+
+    const vraagStr = `$${_fracTeX(a)} ${_opTeX(op1)} ${_fracTeX(b)} ${_opTeX(op2)} ${_fracTeX(c)}$`;
+    const hints = orderOfOps
+      ? [`Let op de volgorde van bewerkingen: vermenigvuldigen en delen gaan vóór optellen en aftrekken.`, s1]
+      : [`Werk de berekening stap voor stap van links naar rechts uit.`, s1];
+
+    return {
+      id: uid(), leerdoel: 'C.allBreuk',
+      vraag: `Bereken: ${vraagStr}`,
+      antwoordType, antwoord,
+      data: { a, b, c, op1, op2 },
+      hints, oplossing: `${s1}\n${s2}`
+    };
+  }
+
+  /* Noodgeval: gebruik een eenvoudige optelling als fallback */
+  const q = genB5(); q.leerdoel = 'C.allBreuk'; return q;
+}
+
 /* ── Leerdoel registry ───────────────────────────────────────────────── */
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
@@ -534,6 +672,30 @@ const LEERDOELEN = [
   { id: 'BD.2',  titel: 'Decimaal getal → breuk',                groep: 'Omrekenen',    gen: genBD2  },
   { id: 'BV.1',  titel: 'Verhouding → breuk',                    groep: 'Verhoudingen', gen: genBV1  },
   { id: 'BV.2',  titel: 'Breuk → verhouding',                    groep: 'Verhoudingen', gen: genBV2  },
+
+  /* ── H-doelen (husseldoelen) ──────────────────────────────────────── */
+  {
+    id: 'H.B5678', titel: 'Optellen en aftrekken – afwisselend', groep: 'Gemengd',
+    gen: () => { const q = pick([genB5,genB6,genB7,genB8])(); q.leerdoel='H.B5678'; return q; }
+  },
+  {
+    id: 'H.B9to12', titel: 'Vermenigvuldigen en delen – afwisselend', groep: 'Gemengd',
+    gen: () => { const q = pick([genB9,genB10,genB11,genB12])(); q.leerdoel='H.B9to12'; return q; }
+  },
+  {
+    id: 'H.allBreuk', titel: 'Alle breukbewerkingen – afwisselend', groep: 'Gemengd',
+    gen: () => { const q = pick([genB5,genB6,genB7,genB8,genB9,genB10,genB11,genB12])(); q.leerdoel='H.allBreuk'; return q; }
+  },
+  {
+    id: 'H.omrekenen', titel: 'Omrekenen – afwisselend', groep: 'Gemengd',
+    gen: () => { const q = pick([genBP1,genBP2,genBD1,genBD2,genBV1,genBV2])(); q.leerdoel='H.omrekenen'; return q; }
+  },
+
+  /* ── C-doelen (combinatiedoelen) ──────────────────────────────────── */
+  {
+    id: 'C.allBreuk', titel: 'Alle breukbewerkingen – gecombineerd', groep: 'Gemengd',
+    gen: genC_allBreuk
+  },
 ];
 
 function generateVraag(leerdoelId) {
