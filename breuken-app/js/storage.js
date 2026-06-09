@@ -20,18 +20,23 @@ function saveData(data) {
 
 function getHuidigeStudent() {
   try {
-    return JSON.parse(sessionStorage.getItem('bf_current')) || null;
+    return JSON.parse(sessionStorage.getItem('bf_current'))
+        || JSON.parse(localStorage.getItem('bf_current'))
+        || null;
   } catch {
     return null;
   }
 }
 
 function setHuidigeStudent(s) {
-  sessionStorage.setItem('bf_current', JSON.stringify(s));
+  const v = JSON.stringify(s);
+  sessionStorage.setItem('bf_current', v);
+  localStorage.setItem('bf_current', v);
 }
 
 function uitloggen() {
   sessionStorage.removeItem('bf_current');
+  localStorage.removeItem('bf_current');
 }
 
 function registreerStudent(naam) {

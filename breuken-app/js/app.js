@@ -13,6 +13,7 @@ const APP = {
   activeMQField: null,
   stappen: [],
   resultaatOpgeslagen: false,
+  timerInterval: null,
 };
 window.APP = APP;
 
@@ -70,9 +71,47 @@ function leerdoelZichtbaar(id) {
   return getZichtbareLeerdoelen().some(l => l.id === id);
 }
 
+function renderToc(actiefId) {
+  const zichtbaar = getZichtbareLeerdoelen();
+  const groepen = [...new Set(zichtbaar.map(l => l.groep))];
+  let html = '<nav class="toc-sidebar" aria-label="Inhoudsopgave">';
+  groepen.forEach(g => {
+    html += `<div class="toc-groep-label">${g}</div>`;
+    zichtbaar.filter(l => l.groep === g).forEach(ld => {
+      const actief = ld.id === actiefId;
+      html += `<button class="toc-btn${actief ? ' actief' : ''}" onclick="window.location.hash='#oefenen/${ld.id}'"${actief ? ' aria-current="page"' : ''}>${escHtml(ld.titel)}</button>`;
+    });
+  });
+  html += '</nav>';
+  return html;
+}
+
+/* ── Tijd-limiet via URL (?tijd=30) ──────────────────────────────────────────
+   De docent kan een tijdslimiet per vraag meegeven in de link.
+   tijd=30 geeft de leerling 30 seconden per vraag. */
+const TIJD_KEY = 'bf_tijd_limiet';
+
+function leesTijdFilterUitURL() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('tijd');
+  if (raw === null) return;
+  const secs = parseInt(raw, 10);
+  if (secs >= 5 && secs <= 300) {
+    sessionStorage.setItem(TIJD_KEY, secs.toString());
+  } else {
+    sessionStorage.removeItem(TIJD_KEY);
+  }
+}
+
+function getTijdLimiet() {
+  const v = sessionStorage.getItem(TIJD_KEY);
+  const n = v ? parseInt(v, 10) : 0;
+  return n >= 5 ? n : null;
+}
 
 /* ── Routing ─────────────────────────────────────────────────────────────── */
 function route() {
+  stopTimer();
   const hash = window.location.hash || '#login';
   const [page, param] = hash.slice(1).split('/');
 
@@ -101,7 +140,7 @@ function route() {
 }
 
 window.addEventListener('hashchange', route);
-window.addEventListener('load', () => { leesLeerdoelFilterUitURL(); initMathKeyboard(); route(); });
+window.addEventListener('load', () => { leesLeerdoelFilterUitURL(); leesTijdFilterUitURL(); initMathKeyboard(); route(); });
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 function header(title, backHash, rightHTML = '') {
@@ -174,7 +213,9 @@ function renderDashboard() {
   const groepen = [...new Set(zichtbareLeerdoelen.map(l => l.groep))];
   let html = `${header('Oefenen met breuken', '',
     `<button class="btn-header" onclick="doUitloggen()">Uitloggen</button>`)}
-  <div class="main-content">
+  <div class="page-with-toc">
+    ${renderToc()}
+    <div class="toc-content"><div class="main-content">
     <div class="dashboard-welcome">
       <div>
         <div class="welcome-name">👋 Hallo, ${escHtml(APP.student.naam)}!</div>
@@ -202,7 +243,7 @@ function renderDashboard() {
     html += `</div>`;
   });
 
-  html += `</div><div id="deel-modal" style="display:none"></div>`;
+  html += `</div></div></div><div id="deel-modal" style="display:none"></div>`;
   return html;
 }
 
@@ -253,13 +294,19 @@ function renderOefenen(leerdoelId) {
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
   }
 
+  const tijdLimiet = getTijdLimiet();
+  const timerHTML = tijdLimiet ? `<span class="timer-display" id="timer-display">⏱ ${tijdLimiet}</span>` : '';
+
   return `${header(ld.titel, '#dashboard')}
-  <div class="main-content">
+  <div class="page-with-toc">
+    ${renderToc(leerdoelId)}
+    <div class="toc-content"><div class="main-content">
     <div class="oefenen-grid">
       <div class="oefenen-main">
         <div class="card fade-in">
           <div class="opgave-meta">
             <span class="opgave-nr">Opgave ${APP.opgaveNr}</span>
+            ${timerHTML}
             <div class="opgave-dots">${dots}</div>
           </div>
           <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
@@ -282,7 +329,7 @@ function renderOefenen(leerdoelId) {
         <div id="oplossing-zone"></div>
       </aside>
     </div>
-  </div>`;
+  </div></div></div>`;
 }
 
 /* ── MC options ──────────────────────────────────────────────────────────── */
@@ -436,6 +483,7 @@ function kleurMcKnoppen(vraag) {
 
 /* ── New question ────────────────────────────────────────────────────────── */
 function nieuweVraag() {
+  stopTimer();
   APP.huidigVraag = generateVraag(APP.huidigLeerdoel);
   APP.hintIdx = 0;
   APP.pogingen = 0;
@@ -524,6 +572,7 @@ function bindOefenen(leerdoelId) {
   });
 
   document.getElementById('btn-oplossing')?.addEventListener('click', () => {
+    stopTimer();
     const zone = document.getElementById('oplossing-zone');
     if (zone.innerHTML) return;
     if (!APP.resultaatOpgeslagen) {
@@ -538,6 +587,9 @@ function bindOefenen(leerdoelId) {
   });
 
   document.getElementById('btn-controleer')?.addEventListener('click', () => controleer(vraag));
+
+  const tijdLimiet = getTijdLimiet();
+  if (tijdLimiet) startTimer(tijdLimiet);
 }
 
 /* ── Step list helpers ───────────────────────────────────────────────────── */
@@ -614,6 +666,7 @@ function controleer(vraag) {
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
 
   if (staat === 'goed') {
+    stopTimer();
     if (!APP.resultaatOpgeslagen) {
       slaResultaatOp(APP.student.id, vraag.leerdoel, APP.pogingen > 0 ? 'goed_na_fouten' : 'goed');
       APP.resultaatOpgeslagen = true;
@@ -635,6 +688,7 @@ function controleer(vraag) {
     toonFeedback('fout', feedbackBoodschap(vraag, gegeven));
     if (type === 'mc') kleurMcKnoppen(vraag);
     if (APP.pogingen >= 3) {
+      stopTimer();
       const zone = document.getElementById('oplossing-zone');
       if (!zone.innerHTML) {
         if (!APP.resultaatOpgeslagen) {
@@ -648,6 +702,50 @@ function controleer(vraag) {
       }
     }
   }
+}
+
+/* ── Timer ───────────────────────────────────────────────────────────────── */
+function startTimer(secs) {
+  stopTimer();
+  let remaining = secs;
+  _updateTimerEl(remaining);
+  APP.timerInterval = setInterval(() => {
+    remaining--;
+    _updateTimerEl(remaining);
+    if (remaining <= 0) { stopTimer(); _timerVervallen(); }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (APP.timerInterval) { clearInterval(APP.timerInterval); APP.timerInterval = null; }
+}
+
+function _updateTimerEl(secs) {
+  const el = document.getElementById('timer-display');
+  if (!el) return;
+  el.textContent = `⏱ ${secs}`;
+  el.className = 'timer-display' + (secs <= 5 ? ' timer-urgent' : '');
+}
+
+function _timerVervallen() {
+  if (!document.getElementById('timer-display')) return;
+  const vraag = APP.huidigVraag;
+  if (!vraag || APP.resultaatOpgeslagen) return;
+  slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+  APP.resultaatOpgeslagen = true;
+  toonFeedback('fout', '⏰ De tijd is om!');
+  if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);
+  const zone = document.getElementById('oplossing-zone');
+  if (zone && !zone.innerHTML) {
+    zone.innerHTML = renderOplossing(vraag);
+    renderKatex(zone);
+  }
+  ['btn-oplossing', 'btn-hint', 'btn-controleer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+  toonNieuweVraagKnop();
+  document.getElementById('oplossing-zone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 /* ── Drag & Drop (B.01c) ─────────────────────────────────────────────────── */
@@ -816,7 +914,13 @@ function renderDocent() {
         <button class="btn btn-ghost btn-sm" id="btn-ld-geen">Alles uitvinken</button>
       </div>
       ${keuzelijst}
-      <div style="margin-top:14px">
+      <div class="ldsel-tijdlimiet" style="margin-top:14px">
+        <div class="ldsel-groep" style="margin-top:0">Tijdslimiet per vraag (optioneel)</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <input type="number" id="inp-tijd" min="5" max="300" placeholder="bijv. 30"
+            style="width:90px;padding:6px 10px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:.9rem;font-family:inherit"/>
+          <span style="font-size:.85rem;color:var(--text-mid)">seconden (leeg = geen tijdslimiet)</span>
+        </div>
         <button class="btn btn-primary" id="btn-genereer-link">Genereer link</button>
       </div>
       <div id="link-resultaat"></div>
@@ -836,8 +940,12 @@ function renderDocent() {
 function genereerOefenLink() {
   const gekozen = [...document.querySelectorAll('.ldsel-check:checked')].map(c => c.value);
   const basis = window.location.origin + window.location.pathname;
-  if (!gekozen.length) return basis;
-  return basis + '?leerdoelen=' + gekozen.join(',');
+  const params = new URLSearchParams();
+  if (gekozen.length) params.set('leerdoelen', gekozen.join(','));
+  const tijd = parseInt(document.getElementById('inp-tijd')?.value || '', 10);
+  if (tijd >= 5 && tijd <= 300) params.set('tijd', tijd.toString());
+  const qs = params.toString();
+  return basis + (qs ? '?' + qs : '');
 }
 
 function bindDocent() {
