@@ -71,16 +71,67 @@ function leerdoelZichtbaar(id) {
   return getZichtbareLeerdoelen().some(l => l.id === id);
 }
 
+const TOC_DATA = [
+  {
+    label: 'Breuken', inklapbaar: true,
+    secties: [
+      {
+        label: 'Breuken basis', inklapbaar: true,
+        items: [
+          { label: 'Teller en noemer herkennen', knoppen: [{ lbl: 'a', id: 'B.01a' }] },
+          { label: 'Breuk op een getallenlijn',  knoppen: [{ lbl: 'a', id: 'B.0' }, { lbl: 'b', id: 'B.01b' }, { lbl: 'c', id: 'B.01c' }] },
+          { label: 'Breuken vereenvoudigen',     knoppen: [{ lbl: 'a', id: 'B.3' }] },
+          { label: 'Breuken gelijknamig maken',  knoppen: [{ lbl: 'b', id: 'B.1' }] },
+        ]
+      },
+      {
+        label: 'Breuken bewerkingen', inklapbaar: true,
+        items: [
+          { label: 'Optellen',                          knoppen: [{ lbl: 'a', id: 'B.5' }, { lbl: 'b', id: 'B.7' }] },
+          { label: 'Aftrekken',                         knoppen: [{ lbl: 'a', id: 'B.6' }, { lbl: 'b', id: 'B.8' }] },
+          { label: 'Optellen en aftrekken',             knoppen: [{ lbl: 'a', id: 'H.B5678' }] },
+          { label: 'Vermenigvuldigen',                  knoppen: [{ lbl: 'a', id: 'B.9' }, { lbl: 'b', id: 'B.11' }] },
+          { label: 'Delen',                             knoppen: [{ lbl: 'a', id: 'B.10' }, { lbl: 'b', id: 'B.12' }] },
+          { label: 'Vermenigvuldigen en delen',         knoppen: [{ lbl: 'a', id: 'H.B9to12' }] },
+          { label: 'Opt., aftr., verm. en delen',      knoppen: [{ lbl: 'a', id: 'H.allBreuk' }] },
+        ]
+      },
+      {
+        label: 'Breuken omrekenen', inklapbaar: false,
+        items: [
+          { label: 'Van en naar percentages',  knoppen: [{ lbl: 'a', id: 'BP.1' }, { lbl: 'b', id: 'BP.2' }] },
+          { label: 'Van en naar decimalen',    knoppen: [{ lbl: 'a', id: 'BD.1' }, { lbl: 'b', id: 'BD.2' }] },
+          { label: 'Van en naar verhoudingen', knoppen: [{ lbl: 'a', id: 'BV.1' }, { lbl: 'b', id: 'BV.2' }] },
+        ]
+      },
+    ]
+  }
+];
+
 function renderToc(actiefId) {
-  const zichtbaar = getZichtbareLeerdoelen();
-  const groepen = [...new Set(zichtbaar.map(l => l.groep))];
   let html = '<nav class="toc-sidebar" aria-label="Inhoudsopgave">';
-  groepen.forEach(g => {
-    html += `<div class="toc-groep-label">${g}</div>`;
-    zichtbaar.filter(l => l.groep === g).forEach(ld => {
-      const actief = ld.id === actiefId;
-      html += `<button class="toc-btn${actief ? ' actief' : ''}" onclick="window.location.hash='#oefenen/${ld.id}'"${actief ? ' aria-current="page"' : ''}>${escHtml(ld.titel)}</button>`;
-    });
+  TOC_DATA.forEach(top => {
+    const innerSecs = top.secties.map(sec => {
+      const items = sec.items.filter(it => it.knoppen.some(k => leerdoelZichtbaar(k.id)));
+      if (!items.length) return '';
+      const rows = items.map(it => {
+        const btns = it.knoppen.filter(k => leerdoelZichtbaar(k.id)).map(k => {
+          const actief = k.id === actiefId;
+          return `<button class="toc-kbtn${actief ? ' actief' : ''}" onclick="window.location.hash='#oefenen/${k.id}'"${actief ? ' aria-current="page"' : ''}>${k.lbl}</button>`;
+        }).join('');
+        return `<div class="toc-item"><span class="toc-item-label">${escHtml(it.label)}</span><div class="toc-item-btns">${btns}</div></div>`;
+      }).join('');
+      if (sec.inklapbaar) {
+        return `<details class="toc-sectie" open><summary>${escHtml(sec.label)}</summary>${rows}</details>`;
+      }
+      return `<div class="toc-sectie-label">${escHtml(sec.label)}</div>${rows}`;
+    }).join('');
+    if (!innerSecs.trim()) return;
+    if (top.inklapbaar) {
+      html += `<details class="toc-top" open><summary>${escHtml(top.label)}</summary>${innerSecs}</details>`;
+    } else {
+      html += innerSecs;
+    }
   });
   html += '</nav>';
   return html;
