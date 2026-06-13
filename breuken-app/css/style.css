@@ -175,7 +175,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .leerdoel-titel { font-size: .9rem; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
 .leerdoel-voortgang { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
 .voortgang-dots { display: flex; gap: 4px; }
-.voortgang-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+.voortgang-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--border);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 6px; font-weight: 900; color: #fff; line-height: 1;
+}
 .dot-goed   { background: var(--green); }
 .dot-fout   { background: var(--red); }
 .voortgang-label { font-size: .78rem; color: var(--text-soft); }
@@ -681,44 +685,123 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 }
 
 .toc-sidebar {
-  width: 200px;
+  width: 242px;
   flex-shrink: 0;
   position: sticky;
   top: 56px;
-  max-height: calc(100vh - 56px);
-  overflow-y: auto;
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  padding: 10px 8px 20px;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+  background: var(--bg);
+  border-right: 2px solid var(--border);
+  padding: 0;
   align-self: flex-start;
 }
 
-.toc-groep-label {
-  font-size: .68rem;
+/* ── Bovenste "Breuken" toggle ───────────────────────────────────────── */
+.toc-hoofd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px 7px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+  font-weight: 800;
+  color: var(--secondary);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background .1s;
+  letter-spacing: .01em;
+}
+.toc-hoofd:hover { background: rgba(26,58,92,.06); }
+
+.toc-hoofd-body.toc-gesloten,
+.toc-sectie-body.toc-gesloten { display: none; }
+
+/* ── Sectie-kopjes (Basis, Bewerkingen, Omrekenen) ───────────────────── */
+.toc-sectie-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 10px 4px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: .72rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text-soft);
-  padding: 10px 8px 3px;
+  color: var(--secondary);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background .1s;
+  margin-top: 1px;
+}
+.toc-sectie-header:hover { background: rgba(26,58,92,.06); }
+
+/* ── Driehoekjes ─────────────────────────────────────────────────────── */
+.toc-arrow {
+  font-size: .65rem;
+  color: var(--secondary);
+  opacity: 0.45;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
-.toc-btn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 5px 8px;
-  border-radius: var(--radius-sm);
-  font-size: .78rem;
-  color: var(--text-mid);
-  font-weight: 500;
-  line-height: 1.3;
-  transition: background .1s, color .1s;
+/* ── Item-rijen ──────────────────────────────────────────────────────── */
+.toc-item-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 3px 8px 3px 18px;
+  gap: 5px;
+  min-height: 24px;
+  transition: background .08s;
 }
-.toc-btn:hover { background: var(--bg); color: var(--text); }
-.toc-btn.actief {
-  background: var(--primary-light);
-  color: var(--primary-dark);
+.toc-item-row:hover { background: rgba(26,58,92,.05); }
+
+.toc-item-label {
+  font-size: .71rem;
+  color: var(--secondary);
+  flex: 1;
+  line-height: 1.35;
+  padding-top: 1px;
+}
+
+.toc-item-badges {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+  align-items: flex-start;
+  padding-top: 1px;
+}
+
+/* ── Ronde a/b/c badges ──────────────────────────────────────────────── */
+.toc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: #fff;
+  font-size: .62rem;
   font-weight: 700;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background .1s, transform .1s;
+  line-height: 1;
+}
+.toc-badge:hover {
+  background: var(--primary);
+  transform: scale(1.12);
+}
+.toc-badge.actief {
+  background: var(--primary);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--primary);
 }
 
 @media (max-width: 699px) {

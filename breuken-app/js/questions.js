@@ -512,6 +512,502 @@ function genBV2() {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   GEHELE GETALLEN
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── G.1 – Natuurlijke getallen optellen ────────────────────────────── */
+function genG1() {
+  const a = rand(1, 60), b = rand(1, 60);
+  return {
+    id: uid(), leerdoel: 'G.1',
+    vraag: `Bereken: $${a} + ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a + b }, data: { a, b },
+    hints: [
+      'Begin bij het grootste getal en tel het andere getal erbij op.',
+      `$${a} + ${b} = ${a + b}$`
+    ],
+    oplossing: `$${a} + ${b} = ${a + b}$`
+  };
+}
+
+/* ── G.2 – Natuurlijke getallen aftrekken ───────────────────────────── */
+function genG2() {
+  const b = rand(1, 50), a = rand(b, 99);
+  return {
+    id: uid(), leerdoel: 'G.2',
+    vraag: `Bereken: $${a} - ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a - b }, data: { a, b },
+    hints: [
+      'Trek het kleinste getal af van het grootste.',
+      `$${a} - ${b} = ${a - b}$`
+    ],
+    oplossing: `$${a} - ${b} = ${a - b}$`
+  };
+}
+
+/* ── G.3 – Natuurlijke getallen vermenigvuldigen ────────────────────── */
+function genG3() {
+  const a = rand(2, 10), b = rand(2, 10);
+  return {
+    id: uid(), leerdoel: 'G.3',
+    vraag: `Bereken: $${a} \\times ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a * b }, data: { a, b },
+    hints: [
+      `$${a} \\times ${b}$ betekent ${a} keer het getal ${b} optellen.`,
+      `$${a} \\times ${b} = ${a * b}$`
+    ],
+    oplossing: `$${a} \\times ${b} = ${a * b}$`
+  };
+}
+
+/* ── G.4 – Natuurlijke getallen delen ──────────────────────────────── */
+function genG4() {
+  const d = rand(2, 10), q = rand(2, 10);
+  const a = d * q;
+  return {
+    id: uid(), leerdoel: 'G.4',
+    vraag: `Bereken: $${a} \\div ${d}$`,
+    antwoordType: 'integer', antwoord: { waarde: q }, data: { a, d, q },
+    hints: [
+      `Vraag: ${d} keer welk getal is ${a}?`,
+      `$${d} \\times ${q} = ${a}$, dus $${a} \\div ${d} = ${q}$`
+    ],
+    oplossing: `$${a} \\div ${d} = ${q}$ (want $${d} \\times ${q} = ${a}$)`
+  };
+}
+
+/* ── G.5 – Positieve getallen kwadrateren ───────────────────────────── */
+function genG5() {
+  const n = rand(2, 12);
+  return {
+    id: uid(), leerdoel: 'G.5',
+    vraag: `Bereken: $${n}^2$`,
+    antwoordType: 'integer', antwoord: { waarde: n * n }, data: { n },
+    hints: [
+      `$${n}^2$ betekent $${n} \\times ${n}$.`,
+      `$${n} \\times ${n} = ${n * n}$`
+    ],
+    oplossing: `$${n}^2 = ${n} \\times ${n} = ${n * n}$`
+  };
+}
+
+/* ── G.6 – Worteltrekken van positieve getallen ─────────────────────── */
+function genG6() {
+  const n = rand(1, 12);
+  return {
+    id: uid(), leerdoel: 'G.6',
+    vraag: `Bereken: $\\sqrt{${n * n}}$`,
+    antwoordType: 'integer', antwoord: { waarde: n }, data: { n },
+    hints: [
+      `Vraag: welk getal × zichzelf geeft ${n * n}?`,
+      `$${n} \\times ${n} = ${n * n}$, dus $\\sqrt{${n * n}} = ${n}$`
+    ],
+    oplossing: `$\\sqrt{${n * n}} = ${n}$ (want $${n}^2 = ${n * n}$)`
+  };
+}
+
+/* ── G.7 – Negatieve getallen vergelijken ───────────────────────────── */
+function genG7() {
+  const nums = new Set();
+  while (nums.size < 4) nums.add(-rand(1, 20));
+  const arr = [...nums];
+  const vraagGrootst = Math.random() > 0.5;
+  const correctVal = vraagGrootst ? Math.max(...arr) : Math.min(...arr);
+  const correctIdx = arr.indexOf(correctVal);
+  const gesorteerd = [...arr].sort((a, b) => a - b);
+  return {
+    id: uid(), leerdoel: 'G.7',
+    vraag: `Welk getal is het <strong>${vraagGrootst ? 'grootst' : 'kleinst'}</strong>?`,
+    antwoordType: 'mc',
+    antwoord: { correct: correctIdx },
+    data: { arr, opties: arr.map(n => ({ label: `$${n}$` })) },
+    hints: [
+      'Op de getallenlijn staat een groter getal altijd rechts van een kleiner getal.',
+      `Bij negatieve getallen: hoe dichter bij nul, hoe groter. Van klein naar groot: $${gesorteerd.join(' < ')}$.`
+    ],
+    oplossing: `Van klein naar groot: $${gesorteerd.join(' < ')}$\nHet ${vraagGrootst ? 'grootst' : 'kleinst'}e getal is $${correctVal}$.`
+  };
+}
+
+/* ── G.8 – Negatieve gehele getallen optellen ──────────────────────── */
+function genG8() {
+  const type = rand(0, 2);
+  let a, b;
+  if (type === 0) { a = -rand(1, 15); b = rand(1, 15); }
+  else if (type === 1) { a = rand(1, 15); b = -rand(1, 15); }
+  else { a = -rand(1, 15); b = -rand(1, 15); }
+  const res = a + b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.8',
+    vraag: `Bereken: $${a} + ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      b < 0 ? 'Een positief getal optellen bij een negatief getal: bepaal het verschil en kijk welk getal het "zwaarst" weegt.'
+            : 'Begin bij het eerste getal en ga op de getallenlijn naar rechts.',
+      `$${a} + ${bStr} = ${res}$`
+    ],
+    oplossing: `$${a} + ${bStr} = ${res}$`
+  };
+}
+
+/* ── G.9 – Negatieve gehele getallen aftrekken ─────────────────────── */
+function genG9() {
+  const type = rand(0, 2);
+  let a, b;
+  if (type === 0) { a = rand(1, 15); b = rand(a + 1, a + 15); }   // pos - pos → neg
+  else if (type === 1) { a = -rand(1, 10); b = rand(1, 15); }      // neg - pos
+  else { a = -rand(1, 10); b = -rand(1, 15); }                      // neg - neg
+  const res = a - b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.9',
+    vraag: `Bereken: $${a} - ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Aftrekken van een negatief getal is hetzelfde als optellen van het positieve getal.',
+      `$${a} - ${bStr} = ${a} + ${b < 0 ? Math.abs(b) : `(${-b})`} = ${res}$`
+    ],
+    oplossing: `$${a} - ${bStr} = ${res}$`
+  };
+}
+
+/* ── G.10 – Negatieve gehele getallen vermenigvuldigen ─────────────── */
+function genG10() {
+  const type = rand(0, 1);
+  let a, b;
+  if (type === 0) { a = -rand(2, 10); b = rand(2, 10); }   // neg × pos
+  else { a = -rand(2, 10); b = -rand(2, 10); }              // neg × neg
+  const res = a * b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  const aStr = a < 0 ? `(${a})` : `${a}`;
+  return {
+    id: uid(), leerdoel: 'G.10',
+    vraag: `Bereken: $${aStr} \\times ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Vermenigvuldig eerst de absolute waarden (zonder minteken).',
+      type === 0 ? 'Negatief × positief = negatief.' : 'Negatief × negatief = positief.',
+      `$${aStr} \\times ${bStr} = ${res}$`
+    ],
+    oplossing: `$${aStr} \\times ${bStr} = ${res}$ (${type === 0 ? '− × + = −' : '− × − = +'})`
+  };
+}
+
+/* ── G.11 – Negatieve gehele getallen delen ─────────────────────────── */
+function genG11() {
+  const type = rand(0, 1);
+  const d = rand(2, 10), q = rand(2, 10);
+  let a, b;
+  if (type === 0) { a = -(d * q); b = d; }    // neg ÷ pos
+  else { a = -(d * q); b = -d; }               // neg ÷ neg
+  const res = a / b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.11',
+    vraag: `Bereken: $${a} \\div ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Deel eerst de absolute waarden.',
+      type === 0 ? 'Negatief ÷ positief = negatief.' : 'Negatief ÷ negatief = positief.',
+      `$${a} \\div ${bStr} = ${res}$`
+    ],
+    oplossing: `$${a} \\div ${bStr} = ${res}$ (${type === 0 ? '− ÷ + = −' : '− ÷ − = +'})`
+  };
+}
+
+/* ── G.12 – Gehele getallen kwadrateren ─────────────────────────────── */
+function genG12() {
+  const n = rand(2, 10);
+  const neg = Math.random() > 0.4;
+  const base = neg ? -n : n;
+  const baseStr = neg ? `(-${n})` : `${n}`;
+  return {
+    id: uid(), leerdoel: 'G.12',
+    vraag: `Bereken: $${baseStr}^2$`,
+    antwoordType: 'integer', antwoord: { waarde: n * n }, data: { n, neg },
+    hints: [
+      neg ? `$(-${n})^2 = (-${n}) \\times (-${n})$.`
+          : `$${n}^2 = ${n} \\times ${n}$.`,
+      neg ? `Negatief × negatief = positief: $(-${n}) \\times (-${n}) = ${n * n}$`
+          : `$${n} \\times ${n} = ${n * n}$`
+    ],
+    oplossing: `$${baseStr}^2 = ${baseStr} \\times ${baseStr} = ${n * n}$`
+  };
+}
+
+/* ── G.13 – Worteltrekken van gehele getallen ───────────────────────── */
+function genG13() {
+  const n = rand(2, 15);
+  const sq = n * n;
+  return {
+    id: uid(), leerdoel: 'G.13',
+    vraag: `Bereken: $\\sqrt{${sq}}$`,
+    antwoordType: 'integer', antwoord: { waarde: n }, data: { n, sq },
+    hints: [
+      `Vraag: welk geheel getal × zichzelf geeft ${sq}?`,
+      `$${n} \\times ${n} = ${sq}$, dus $\\sqrt{${sq}} = ${n}$`
+    ],
+    oplossing: `$\\sqrt{${sq}} = ${n}$ (want $${n}^2 = ${sq}$)`
+  };
+}
+
+/* ── G.14 – Machtsverheffen van positieve getallen ─────────────────── */
+function genG14() {
+  const bases = [2, 3, 4, 5];
+  const base = pick(bases);
+  const exp = rand(2, base <= 3 ? 5 : 3);
+  const res = Math.pow(base, exp);
+  return {
+    id: uid(), leerdoel: 'G.14',
+    vraag: `Bereken: $${base}^${exp}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { base, exp },
+    hints: [
+      `$${base}^${exp}$ betekent ${base} tot de macht ${exp}: ${base} × ${base} … (${exp} keer).`,
+      `$${Array(exp).fill(base).join(' \\times ')} = ${res}$`
+    ],
+    oplossing: `$${base}^${exp} = ${Array(exp).fill(base).join(' \\times ')} = ${res}$`
+  };
+}
+
+/* ── G.15 – Machtsverheffen van gehele getallen ─────────────────────── */
+function genG15() {
+  const base = -rand(2, 5);
+  const exp = rand(2, 4);
+  const res = Math.pow(base, exp);
+  const baseStr = `(${base})`;
+  return {
+    id: uid(), leerdoel: 'G.15',
+    vraag: `Bereken: $${baseStr}^${exp}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { base, exp },
+    hints: [
+      `$${baseStr}^${exp}$ betekent $${baseStr}$ tot de macht ${exp}.`,
+      exp % 2 === 0
+        ? `Een negatief getal tot een **even** macht is altijd positief.`
+        : `Een negatief getal tot een **oneven** macht is altijd negatief.`
+    ],
+    oplossing: `$${baseStr}^${exp} = ${Array(exp).fill(baseStr).join(' \\times ')} = ${res}$`
+  };
+}
+
+/* ── G.16 – Eigenschappen van natuurlijke getallen ──────────────────── */
+const PRIEMGETALLEN = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47];
+const KWADRATEN = [1,4,9,16,25,36,49,64,81,100,121,144];
+
+function genG16() {
+  const type = rand(0, 2); // 0=deelbaar, 1=priem, 2=kwadraat
+  if (type === 0) {
+    // Deelbaarheid: Is X deelbaar door Y?
+    const d = pick([2,3,4,5,6,7,8,9,10]);
+    const isDeelbaar = Math.random() > 0.4;
+    let n;
+    if (isDeelbaar) { n = d * rand(2, 15); }
+    else {
+      do { n = rand(d * 2, d * 15); } while (n % d === 0);
+    }
+    const opties = [{ label: 'Ja' }, { label: 'Nee' }];
+    const correctIdx = isDeelbaar ? 0 : 1;
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: `Is $${n}$ deelbaar door $${d}$?`,
+      antwoordType: 'mc', antwoord: { correct: correctIdx }, data: { n, d, opties },
+      hints: [
+        `Bereken $${n} \\div ${d}$ en kijk of de uitkomst een geheel getal is.`,
+        `$${n} \\div ${d} = ${(n/d).toFixed(2)}$ → ${isDeelbaar ? 'geheel getal, dus deelbaar.' : 'geen geheel getal, dus niet deelbaar.'}`
+      ],
+      oplossing: `$${n} \\div ${d} = ${isDeelbaar ? n/d : (n/d).toFixed(2)}$ → $${n}$ is ${isDeelbaar ? '' : 'niet '}deelbaar door $${d}$.`
+    };
+  } else if (type === 1) {
+    // Priemgetal: welk is een priemgetal? (mc 4 keuzes)
+    const priem = pick(PRIEMGETALLEN.filter(p => p < 50));
+    const kandidaten = new Set([priem]);
+    while (kandidaten.size < 4) {
+      const c = rand(2, 50);
+      if (!PRIEMGETALLEN.includes(c)) kandidaten.add(c);
+    }
+    const arr = shuffle([...kandidaten]);
+    const correctIdx = arr.indexOf(priem);
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: 'Welk getal is een <strong>priemgetal</strong>?',
+      antwoordType: 'mc', antwoord: { correct: correctIdx },
+      data: { opties: arr.map(n => ({ label: `$${n}$` })) },
+      hints: [
+        'Een priemgetal is alleen deelbaar door 1 en zichzelf.',
+        `${priem} is alleen deelbaar door 1 en ${priem}.`
+      ],
+      oplossing: `$${priem}$ is een priemgetal: de enige delers zijn 1 en ${priem}.\n${arr.filter(n=>n!==priem).map(n=>`$${n}$ is geen priemgetal (deelbaar door ${[2,3,4,5,6,7,8,9].find(d=>d<n&&n%d===0)||'...'})`).join(', ')}.`
+    };
+  } else {
+    // Kwadraat: welk is een kwadraat?
+    const kw = pick(KWADRATEN.filter(k => k <= 100 && k > 1));
+    const kandidaten = new Set([kw]);
+    while (kandidaten.size < 4) {
+      const c = rand(2, 100);
+      if (!KWADRATEN.includes(c)) kandidaten.add(c);
+    }
+    const arr = shuffle([...kandidaten]);
+    const correctIdx = arr.indexOf(kw);
+    const wortel = Math.round(Math.sqrt(kw));
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: 'Welk getal is een <strong>kwadraat</strong> (vierkantsgetal)?',
+      antwoordType: 'mc', antwoord: { correct: correctIdx },
+      data: { opties: arr.map(n => ({ label: `$${n}$` })) },
+      hints: [
+        'Een kwadraat is het product van een geheel getal met zichzelf: $1, 4, 9, 16, 25, 36, ...$',
+        `$${wortel}^2 = ${kw}$, dus $${kw}$ is een kwadraat.`
+      ],
+      oplossing: `$${kw} = ${wortel}^2$, dus $${kw}$ is een kwadraat (vierkantsgetal).`
+    };
+  }
+}
+
+/* ── Hulpfuncties voor combinatiedoelen getallen ─────────────────────── */
+
+/* Genereer één term: gewoon getal, kwadraat, wortel, of macht */
+function _genNatTerm(inclSqrt, inclPow) {
+  const types = ['num','num','num','num']; // plain getal weegt zwaarder
+  if (inclSqrt) { types.push('sq','rt'); }
+  if (inclPow)  { types.push('pow'); }
+  const type = pick(types);
+  if (type === 'sq')  { const n = rand(2,9);  return { val: n*n,          tex: `${n}^2` }; }
+  if (type === 'rt')  { const n = rand(2,10); return { val: n,            tex: `\\sqrt{${n*n}}` }; }
+  if (type === 'pow') {
+    const opts = [[2,3],[2,4],[2,5],[3,3],[3,4],[4,3],[5,3]];
+    const [b,e] = pick(opts);
+    return { val: Math.pow(b,e), tex: `${b}^{${e}}` };
+  }
+  const n = rand(2,15); return { val: n, tex: `${n}` };
+}
+
+/* Evalueer [v0, v1, ...] met operators [op1, op2, ...], respecteer volgorde */
+function _evalNatExpr(vals, ops) {
+  vals = [...vals]; ops = [...ops];
+  for (let i = 0; i < ops.length; ) {
+    if (ops[i] === '×' || ops[i] === '÷') {
+      if (ops[i] === '÷' && (!vals[i+1] || vals[i] % vals[i+1] !== 0)) return null;
+      const r = ops[i] === '×' ? vals[i]*vals[i+1] : vals[i]/vals[i+1];
+      if (!Number.isInteger(r) || r < 0 || r > 1000) return null;
+      vals.splice(i,2,r); ops.splice(i,1);
+    } else i++;
+  }
+  let r = vals[0];
+  for (let i = 0; i < ops.length; i++) {
+    r = ops[i] === '+' ? r+vals[i+1] : r-vals[i+1];
+    if (r < 0) return null;
+  }
+  return Number.isInteger(r) && r > 0 && r <= 500 ? r : null;
+}
+
+function _buildNatCombi(leerdoelId, inclSqrt, inclPow) {
+  const low = ['+','-'], high = ['×','÷'];
+  const opTeX = op => op==='×'?'\\times':op==='÷'?'\\div':op;
+  for (let p = 0; p < 400; p++) {
+    const terms = [0,1,2,3].map(() => _genNatTerm(inclSqrt, inclPow));
+    const ops   = [0,1,2].map(() => pick([...low,...high]));
+    const result = _evalNatExpr(terms.map(t=>t.val), ops);
+    if (result === null) continue;
+    const spec = terms.filter(t => t.tex !== String(t.val));
+    const vraagTex = terms[0].tex + ' ' + ops.map((op,i) => `${opTeX(op)} ${terms[i+1].tex}`).join(' ');
+    const stap1 = spec.length
+      ? `Bereken machten/wortels: ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}`
+      : 'Let op de volgorde: × en ÷ vóór + en −.';
+    return {
+      id: uid(), leerdoel: leerdoelId,
+      vraag: `Bereken: $${vraagTex}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: ['Volgorde: machten/wortels eerst, dan × en ÷, dan + en −.', stap1],
+      oplossing: spec.length
+        ? `**Stap 1** (machten/wortels): ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${vraagTex} = ${result}$`
+        : `$${vraagTex} = ${result}$`
+    };
+  }
+  const q = genG1(); q.leerdoel = leerdoelId; return q;
+}
+
+/* ── C.natGetallen – Combinatiedoel natuurlijke getallen ─────────────── */
+function genC_natGetallen() {
+  const low = ['+', '-'], high = ['×', '÷'];
+  const opTeX = op => op === '×' ? '\\times' : op === '÷' ? '\\div' : op;
+
+  for (let p = 0; p < 150; p++) {
+    const mixPrec = Math.random() > 0.35;
+    let op1, op2;
+    if (mixPrec) {
+      if (Math.random() > 0.5) { op1 = pick(low); op2 = pick(high); }
+      else { op1 = pick(high); op2 = pick(low); }
+    } else {
+      op1 = pick(low); op2 = pick(low);
+    }
+
+    const a = rand(2, 20), b = rand(2, 10), c = rand(2, 10);
+    const isOOO = low.includes(op1) && high.includes(op2); // order of ops: a + b×c
+
+    let stap1, result;
+    if (isOOO) {
+      if (op2 === '÷' && b % c !== 0) continue;
+      stap1 = op2 === '×' ? b * c : b / c;
+      result = op1 === '+' ? a + stap1 : a - stap1;
+    } else {
+      if (op1 === '÷' && a % b !== 0) continue;
+      if (op1 === '-' && a < b) continue;
+      stap1 = op1 === '+' ? a+b : op1 === '-' ? a-b : op1 === '×' ? a*b : a/b;
+      if (!Number.isInteger(stap1) || stap1 <= 0) continue;
+      if (op2 === '÷' && stap1 % c !== 0) continue;
+      if (op2 === '-' && stap1 < c) continue;
+      result = op2 === '+' ? stap1+c : op2 === '-' ? stap1-c : op2 === '×' ? stap1*c : stap1/c;
+    }
+    if (!Number.isInteger(result) || result <= 0 || result > 1000) continue;
+
+    const s1 = isOOO
+      ? `Eerst $${b} ${opTeX(op2)} ${c} = ${stap1}$ ($\\times$ en $\\div$ gaan vóór $+$ en $-$)`
+      : `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`;
+    const s2 = isOOO
+      ? `Dan $${a} ${opTeX(op1)} ${stap1} = ${result}$`
+      : `Stap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`;
+
+    return {
+      id: uid(), leerdoel: 'C.natGetallen',
+      vraag: `Bereken: $${a} ${opTeX(op1)} ${b} ${opTeX(op2)} ${c}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+      hints: [isOOO ? 'Let op de volgorde: × en ÷ gaan vóór + en −.' : 'Werk van links naar rechts.', s1],
+      oplossing: `${s1}\n${s2}`
+    };
+  }
+  const q = genG1(); q.leerdoel = 'C.natGetallen'; return q;
+}
+
+/* ── C.natGetallen.b – langer, met kwadraten en wortels ─────────────── */
+function genC_natGetallen_b() { return _buildNatCombi('C.natGetallen.b', true, false); }
+
+/* ── C.natGetallen.c – langer, met kwadraten, wortels én machten ────── */
+function genC_natGetallen_c() { return _buildNatCombi('C.natGetallen.c', true, true); }
+
+/* ── C.negGetallen – Combinatiedoel negatieve getallen ──────────────── */
+function genC_negGetallen() {
+  for (let p = 0; p < 150; p++) {
+    const gens = [genG8, genG9, genG10, genG11];
+    const g1 = pick(gens)(), g2 = pick(gens)();
+    const v1 = g1.antwoord.waarde, v2 = g2.antwoord.waarde;
+    if (v1 === null || v2 === null) continue;
+    const ops = ['+', '-'];
+    const op = pick(ops);
+    const result = op === '+' ? v1 + v2 : v1 - v2;
+    if (Math.abs(result) > 100) continue;
+    const v2Str = v2 < 0 ? `(${v2})` : `${v2}`;
+    return {
+      id: uid(), leerdoel: 'C.negGetallen',
+      vraag: `Bereken stap voor stap:\n$\\bigl(${g1.vraag.replace('Bereken: $','').replace('$','')}\\bigr) ${op === '+' ? '+' : '-'} ${v2Str}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: ['Bereken eerst de haakjes, dan de rest.', `Tussenstap 1: $${v1}$, dan $${v1} ${op} ${v2Str} = ${result}$`],
+      oplossing: `Stap 1: ${g1.oplossing} $= ${v1}$\nStap 2: $${v1} ${op} ${v2Str} = ${result}$`
+    };
+  }
+  const q = genG8(); q.leerdoel = 'C.negGetallen'; return q;
+}
+
 /* ── H/C-doel helpers ────────────────────────────────────────────────── */
 
 /* Fraction arithmetic on [n, d] pairs. Returns simplified [n, d] or null. */
@@ -672,6 +1168,36 @@ const LEERDOELEN = [
   { id: 'BD.2',  titel: 'Decimaal getal → breuk',                groep: 'Omrekenen',    gen: genBD2  },
   { id: 'BV.1',  titel: 'Verhouding → breuk',                    groep: 'Verhoudingen', gen: genBV1  },
   { id: 'BV.2',  titel: 'Breuk → verhouding',                    groep: 'Verhoudingen', gen: genBV2  },
+
+  /* ── G-doelen (Gehele getallen) ──────────────────────────────────── */
+  { id: 'G.1',  titel: 'Natuurlijke getallen optellen',               groep: 'Getallen', gen: genG1  },
+  { id: 'G.2',  titel: 'Natuurlijke getallen aftrekken',              groep: 'Getallen', gen: genG2  },
+  { id: 'G.3',  titel: 'Natuurlijke getallen vermenigvuldigen',       groep: 'Getallen', gen: genG3  },
+  { id: 'G.4',  titel: 'Natuurlijke getallen delen',                  groep: 'Getallen', gen: genG4  },
+  { id: 'G.5',  titel: 'Positieve getallen kwadrateren',              groep: 'Getallen', gen: genG5  },
+  { id: 'G.6',  titel: 'Worteltrekken van positieve getallen',        groep: 'Getallen', gen: genG6  },
+  { id: 'G.14', titel: 'Machtsverheffen van positieve getallen',      groep: 'Getallen', gen: genG14 },
+  { id: 'G.7',  titel: 'Negatieve getallen vergelijken',              groep: 'Getallen', gen: genG7  },
+  { id: 'G.8',  titel: 'Negatieve gehele getallen optellen',          groep: 'Getallen', gen: genG8  },
+  { id: 'G.9',  titel: 'Negatieve gehele getallen aftrekken',         groep: 'Getallen', gen: genG9  },
+  { id: 'G.10', titel: 'Negatieve gehele getallen vermenigvuldigen',  groep: 'Getallen', gen: genG10 },
+  { id: 'G.11', titel: 'Negatieve gehele getallen delen',             groep: 'Getallen', gen: genG11 },
+  { id: 'G.12', titel: 'Gehele getallen kwadrateren',                 groep: 'Getallen', gen: genG12 },
+  { id: 'G.13', titel: 'Worteltrekken van gehele getallen',           groep: 'Getallen', gen: genG13 },
+  { id: 'G.15', titel: 'Machtsverheffen van gehele getallen',         groep: 'Getallen', gen: genG15 },
+  { id: 'G.16', titel: 'Eigenschappen van natuurlijke getallen',      groep: 'Getallen', gen: genG16 },
+  {
+    id: 'H.G1tot6', titel: 'Natuurlijke getallen – afwisselend', groep: 'Getallen',
+    gen: () => { const q = pick([genG1,genG2,genG3,genG4,genG5,genG6])(); q.leerdoel='H.G1tot6'; return q; }
+  },
+  {
+    id: 'H.G8tot13', titel: 'Negatieve getallen – afwisselend', groep: 'Getallen',
+    gen: () => { const q = pick([genG8,genG9,genG10,genG11,genG12,genG13])(); q.leerdoel='H.G8tot13'; return q; }
+  },
+  { id: 'C.natGetallen',   titel: 'Nat. getallen – gecombineerd (basis)',          groep: 'Getallen', gen: genC_natGetallen   },
+  { id: 'C.natGetallen.b', titel: 'Nat. getallen – gecombineerd (kwadraten/wortels)', groep: 'Getallen', gen: genC_natGetallen_b },
+  { id: 'C.natGetallen.c', titel: 'Nat. getallen – gecombineerd (+ machten)',         groep: 'Getallen', gen: genC_natGetallen_c },
+  { id: 'C.negGetallen',   titel: 'Negatieve getallen – gecombineerd',                groep: 'Getallen', gen: genC_negGetallen   },
 
   /* ── H-doelen (husseldoelen) ──────────────────────────────────────── */
   {

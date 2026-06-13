@@ -17,6 +17,113 @@ const APP = {
 };
 window.APP = APP;
 
+/* ── TOC structuur & state ────────────────────────────────────────────── */
+const TOC_STATE = {
+  _manuallyOpened: new Set(),
+  _manuallyClosed: new Set(),
+};
+
+const TOC_HOOFDSTUKKEN = [
+  {
+    id: 'breuken', label: 'Breuken',
+    secties: [
+      {
+        id: 'basis', label: 'Breuken basis',
+        items: [
+          { label: 'Teller en noemer herkennen', knoppen: [{l:'a',id:'B.0'}] },
+          { label: 'Breuk op een getallenlijn',  knoppen: [{l:'a',id:'B.01a'},{l:'b',id:'B.01b'},{l:'c',id:'B.01c'}] },
+          { label: 'Breuken vereenvoudigen',     knoppen: [{l:'a',id:'B.1'}] },
+          { label: 'Breuken gelijknamig maken',  knoppen: [{l:'a',id:'B.3'}] },
+        ]
+      },
+      {
+        id: 'bewerkingen', label: 'Breuken bewerkingen',
+        items: [
+          { label: 'Optellen',                  knoppen: [{l:'a',id:'B.5'},{l:'b',id:'B.6'}] },
+          { label: 'Aftrekken',                 knoppen: [{l:'a',id:'B.7'},{l:'b',id:'B.8'}] },
+          { label: 'Optellen en aftrekken',     knoppen: [{l:'a',id:'H.B5678'}] },
+          { label: 'Vermenigvuldigen',          knoppen: [{l:'a',id:'B.9'},{l:'b',id:'B.10'}] },
+          { label: 'Delen',                     knoppen: [{l:'a',id:'B.11'},{l:'b',id:'B.12'}] },
+          { label: 'Vermenigvuldigen en delen', knoppen: [{l:'a',id:'H.B9to12'}] },
+          { label: 'Alle bewerkingen',          knoppen: [{l:'a',id:'C.allBreuk'}] },
+        ]
+      },
+      {
+        id: 'omrekenen', label: 'Breuken omrekenen',
+        items: [
+          { label: 'Van en naar percentages',  knoppen: [{l:'a',id:'BP.1'},{l:'b',id:'BP.2'}] },
+          { label: 'Van en naar decimalen',    knoppen: [{l:'a',id:'BD.1'},{l:'b',id:'BD.2'}] },
+          { label: 'Van en naar verhoudingen', knoppen: [{l:'a',id:'BV.1'},{l:'b',id:'BV.2'}] },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'getallen', label: 'Gehele getallen',
+    secties: [
+      {
+        id: 'nat', label: 'Natuurlijke getallen',
+        items: [
+          { label: 'Optellen',          knoppen: [{l:'a',id:'G.1'}] },
+          { label: 'Aftrekken',         knoppen: [{l:'a',id:'G.2'}] },
+          { label: 'Vermenigvuldigen',  knoppen: [{l:'a',id:'G.3'}] },
+          { label: 'Delen',             knoppen: [{l:'a',id:'G.4'}] },
+          { label: 'Kwadrateren',       knoppen: [{l:'a',id:'G.5'}] },
+          { label: 'Worteltrekken',     knoppen: [{l:'a',id:'G.6'}] },
+          { label: 'Machtsverheffen',   knoppen: [{l:'a',id:'G.14'}] },
+          { label: 'Alle bewerkingen',  knoppen: [{l:'a',id:'C.natGetallen'},{l:'b',id:'C.natGetallen.b'},{l:'c',id:'C.natGetallen.c'}] },
+        ]
+      },
+      {
+        id: 'neg', label: 'Negatieve getallen',
+        items: [
+          { label: 'Vergelijken',       knoppen: [{l:'a',id:'G.7'}] },
+          { label: 'Optellen',          knoppen: [{l:'a',id:'G.8'}] },
+          { label: 'Aftrekken',         knoppen: [{l:'a',id:'G.9'}] },
+          { label: 'Vermenigvuldigen',  knoppen: [{l:'a',id:'G.10'}] },
+          { label: 'Delen',             knoppen: [{l:'a',id:'G.11'}] },
+          { label: 'Kwadrateren',       knoppen: [{l:'a',id:'G.12'}] },
+          { label: 'Worteltrekken',     knoppen: [{l:'a',id:'G.13'}] },
+          { label: 'Machtsverheffen',   knoppen: [{l:'a',id:'G.15'}] },
+          { label: 'Alle bewerkingen',  knoppen: [{l:'a',id:'C.negGetallen'}] },
+        ]
+      },
+      {
+        id: 'eigen', label: 'Eigenschappen',
+        items: [
+          { label: 'Deelbaar, priem, kwadraat', knoppen: [{l:'a',id:'G.16'}] },
+        ]
+      },
+    ]
+  },
+];
+
+function _tocHoofdstukBevatActief(hoofdstukId, actiefId) {
+  if (!actiefId) return false;
+  const hfst = TOC_HOOFDSTUKKEN.find(h => h.id === hoofdstukId);
+  return hfst?.secties.some(s => s.items.some(item => item.knoppen.some(k => k.id === actiefId))) ?? false;
+}
+
+function _isTocHoofdstukOpen(hoofdstukId, actiefId) {
+  if (TOC_STATE._manuallyClosed.has('h:' + hoofdstukId)) return false;
+  if (TOC_STATE._manuallyOpened.has('h:' + hoofdstukId)) return true;
+  if (actiefId) return _tocHoofdstukBevatActief(hoofdstukId, actiefId);
+  return hoofdstukId === TOC_HOOFDSTUKKEN[0].id; // dashboard: eerste open
+}
+
+function _isTocSectieOpen(sectieId, actiefId) {
+  if (TOC_STATE._manuallyClosed.has(sectieId)) return false;
+  if (TOC_STATE._manuallyOpened.has(sectieId)) return true;
+  if (actiefId) {
+    for (const hfst of TOC_HOOFDSTUKKEN) {
+      const s = hfst.secties.find(s => s.id === sectieId);
+      if (s) return s.items.some(item => item.knoppen.some(k => k.id === actiefId));
+    }
+    return false;
+  }
+  return true;
+}
+
 function dotKlasse(r) {
   if (r.staat === 'goed') return 'dot-goed';
   if (r.staat === 'goed_na_fouten') return 'dot-geel';
@@ -26,7 +133,7 @@ function dotKlasse(r) {
 
 function maakVoortgangDots(resultaten, leerdoelId) {
   const last5 = resultaten.filter(r => r.leerdoel === leerdoelId).slice(-5);
-  return last5.map(r => `<span class="voortgang-dot ${dotKlasse(r)}"></span>`).join('')
+  return last5.map(r => `<span class="voortgang-dot ${dotKlasse(r)}">${r.metTijdlimiet ? 'T' : ''}</span>`).join('')
     + Array(Math.max(0, 5 - last5.length)).fill('<span class="voortgang-dot"></span>').join('');
 }
 
@@ -72,18 +179,83 @@ function leerdoelZichtbaar(id) {
 }
 
 function renderToc(actiefId) {
-  const zichtbaar = getZichtbareLeerdoelen();
-  const groepen = [...new Set(zichtbaar.map(l => l.groep))];
   let html = '<nav class="toc-sidebar" aria-label="Inhoudsopgave">';
-  groepen.forEach(g => {
-    html += `<div class="toc-groep-label">${g}</div>`;
-    zichtbaar.filter(l => l.groep === g).forEach(ld => {
-      const actief = ld.id === actiefId;
-      html += `<button class="toc-btn${actief ? ' actief' : ''}" onclick="window.location.hash='#oefenen/${ld.id}'"${actief ? ' aria-current="page"' : ''}>${escHtml(ld.titel)}</button>`;
+
+  TOC_HOOFDSTUKKEN.forEach(hfst => {
+    const hOpen = _isTocHoofdstukOpen(hfst.id, actiefId);
+    html += `<div class="toc-hoofdstuk" data-hid="${hfst.id}">
+      <button class="toc-hoofd" onclick="toggleTocHoofdstuk('${hfst.id}')" aria-expanded="${hOpen}">
+        <span>${hfst.label}</span>
+        <span class="toc-arrow">${hOpen ? '▾' : '▸'}</span>
+      </button>
+      <div class="toc-hoofd-body${hOpen ? '' : ' toc-gesloten'}">`;
+
+    hfst.secties.forEach(sectie => {
+      const sOpen = hOpen && _isTocSectieOpen(sectie.id, actiefId);
+      html += `<div class="toc-sectie" data-id="${sectie.id}">
+        <button class="toc-sectie-header" onclick="toggleTocSectie('${sectie.id}')" aria-expanded="${sOpen}">
+          <span>${sectie.label}</span>
+          <span class="toc-arrow">${sOpen ? '▾' : '▸'}</span>
+        </button>
+        <div class="toc-sectie-body${sOpen ? '' : ' toc-gesloten'}">`;
+
+      sectie.items.forEach(item => {
+        const zichtbareKnoppen = item.knoppen.filter(k => leerdoelZichtbaar(k.id));
+        if (!zichtbareKnoppen.length) return;
+        html += `<div class="toc-item-row">
+          <span class="toc-item-label">${item.label}</span>
+          <span class="toc-item-badges">`;
+        zichtbareKnoppen.forEach(k => {
+          const isActief = k.id === actiefId;
+          html += `<a class="toc-badge${isActief ? ' actief' : ''}" href="#oefenen/${k.id}" aria-label="${item.label} (${k.l})" title="${k.id}">${k.l}</a>`;
+        });
+        html += '</span></div>';
+      });
+
+      html += '</div></div>';
     });
+
+    html += '</div></div>';
   });
+
   html += '</nav>';
   return html;
+}
+
+function toggleTocHoofdstuk(hoofdstukId) {
+  const hfst = document.querySelector(`.toc-hoofdstuk[data-hid="${hoofdstukId}"]`);
+  if (!hfst) return;
+  const body = hfst.querySelector(':scope > .toc-hoofd-body');
+  if (!body) return;
+  const willOpen = body.classList.contains('toc-gesloten');
+  if (willOpen) {
+    TOC_STATE._manuallyClosed.delete('h:' + hoofdstukId);
+    TOC_STATE._manuallyOpened.add('h:' + hoofdstukId);
+  } else {
+    TOC_STATE._manuallyOpened.delete('h:' + hoofdstukId);
+    TOC_STATE._manuallyClosed.add('h:' + hoofdstukId);
+  }
+  body.classList.toggle('toc-gesloten', !willOpen);
+  const arrow = hfst.querySelector(':scope > .toc-hoofd .toc-arrow');
+  if (arrow) arrow.textContent = willOpen ? '▾' : '▸';
+}
+
+function toggleTocSectie(sectieId) {
+  const sectie = document.querySelector(`.toc-sectie[data-id="${sectieId}"]`);
+  if (!sectie) return;
+  const body = sectie.querySelector('.toc-sectie-body');
+  if (!body) return;
+  const willOpen = body.classList.contains('toc-gesloten');
+  if (willOpen) {
+    TOC_STATE._manuallyClosed.delete(sectieId);
+    TOC_STATE._manuallyOpened.add(sectieId);
+  } else {
+    TOC_STATE._manuallyOpened.delete(sectieId);
+    TOC_STATE._manuallyClosed.add(sectieId);
+  }
+  body.classList.toggle('toc-gesloten', !willOpen);
+  const arrow = sectie.querySelector('.toc-sectie-header .toc-arrow');
+  if (arrow) arrow.textContent = willOpen ? '▾' : '▸';
 }
 
 /* ── Tijd-limiet via URL (?tijd=30) ──────────────────────────────────────────
@@ -409,6 +581,28 @@ function feedbackBoodschap(vraag, gegeven) {
     if (f1 && f2 && f1.d !== f2.d) return 'De noemers zijn niet gelijk. Zorg dat beide breuken dezelfde noemer hebben.';
   }
   const tips = {
+    'G.1':  'Tel de getallen op. Begin bij het grootste getal.',
+    'G.2':  'Trek het kleinste getal af van het grootste.',
+    'G.3':  'Gebruik de tafels. Controleer: a × b = b × a.',
+    'G.4':  'Vraag: deeltal = deler × uitkomst. Welk getal past er?',
+    'G.5':  'Kwadrateren = getal × zichzelf: $n^2 = n \\times n$.',
+    'G.6':  'Vraag: welk getal × zichzelf geeft dit getal?',
+    'G.7':  'Op de getallenlijn: groter getal = verder naar rechts. Bij negatieve getallen: dichter bij nul = groter.',
+    'G.8':  'Gebruik de getallenlijn: negatief + positief → bepaal het verschil.',
+    'G.9':  'Aftrekken van een negatief getal = optellen van het positieve getal.',
+    'G.10': 'Vermenigvuldig de absolute waarden. Bepaal daarna het teken: − × + = −, − × − = +.',
+    'G.11': 'Deel de absolute waarden. Bepaal het teken: − ÷ + = −, − ÷ − = +.',
+    'G.12': 'Kwadraat van een negatief getal is altijd positief: $(−n)^2 = n^2$.',
+    'G.13': 'Vraag: welk positief getal × zichzelf geeft dit getal?',
+    'G.14': 'Machtsverheffen: $a^n$ = $a$ keer zichzelf vermenigvuldigd $n$ keer.',
+    'G.15': 'Let op het teken: een negatief getal tot een even macht is positief, tot een oneven macht negatief.',
+    'G.16': 'Priemgetal: alleen deelbaar door 1 en zichzelf. Kwadraat: $1, 4, 9, 16, 25, ...$',
+    'H.G1tot6':  'Kijk goed naar de bewerking en pas de juiste strategie toe.',
+    'H.G8tot13': 'Bepaal eerst het teken van het antwoord, reken dan de absolute waarde uit.',
+    'C.natGetallen':   'Let op de volgorde van bewerkingen: × en ÷ gaan vóór + en −.',
+    'C.natGetallen.b': 'Volgorde: kwadraten en wortels eerst, dan × en ÷, dan + en −.',
+    'C.natGetallen.c': 'Volgorde: machten eerst, dan × en ÷, dan + en −.',
+    'C.negGetallen': 'Bereken stap voor stap en let op de tekens.',
     'B.0':  'De teller staat boven de breukstreep, de noemer eronder.',
     'B.01a':'Tel de gelijke delen op de getallenlijn — dat is de noemer.',
     'B.1':  'Zoek de GGD van teller en noemer en deel daardoor.',
@@ -576,7 +770,7 @@ function bindOefenen(leerdoelId) {
     const zone = document.getElementById('oplossing-zone');
     if (zone.innerHTML) return;
     if (!APP.resultaatOpgeslagen) {
-      slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+      slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout', !!getTijdLimiet());
       APP.resultaatOpgeslagen = true;
     }
     zone.innerHTML = renderOplossing(vraag);
@@ -668,7 +862,7 @@ function controleer(vraag) {
   if (staat === 'goed') {
     stopTimer();
     if (!APP.resultaatOpgeslagen) {
-      slaResultaatOp(APP.student.id, vraag.leerdoel, APP.pogingen > 0 ? 'goed_na_fouten' : 'goed');
+      slaResultaatOp(APP.student.id, vraag.leerdoel, APP.pogingen > 0 ? 'goed_na_fouten' : 'goed', !!getTijdLimiet());
       APP.resultaatOpgeslagen = true;
     }
     if (useStepList) freezeActiveRow('goed');
@@ -692,7 +886,7 @@ function controleer(vraag) {
       const zone = document.getElementById('oplossing-zone');
       if (!zone.innerHTML) {
         if (!APP.resultaatOpgeslagen) {
-          slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+          slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout', !!getTijdLimiet());
           APP.resultaatOpgeslagen = true;
         }
         zone.innerHTML = renderOplossing(vraag);
@@ -731,7 +925,7 @@ function _timerVervallen() {
   if (!document.getElementById('timer-display')) return;
   const vraag = APP.huidigVraag;
   if (!vraag || APP.resultaatOpgeslagen) return;
-  slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout');
+  slaResultaatOp(APP.student.id, vraag.leerdoel, 'fout', !!getTijdLimiet());
   APP.resultaatOpgeslagen = true;
   toonFeedback('fout', '⏰ De tijd is om!');
   if (vraag.antwoordType === 'mc') kleurMcKnoppen(vraag);

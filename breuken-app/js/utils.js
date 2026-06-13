@@ -92,9 +92,7 @@ function maakGetallenlijnSVG(num, den, showArrow) {
   let ticks = '';
   for (let i = 1; i < den; i++) {
     const tx = x0 + (x1 - x0) * (i / den);
-    const label = i + '/' + den;
     ticks += `<line x1="${tx.toFixed(1)}" y1="${(lineY - 7).toFixed(1)}" x2="${tx.toFixed(1)}" y2="${(lineY + 7).toFixed(1)}" stroke="#1A3A5C" stroke-width="1.5"/>`;
-    ticks += `<text x="${tx.toFixed(1)}" y="${(lineY + 20).toFixed(1)}" text-anchor="middle" font-size="10" fill="#4A5568">${label}</text>`;
   }
 
   let arrowSVG = '';
@@ -246,8 +244,9 @@ function evaluateLatex(latex) {
 function isEindvorm(latex) {
   const s = (latex || '').trim();
   if (!s) return false;
-  if (/[+]|(?<![\\])[-]|\\cdot|\\times|\\div|\\sqrt/.test(s)) return false;
   if (/^\d+$/.test(s)) return true;
+  if (/^-\d+$/.test(s)) return true; // negatief geheel getal
+  if (/[+]|(?<![\\])[-]|\\cdot|\\times|\\div|\\sqrt/.test(s)) return false;
   if (/^\d+[.,]\d+$/.test(s)) return true;
   const ratioM = s.match(/^(\d+):(\d+)$/);
   if (ratioM) return gcd(+ratioM[1], +ratioM[2]) === 1;
