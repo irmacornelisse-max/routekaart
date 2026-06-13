@@ -85,7 +85,7 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Kwadrateren',       knoppen: [{l:'a',id:'G.12'}] },
           { label: 'Worteltrekken',     knoppen: [{l:'a',id:'G.13'}] },
           { label: 'Machtsverheffen',   knoppen: [{l:'a',id:'G.15'}] },
-          { label: 'Alle bewerkingen',  knoppen: [{l:'a',id:'C.negGetallen'}] },
+          { label: 'Alle bewerkingen',  knoppen: [{l:'a',id:'C.negGetallen'},{l:'b',id:'C.negGetallen.b'},{l:'c',id:'C.negGetallen.c'}] },
         ]
       },
       {
@@ -602,7 +602,9 @@ function feedbackBoodschap(vraag, gegeven) {
     'C.natGetallen':   'Let op de volgorde van bewerkingen: × en ÷ gaan vóór + en −.',
     'C.natGetallen.b': 'Volgorde: kwadraten en wortels eerst, dan × en ÷, dan + en −.',
     'C.natGetallen.c': 'Volgorde: machten eerst, dan × en ÷, dan + en −.',
-    'C.negGetallen': 'Bereken stap voor stap en let op de tekens.',
+    'C.negGetallen':   'Bereken stap voor stap en let op de tekens.',
+    'C.negGetallen.b': 'Volgorde: haakjes eerst, dan kwadraten, dan × en ÷, dan + en −. Let op de tekens!',
+    'C.negGetallen.c': 'Volgorde: haakjes eerst, dan machten, dan × en ÷, dan + en −. Let op de tekens!',
     'B.0':  'De teller staat boven de breukstreep, de noemer eronder.',
     'B.01a':'Tel de gelijke delen op de getallenlijn — dat is de noemer.',
     'B.1':  'Zoek de GGD van teller en noemer en deel daardoor.',

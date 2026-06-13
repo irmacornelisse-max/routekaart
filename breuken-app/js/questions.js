@@ -866,6 +866,57 @@ function genG16() {
 
 /* ── Hulpfuncties voor combinatiedoelen getallen ─────────────────────── */
 
+/* Enkelvoudige bewerking – geen volgorde-van-bewerkingen */
+function _applySimple(a, op, b) {
+  if (op === '+') return a + b;
+  if (op === '-') return a - b;
+  if (op === '×') { const r = a * b; return Math.abs(r) <= 1000 ? r : null; }
+  if (op === '÷') { if (!b || a % b !== 0) return null; return a / b; }
+  return null;
+}
+
+/* Evalueer expressie met negatieve getallen toegestaan in resultaat */
+function _evalExprFull(vals, ops) {
+  vals = [...vals]; ops = [...ops];
+  for (let i = 0; i < ops.length; ) {
+    if (ops[i] === '×' || ops[i] === '÷') {
+      if (ops[i] === '÷' && (!vals[i+1] || vals[i] % vals[i+1] !== 0)) return null;
+      const r = ops[i] === '×' ? vals[i] * vals[i+1] : vals[i] / vals[i+1];
+      if (!Number.isInteger(r) || Math.abs(r) > 1000) return null;
+      vals.splice(i, 2, r); ops.splice(i, 1);
+    } else i++;
+  }
+  let r = vals[0];
+  for (let i = 0; i < ops.length; i++) {
+    r = ops[i] === '+' ? r + vals[i+1] : r - vals[i+1];
+  }
+  return Number.isInteger(r) && Math.abs(r) <= 200 ? r : null;
+}
+
+/* Genereer één term voor negatieve getallen: geheel getal, kwadraat, of macht */
+function _genNegTerm(inclSqrt, inclPow) {
+  const types = ['neg','neg','pos','pos'];
+  if (inclSqrt) types.push('sq', 'sq'); // (-n)^2 = positief
+  if (inclPow)  types.push('pow');      // (-n)^k
+  const type = pick(types);
+  if (type === 'neg') {
+    const n = rand(1, 12);
+    return { val: -n, tex: `(-${n})` };
+  }
+  if (type === 'pos') {
+    const n = rand(2, 12);
+    return { val: n, tex: `${n}` };
+  }
+  if (type === 'sq') {
+    const n = rand(2, 8);
+    return { val: n * n, tex: `(-${n})^2` };
+  }
+  // pow
+  const opts = [[-2,3],[-2,4],[-3,3],[-4,3]];
+  const [b, e] = pick(opts);
+  return { val: Math.pow(b, e), tex: `(-${Math.abs(b)})^{${e}}` };
+}
+
 /* Genereer één term: gewoon getal, kwadraat, wortel, of macht */
 function _genNatTerm(inclSqrt, inclPow) {
   const types = ['num','num','num','num']; // plain getal weegt zwaarder
@@ -904,77 +955,141 @@ function _evalNatExpr(vals, ops) {
 function _buildNatCombi(leerdoelId, inclSqrt, inclPow) {
   const low = ['+','-'], high = ['×','÷'];
   const opTeX = op => op==='×'?'\\times':op==='÷'?'\\div':op;
+  /* applyOp voor enkelvoudige stap (nat. getallen: resultaat moet > 0) */
+  const applyOp = (a, op, b) => {
+    const r = _applySimple(a, op, b);
+    return (r !== null && r > 0) ? r : null;
+  };
+
   for (let p = 0; p < 400; p++) {
     const terms = [0,1,2,3].map(() => _genNatTerm(inclSqrt, inclPow));
     const ops   = [0,1,2].map(() => pick([...low,...high]));
-    const result = _evalNatExpr(terms.map(t=>t.val), ops);
-    if (result === null) continue;
-    const spec = terms.filter(t => t.tex !== String(t.val));
-    const vraagTex = terms[0].tex + ' ' + ops.map((op,i) => `${opTeX(op)} ${terms[i+1].tex}`).join(' ');
+    const [t0,t1,t2,t3] = terms;
+    const [op0,op1,op2] = ops;
+
+    /* struct: 0 = standaard OOO, 1 = (t0○t1)○t2○t3,
+               2 = t0○t1○(t2○t3),  3 = (t0○t1)○(t2○t3) */
+    const struct = rand(0, 3);
+    let result, tex;
+
+    if (struct === 0) {
+      result = _evalNatExpr([t0.val,t1.val,t2.val,t3.val], [op0,op1,op2]);
+      if (result === null) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 1) {
+      const inner = applyOp(t0.val, op0, t1.val);
+      if (inner === null) continue;
+      result = _evalNatExpr([inner, t2.val, t3.val], [op1, op2]);
+      if (result === null) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 2) {
+      const inner = applyOp(t2.val, op2, t3.val);
+      if (inner === null) continue;
+      result = _evalNatExpr([t0.val, t1.val, inner], [op0, op1]);
+      if (result === null) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    } else {
+      const inner1 = applyOp(t0.val, op0, t1.val);
+      const inner2 = applyOp(t2.val, op2, t3.val);
+      if (inner1 === null || inner2 === null) continue;
+      result = applyOp(inner1, op1, inner2);
+      if (result === null || result > 500) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    }
+
+    const spec = terms.filter(t => t.tex.includes('^') || t.tex.includes('\\sqrt'));
+    const hasParens = struct > 0;
+    const hintMain = hasParens
+      ? 'Volgorde: haakjes eerst, dan machten/wortels, dan × en ÷, dan + en −.'
+      : 'Volgorde: machten/wortels eerst, dan × en ÷, dan + en −.';
     const stap1 = spec.length
       ? `Bereken machten/wortels: ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}`
-      : 'Let op de volgorde: × en ÷ vóór + en −.';
+      : hasParens ? 'Begin met de haakjes.' : 'Let op de volgorde: × en ÷ vóór + en −.';
+
     return {
       id: uid(), leerdoel: leerdoelId,
-      vraag: `Bereken: $${vraagTex}$`,
+      vraag: `Bereken: $${tex}$`,
       antwoordType: 'integer', antwoord: { waarde: result }, data: {},
-      hints: ['Volgorde: machten/wortels eerst, dan × en ÷, dan + en −.', stap1],
+      hints: [hintMain, stap1],
       oplossing: spec.length
-        ? `**Stap 1** (machten/wortels): ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${vraagTex} = ${result}$`
-        : `$${vraagTex} = ${result}$`
+        ? `**Stap 1** (machten/wortels): ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${tex} = ${result}$`
+        : `$${tex} = ${result}$`
     };
   }
   const q = genG1(); q.leerdoel = leerdoelId; return q;
 }
 
-/* ── C.natGetallen – Combinatiedoel natuurlijke getallen ─────────────── */
+/* ── C.natGetallen – Combinatiedoel natuurlijke getallen (3 termen) ─── */
 function genC_natGetallen() {
   const low = ['+', '-'], high = ['×', '÷'];
   const opTeX = op => op === '×' ? '\\times' : op === '÷' ? '\\div' : op;
+  const applyOp = (a, op, b) => {
+    const r = _applySimple(a, op, b);
+    return (r !== null && r > 0) ? r : null;
+  };
 
   for (let p = 0; p < 150; p++) {
-    const mixPrec = Math.random() > 0.35;
-    let op1, op2;
-    if (mixPrec) {
-      if (Math.random() > 0.5) { op1 = pick(low); op2 = pick(high); }
-      else { op1 = pick(high); op2 = pick(low); }
+    const op1 = pick([...low,...high]);
+    const op2 = pick([...low,...high]);
+    const a = rand(2, 20), b = rand(2, 12), c = rand(2, 12);
+
+    /* struct: 0 = standaard OOO, 1 = (a○b)○c, 2 = a○(b○c) */
+    const struct = rand(0, 2);
+
+    if (struct === 0) {
+      /* Standaard: respecteer volgorde van bewerkingen */
+      const isOOO = low.includes(op1) && high.includes(op2);
+      let stap1, result;
+      if (isOOO) {
+        if (op2 === '÷' && b % c !== 0) continue;
+        stap1 = op2 === '×' ? b * c : b / c;
+        result = op1 === '+' ? a + stap1 : a - stap1;
+      } else {
+        stap1 = applyOp(a, op1, b);
+        if (stap1 === null) continue;
+        result = applyOp(stap1, op2, c);
+      }
+      if (!result || result > 1000) continue;
+      const s1 = isOOO
+        ? `Eerst $${b} ${opTeX(op2)} ${c} = ${stap1}$ (× en ÷ gaan vóór + en −)`
+        : `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`;
+      const s2 = isOOO
+        ? `Dan $${a} ${opTeX(op1)} ${stap1} = ${result}$`
+        : `Stap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $${a} ${opTeX(op1)} ${b} ${opTeX(op2)} ${c}$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: [isOOO ? 'Let op de volgorde: × en ÷ gaan vóór + en −.' : 'Werk van links naar rechts.', s1],
+        oplossing: `${s1}\n${s2}`
+      };
+    } else if (struct === 1) {
+      /* (a ○ b) ○ c  – haakjes gaan altijd eerst */
+      const stap1 = applyOp(a, op1, b);
+      if (stap1 === null) continue;
+      const result = applyOp(stap1, op2, c);
+      if (result === null || result > 1000) continue;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $(${a} ${opTeX(op1)} ${b}) ${opTeX(op2)} ${c}$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: ['Haakjes gaan altijd vóór alles.', `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`],
+        oplossing: `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$\nStap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`
+      };
     } else {
-      op1 = pick(low); op2 = pick(low);
+      /* a ○ (b ○ c)  – haakjes gaan altijd eerst */
+      const stap1 = applyOp(b, op2, c);
+      if (stap1 === null) continue;
+      const result = applyOp(a, op1, stap1);
+      if (result === null || result > 1000) continue;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $${a} ${opTeX(op1)} (${b} ${opTeX(op2)} ${c})$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: ['Haakjes gaan altijd vóór alles.', `Stap 1: $${b} ${opTeX(op2)} ${c} = ${stap1}$`],
+        oplossing: `Stap 1: $${b} ${opTeX(op2)} ${c} = ${stap1}$\nStap 2: $${a} ${opTeX(op1)} ${stap1} = ${result}$`
+      };
     }
-
-    const a = rand(2, 20), b = rand(2, 10), c = rand(2, 10);
-    const isOOO = low.includes(op1) && high.includes(op2); // order of ops: a + b×c
-
-    let stap1, result;
-    if (isOOO) {
-      if (op2 === '÷' && b % c !== 0) continue;
-      stap1 = op2 === '×' ? b * c : b / c;
-      result = op1 === '+' ? a + stap1 : a - stap1;
-    } else {
-      if (op1 === '÷' && a % b !== 0) continue;
-      if (op1 === '-' && a < b) continue;
-      stap1 = op1 === '+' ? a+b : op1 === '-' ? a-b : op1 === '×' ? a*b : a/b;
-      if (!Number.isInteger(stap1) || stap1 <= 0) continue;
-      if (op2 === '÷' && stap1 % c !== 0) continue;
-      if (op2 === '-' && stap1 < c) continue;
-      result = op2 === '+' ? stap1+c : op2 === '-' ? stap1-c : op2 === '×' ? stap1*c : stap1/c;
-    }
-    if (!Number.isInteger(result) || result <= 0 || result > 1000) continue;
-
-    const s1 = isOOO
-      ? `Eerst $${b} ${opTeX(op2)} ${c} = ${stap1}$ ($\\times$ en $\\div$ gaan vóór $+$ en $-$)`
-      : `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`;
-    const s2 = isOOO
-      ? `Dan $${a} ${opTeX(op1)} ${stap1} = ${result}$`
-      : `Stap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`;
-
-    return {
-      id: uid(), leerdoel: 'C.natGetallen',
-      vraag: `Bereken: $${a} ${opTeX(op1)} ${b} ${opTeX(op2)} ${c}$`,
-      antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
-      hints: [isOOO ? 'Let op de volgorde: × en ÷ gaan vóór + en −.' : 'Werk van links naar rechts.', s1],
-      oplossing: `${s1}\n${s2}`
-    };
   }
   const q = genG1(); q.leerdoel = 'C.natGetallen'; return q;
 }
@@ -1007,6 +1122,75 @@ function genC_negGetallen() {
   }
   const q = genG8(); q.leerdoel = 'C.negGetallen'; return q;
 }
+
+/* ── C.negGetallen b/c – langere expressies met negatieve getallen ───── */
+function _buildNegCombi(leerdoelId, inclSqrt, inclPow) {
+  const ops_pool = ['+', '-', '×', '÷'];
+  const opTeX = op => op === '×' ? '\\times' : op === '÷' ? '\\div' : op;
+  const isOk = v => v !== null && Number.isInteger(v) && Math.abs(v) <= 200;
+
+  for (let p = 0; p < 400; p++) {
+    const terms = [0,1,2,3].map(() => _genNegTerm(inclSqrt, inclPow));
+    const ops   = [0,1,2].map(() => pick(ops_pool));
+    const [t0,t1,t2,t3] = terms;
+    const [op0,op1,op2] = ops;
+
+    /* struct: 0 = standaard OOO, 1 = (t0○t1)○t2○t3,
+               2 = t0○t1○(t2○t3),  3 = (t0○t1)○(t2○t3) */
+    const struct = rand(0, 3);
+    let result, tex;
+
+    if (struct === 0) {
+      result = _evalExprFull([t0.val,t1.val,t2.val,t3.val], [op0,op1,op2]);
+      if (!isOk(result)) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 1) {
+      const inner = _applySimple(t0.val, op0, t1.val);
+      if (!isOk(inner)) continue;
+      result = _evalExprFull([inner, t2.val, t3.val], [op1, op2]);
+      if (!isOk(result)) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 2) {
+      const inner = _applySimple(t2.val, op2, t3.val);
+      if (!isOk(inner)) continue;
+      result = _evalExprFull([t0.val, t1.val, inner], [op0, op1]);
+      if (!isOk(result)) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    } else {
+      const inner1 = _applySimple(t0.val, op0, t1.val);
+      const inner2 = _applySimple(t2.val, op2, t3.val);
+      if (!isOk(inner1) || !isOk(inner2)) continue;
+      result = _applySimple(inner1, op1, inner2);
+      if (!isOk(result)) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    }
+
+    const spec = terms.filter(t => t.tex.includes('^') || t.tex.includes('\\sqrt'));
+    const hintMain = struct > 0
+      ? 'Volgorde: haakjes eerst, dan machten, dan × en ÷, dan + en −.'
+      : 'Volgorde: machten eerst, dan × en ÷, dan + en −. Let op de tekens!';
+    const hint2 = spec.length
+      ? `Bereken machten: ${spec.map(t => `$${t.tex} = ${t.val}$`).join(', ')}`
+      : struct > 0 ? 'Bereken eerst de haakjes, dan de rest.' : 'Let op de tekens bij negatieve getallen.';
+
+    return {
+      id: uid(), leerdoel: leerdoelId,
+      vraag: `Bereken: $${tex}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: [hintMain, hint2],
+      oplossing: spec.length
+        ? `**Stap 1** (machten): ${spec.map(t => `$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${tex} = ${result}$`
+        : `$${tex} = ${result}$`
+    };
+  }
+  const q = genG8(); q.leerdoel = leerdoelId; return q;
+}
+
+/* b: 4 termen met negatieve getallen en kwadraten */
+function genC_negGetallen_b() { return _buildNegCombi('C.negGetallen.b', true, false); }
+
+/* c: 4 termen met negatieve getallen, kwadraten én machten */
+function genC_negGetallen_c() { return _buildNegCombi('C.negGetallen.c', true, true); }
 
 /* ── H/C-doel helpers ────────────────────────────────────────────────── */
 
@@ -1197,7 +1381,9 @@ const LEERDOELEN = [
   { id: 'C.natGetallen',   titel: 'Nat. getallen – gecombineerd (basis)',          groep: 'Getallen', gen: genC_natGetallen   },
   { id: 'C.natGetallen.b', titel: 'Nat. getallen – gecombineerd (kwadraten/wortels)', groep: 'Getallen', gen: genC_natGetallen_b },
   { id: 'C.natGetallen.c', titel: 'Nat. getallen – gecombineerd (+ machten)',         groep: 'Getallen', gen: genC_natGetallen_c },
-  { id: 'C.negGetallen',   titel: 'Negatieve getallen – gecombineerd',                groep: 'Getallen', gen: genC_negGetallen   },
+  { id: 'C.negGetallen',   titel: 'Negatieve getallen – gecombineerd (basis)',          groep: 'Getallen', gen: genC_negGetallen   },
+  { id: 'C.negGetallen.b', titel: 'Neg. getallen – gecombineerd (kwadraten)',          groep: 'Getallen', gen: genC_negGetallen_b },
+  { id: 'C.negGetallen.c', titel: 'Neg. getallen – gecombineerd (+ machten)',          groep: 'Getallen', gen: genC_negGetallen_c },
 
   /* ── H-doelen (husseldoelen) ──────────────────────────────────────── */
   {
