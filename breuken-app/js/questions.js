@@ -512,6 +512,675 @@ function genBV2() {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   GEHELE GETALLEN
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── G.1 – Natuurlijke getallen optellen ────────────────────────────── */
+function genG1() {
+  const a = rand(1, 60), b = rand(1, 60);
+  return {
+    id: uid(), leerdoel: 'G.1',
+    vraag: `Bereken: $${a} + ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a + b }, data: { a, b },
+    hints: [
+      'Begin bij het grootste getal en tel het andere getal erbij op.',
+      `$${a} + ${b} = ${a + b}$`
+    ],
+    oplossing: `$${a} + ${b} = ${a + b}$`
+  };
+}
+
+/* ── G.2 – Natuurlijke getallen aftrekken ───────────────────────────── */
+function genG2() {
+  const b = rand(1, 50), a = rand(b, 99);
+  return {
+    id: uid(), leerdoel: 'G.2',
+    vraag: `Bereken: $${a} - ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a - b }, data: { a, b },
+    hints: [
+      'Trek het kleinste getal af van het grootste.',
+      `$${a} - ${b} = ${a - b}$`
+    ],
+    oplossing: `$${a} - ${b} = ${a - b}$`
+  };
+}
+
+/* ── G.3 – Natuurlijke getallen vermenigvuldigen ────────────────────── */
+function genG3() {
+  const a = rand(2, 10), b = rand(2, 10);
+  return {
+    id: uid(), leerdoel: 'G.3',
+    vraag: `Bereken: $${a} \\times ${b}$`,
+    antwoordType: 'integer', antwoord: { waarde: a * b }, data: { a, b },
+    hints: [
+      `$${a} \\times ${b}$ betekent ${a} keer het getal ${b} optellen.`,
+      `$${a} \\times ${b} = ${a * b}$`
+    ],
+    oplossing: `$${a} \\times ${b} = ${a * b}$`
+  };
+}
+
+/* ── G.4 – Natuurlijke getallen delen ──────────────────────────────── */
+function genG4() {
+  const d = rand(2, 10), q = rand(2, 10);
+  const a = d * q;
+  return {
+    id: uid(), leerdoel: 'G.4',
+    vraag: `Bereken: $${a} \\div ${d}$`,
+    antwoordType: 'integer', antwoord: { waarde: q }, data: { a, d, q },
+    hints: [
+      `Vraag: ${d} keer welk getal is ${a}?`,
+      `$${d} \\times ${q} = ${a}$, dus $${a} \\div ${d} = ${q}$`
+    ],
+    oplossing: `$${a} \\div ${d} = ${q}$ (want $${d} \\times ${q} = ${a}$)`
+  };
+}
+
+/* ── G.5 – Positieve getallen kwadrateren ───────────────────────────── */
+function genG5() {
+  const n = rand(2, 12);
+  return {
+    id: uid(), leerdoel: 'G.5',
+    vraag: `Bereken: $${n}^2$`,
+    antwoordType: 'integer', antwoord: { waarde: n * n }, data: { n },
+    hints: [
+      `$${n}^2$ betekent $${n} \\times ${n}$.`,
+      `$${n} \\times ${n} = ${n * n}$`
+    ],
+    oplossing: `$${n}^2 = ${n} \\times ${n} = ${n * n}$`
+  };
+}
+
+/* ── G.6 – Worteltrekken van positieve getallen ─────────────────────── */
+function genG6() {
+  const n = rand(1, 12);
+  return {
+    id: uid(), leerdoel: 'G.6',
+    vraag: `Bereken: $\\sqrt{${n * n}}$`,
+    antwoordType: 'integer', antwoord: { waarde: n }, data: { n },
+    hints: [
+      `Vraag: welk getal × zichzelf geeft ${n * n}?`,
+      `$${n} \\times ${n} = ${n * n}$, dus $\\sqrt{${n * n}} = ${n}$`
+    ],
+    oplossing: `$\\sqrt{${n * n}} = ${n}$ (want $${n}^2 = ${n * n}$)`
+  };
+}
+
+/* ── G.7 – Negatieve getallen vergelijken ───────────────────────────── */
+function genG7() {
+  const nums = new Set();
+  while (nums.size < 4) nums.add(-rand(1, 20));
+  const arr = [...nums];
+  const vraagGrootst = Math.random() > 0.5;
+  const correctVal = vraagGrootst ? Math.max(...arr) : Math.min(...arr);
+  const correctIdx = arr.indexOf(correctVal);
+  const gesorteerd = [...arr].sort((a, b) => a - b);
+  return {
+    id: uid(), leerdoel: 'G.7',
+    vraag: `Welk getal is het <strong>${vraagGrootst ? 'grootst' : 'kleinst'}</strong>?`,
+    antwoordType: 'mc',
+    antwoord: { correct: correctIdx },
+    data: { arr, opties: arr.map(n => ({ label: `$${n}$` })) },
+    hints: [
+      'Op de getallenlijn staat een groter getal altijd rechts van een kleiner getal.',
+      `Bij negatieve getallen: hoe dichter bij nul, hoe groter. Van klein naar groot: $${gesorteerd.join(' < ')}$.`
+    ],
+    oplossing: `Van klein naar groot: $${gesorteerd.join(' < ')}$\nHet ${vraagGrootst ? 'grootst' : 'kleinst'}e getal is $${correctVal}$.`
+  };
+}
+
+/* ── G.8 – Negatieve gehele getallen optellen ──────────────────────── */
+function genG8() {
+  const type = rand(0, 2);
+  let a, b;
+  if (type === 0) { a = -rand(1, 15); b = rand(1, 15); }
+  else if (type === 1) { a = rand(1, 15); b = -rand(1, 15); }
+  else { a = -rand(1, 15); b = -rand(1, 15); }
+  const res = a + b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.8',
+    vraag: `Bereken: $${a} + ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      b < 0 ? 'Een positief getal optellen bij een negatief getal: bepaal het verschil en kijk welk getal het "zwaarst" weegt.'
+            : 'Begin bij het eerste getal en ga op de getallenlijn naar rechts.',
+      `$${a} + ${bStr} = ${res}$`
+    ],
+    oplossing: `$${a} + ${bStr} = ${res}$`
+  };
+}
+
+/* ── G.9 – Negatieve gehele getallen aftrekken ─────────────────────── */
+function genG9() {
+  const type = rand(0, 2);
+  let a, b;
+  if (type === 0) { a = rand(1, 15); b = rand(a + 1, a + 15); }   // pos - pos → neg
+  else if (type === 1) { a = -rand(1, 10); b = rand(1, 15); }      // neg - pos
+  else { a = -rand(1, 10); b = -rand(1, 15); }                      // neg - neg
+  const res = a - b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.9',
+    vraag: `Bereken: $${a} - ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Aftrekken van een negatief getal is hetzelfde als optellen van het positieve getal.',
+      `$${a} - ${bStr} = ${a} + ${b < 0 ? Math.abs(b) : `(${-b})`} = ${res}$`
+    ],
+    oplossing: `$${a} - ${bStr} = ${res}$`
+  };
+}
+
+/* ── G.10 – Negatieve gehele getallen vermenigvuldigen ─────────────── */
+function genG10() {
+  const type = rand(0, 1);
+  let a, b;
+  if (type === 0) { a = -rand(2, 10); b = rand(2, 10); }   // neg × pos
+  else { a = -rand(2, 10); b = -rand(2, 10); }              // neg × neg
+  const res = a * b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  const aStr = a < 0 ? `(${a})` : `${a}`;
+  return {
+    id: uid(), leerdoel: 'G.10',
+    vraag: `Bereken: $${aStr} \\times ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Vermenigvuldig eerst de absolute waarden (zonder minteken).',
+      type === 0 ? 'Negatief × positief = negatief.' : 'Negatief × negatief = positief.',
+      `$${aStr} \\times ${bStr} = ${res}$`
+    ],
+    oplossing: `$${aStr} \\times ${bStr} = ${res}$ (${type === 0 ? '− × + = −' : '− × − = +'})`
+  };
+}
+
+/* ── G.11 – Negatieve gehele getallen delen ─────────────────────────── */
+function genG11() {
+  const type = rand(0, 1);
+  const d = rand(2, 10), q = rand(2, 10);
+  let a, b;
+  if (type === 0) { a = -(d * q); b = d; }    // neg ÷ pos
+  else { a = -(d * q); b = -d; }               // neg ÷ neg
+  const res = a / b;
+  const bStr = b < 0 ? `(${b})` : `${b}`;
+  return {
+    id: uid(), leerdoel: 'G.11',
+    vraag: `Bereken: $${a} \\div ${bStr}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
+    hints: [
+      'Deel eerst de absolute waarden.',
+      type === 0 ? 'Negatief ÷ positief = negatief.' : 'Negatief ÷ negatief = positief.',
+      `$${a} \\div ${bStr} = ${res}$`
+    ],
+    oplossing: `$${a} \\div ${bStr} = ${res}$ (${type === 0 ? '− ÷ + = −' : '− ÷ − = +'})`
+  };
+}
+
+/* ── G.12 – Gehele getallen kwadrateren ─────────────────────────────── */
+function genG12() {
+  const n = rand(2, 10);
+  const neg = Math.random() > 0.4;
+  const base = neg ? -n : n;
+  const baseStr = neg ? `(-${n})` : `${n}`;
+  return {
+    id: uid(), leerdoel: 'G.12',
+    vraag: `Bereken: $${baseStr}^2$`,
+    antwoordType: 'integer', antwoord: { waarde: n * n }, data: { n, neg },
+    hints: [
+      neg ? `$(-${n})^2 = (-${n}) \\times (-${n})$.`
+          : `$${n}^2 = ${n} \\times ${n}$.`,
+      neg ? `Negatief × negatief = positief: $(-${n}) \\times (-${n}) = ${n * n}$`
+          : `$${n} \\times ${n} = ${n * n}$`
+    ],
+    oplossing: `$${baseStr}^2 = ${baseStr} \\times ${baseStr} = ${n * n}$`
+  };
+}
+
+
+/* ── G.14 – Machtsverheffen van positieve getallen ─────────────────── */
+function genG14() {
+  const bases = [2, 3, 4, 5];
+  const base = pick(bases);
+  const exp = rand(2, base <= 3 ? 5 : 3);
+  const res = Math.pow(base, exp);
+  return {
+    id: uid(), leerdoel: 'G.14',
+    vraag: `Bereken: $${base}^${exp}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { base, exp },
+    hints: [
+      `$${base}^${exp}$ betekent ${base} tot de macht ${exp}: ${base} × ${base} … (${exp} keer).`,
+      `$${Array(exp).fill(base).join(' \\times ')} = ${res}$`
+    ],
+    oplossing: `$${base}^${exp} = ${Array(exp).fill(base).join(' \\times ')} = ${res}$`
+  };
+}
+
+/* ── G.15 – Machtsverheffen van gehele getallen ─────────────────────── */
+function genG15() {
+  const base = -rand(2, 5);
+  const exp = rand(2, 4);
+  const res = Math.pow(base, exp);
+  const baseStr = `(${base})`;
+  return {
+    id: uid(), leerdoel: 'G.15',
+    vraag: `Bereken: $${baseStr}^${exp}$`,
+    antwoordType: 'integer', antwoord: { waarde: res }, data: { base, exp },
+    hints: [
+      `$${baseStr}^${exp}$ betekent $${baseStr}$ tot de macht ${exp}.`,
+      exp % 2 === 0
+        ? `Een negatief getal tot een **even** macht is altijd positief.`
+        : `Een negatief getal tot een **oneven** macht is altijd negatief.`
+    ],
+    oplossing: `$${baseStr}^${exp} = ${Array(exp).fill(baseStr).join(' \\times ')} = ${res}$`
+  };
+}
+
+/* ── G.16 – Eigenschappen van natuurlijke getallen ──────────────────── */
+const PRIEMGETALLEN = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47];
+const KWADRATEN = [1,4,9,16,25,36,49,64,81,100,121,144];
+
+function genG16() {
+  const type = rand(0, 2); // 0=deelbaar, 1=priem, 2=kwadraat
+  if (type === 0) {
+    // Deelbaarheid: Is X deelbaar door Y?
+    const d = pick([2,3,4,5,6,7,8,9,10]);
+    const isDeelbaar = Math.random() > 0.4;
+    let n;
+    if (isDeelbaar) { n = d * rand(2, 15); }
+    else {
+      do { n = rand(d * 2, d * 15); } while (n % d === 0);
+    }
+    const opties = [{ label: 'Ja' }, { label: 'Nee' }];
+    const correctIdx = isDeelbaar ? 0 : 1;
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: `Is $${n}$ deelbaar door $${d}$?`,
+      antwoordType: 'mc', antwoord: { correct: correctIdx }, data: { n, d, opties },
+      hints: [
+        `Bereken $${n} \\div ${d}$ en kijk of de uitkomst een geheel getal is.`,
+        `$${n} \\div ${d} = ${(n/d).toFixed(2)}$ → ${isDeelbaar ? 'geheel getal, dus deelbaar.' : 'geen geheel getal, dus niet deelbaar.'}`
+      ],
+      oplossing: `$${n} \\div ${d} = ${isDeelbaar ? n/d : (n/d).toFixed(2)}$ → $${n}$ is ${isDeelbaar ? '' : 'niet '}deelbaar door $${d}$.`
+    };
+  } else if (type === 1) {
+    // Priemgetal: welk is een priemgetal? (mc 4 keuzes)
+    const priem = pick(PRIEMGETALLEN.filter(p => p < 50));
+    const kandidaten = new Set([priem]);
+    while (kandidaten.size < 4) {
+      const c = rand(2, 50);
+      if (!PRIEMGETALLEN.includes(c)) kandidaten.add(c);
+    }
+    const arr = shuffle([...kandidaten]);
+    const correctIdx = arr.indexOf(priem);
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: 'Welk getal is een <strong>priemgetal</strong>?',
+      antwoordType: 'mc', antwoord: { correct: correctIdx },
+      data: { opties: arr.map(n => ({ label: `$${n}$` })) },
+      hints: [
+        'Een priemgetal is alleen deelbaar door 1 en zichzelf.',
+        `${priem} is alleen deelbaar door 1 en ${priem}.`
+      ],
+      oplossing: `$${priem}$ is een priemgetal: de enige delers zijn 1 en ${priem}.\n${arr.filter(n=>n!==priem).map(n=>`$${n}$ is geen priemgetal (deelbaar door ${[2,3,4,5,6,7,8,9].find(d=>d<n&&n%d===0)||'...'})`).join(', ')}.`
+    };
+  } else {
+    // Kwadraat: welk is een kwadraat?
+    const kw = pick(KWADRATEN.filter(k => k <= 100 && k > 1));
+    const kandidaten = new Set([kw]);
+    while (kandidaten.size < 4) {
+      const c = rand(2, 100);
+      if (!KWADRATEN.includes(c)) kandidaten.add(c);
+    }
+    const arr = shuffle([...kandidaten]);
+    const correctIdx = arr.indexOf(kw);
+    const wortel = Math.round(Math.sqrt(kw));
+    return {
+      id: uid(), leerdoel: 'G.16',
+      vraag: 'Welk getal is een <strong>kwadraat</strong> (vierkantsgetal)?',
+      antwoordType: 'mc', antwoord: { correct: correctIdx },
+      data: { opties: arr.map(n => ({ label: `$${n}$` })) },
+      hints: [
+        'Een kwadraat is het product van een geheel getal met zichzelf: $1, 4, 9, 16, 25, 36, ...$',
+        `$${wortel}^2 = ${kw}$, dus $${kw}$ is een kwadraat.`
+      ],
+      oplossing: `$${kw} = ${wortel}^2$, dus $${kw}$ is een kwadraat (vierkantsgetal).`
+    };
+  }
+}
+
+/* ── Hulpfuncties voor combinatiedoelen getallen ─────────────────────── */
+
+/* Enkelvoudige bewerking – geen volgorde-van-bewerkingen */
+function _applySimple(a, op, b) {
+  if (op === '+') return a + b;
+  if (op === '-') return a - b;
+  if (op === '×') { const r = a * b; return Math.abs(r) <= 1000 ? r : null; }
+  if (op === '÷') { if (!b || a % b !== 0) return null; return a / b; }
+  return null;
+}
+
+/* Evalueer expressie met negatieve getallen toegestaan in resultaat */
+function _evalExprFull(vals, ops) {
+  vals = [...vals]; ops = [...ops];
+  for (let i = 0; i < ops.length; ) {
+    if (ops[i] === '×' || ops[i] === '÷') {
+      if (ops[i] === '÷' && (!vals[i+1] || vals[i] % vals[i+1] !== 0)) return null;
+      const r = ops[i] === '×' ? vals[i] * vals[i+1] : vals[i] / vals[i+1];
+      if (!Number.isInteger(r) || Math.abs(r) > 1000) return null;
+      vals.splice(i, 2, r); ops.splice(i, 1);
+    } else i++;
+  }
+  let r = vals[0];
+  for (let i = 0; i < ops.length; i++) {
+    r = ops[i] === '+' ? r + vals[i+1] : r - vals[i+1];
+  }
+  return Number.isInteger(r) && Math.abs(r) <= 200 ? r : null;
+}
+
+/* Genereer één term voor negatieve getallen: geheel getal, kwadraat, of macht */
+function _genNegTerm(inclSqrt, inclPow) {
+  const types = ['neg','neg','pos','pos'];
+  if (inclSqrt) types.push('sq', 'sq', 'rt'); // (-n)^2 en √(n²) = positief
+  if (inclPow)  types.push('pow');      // (-n)^k
+  const type = pick(types);
+  if (type === 'neg') {
+    const n = rand(1, 12);
+    return { val: -n, tex: `(-${n})` };
+  }
+  if (type === 'pos') {
+    const n = rand(2, 12);
+    return { val: n, tex: `${n}` };
+  }
+  if (type === 'sq') {
+    const n = rand(2, 8);
+    return { val: n * n, tex: `(-${n})^2` };
+  }
+  if (type === 'rt') {
+    const n = rand(2, 10);
+    return { val: n, tex: `\\sqrt{${n * n}}` };
+  }
+  // pow
+  const opts = [[-2,3],[-2,4],[-3,3],[-4,3]];
+  const [b, e] = pick(opts);
+  return { val: Math.pow(b, e), tex: `(-${Math.abs(b)})^{${e}}` };
+}
+
+/* Genereer één term: gewoon getal, kwadraat, wortel, of macht */
+function _genNatTerm(inclSqrt, inclPow) {
+  const types = ['num','num','num','num']; // plain getal weegt zwaarder
+  if (inclSqrt) { types.push('sq','rt'); }
+  if (inclPow)  { types.push('pow'); }
+  const type = pick(types);
+  if (type === 'sq')  { const n = rand(2,9);  return { val: n*n,          tex: `${n}^2` }; }
+  if (type === 'rt')  { const n = rand(2,10); return { val: n,            tex: `\\sqrt{${n*n}}` }; }
+  if (type === 'pow') {
+    const opts = [[2,3],[2,4],[2,5],[3,3],[3,4],[4,3],[5,3]];
+    const [b,e] = pick(opts);
+    return { val: Math.pow(b,e), tex: `${b}^{${e}}` };
+  }
+  const n = rand(2,15); return { val: n, tex: `${n}` };
+}
+
+/* Evalueer [v0, v1, ...] met operators [op1, op2, ...], respecteer volgorde */
+function _evalNatExpr(vals, ops) {
+  vals = [...vals]; ops = [...ops];
+  for (let i = 0; i < ops.length; ) {
+    if (ops[i] === '×' || ops[i] === '÷') {
+      if (ops[i] === '÷' && (!vals[i+1] || vals[i] % vals[i+1] !== 0)) return null;
+      const r = ops[i] === '×' ? vals[i]*vals[i+1] : vals[i]/vals[i+1];
+      if (!Number.isInteger(r) || r < 0 || r > 1000) return null;
+      vals.splice(i,2,r); ops.splice(i,1);
+    } else i++;
+  }
+  let r = vals[0];
+  for (let i = 0; i < ops.length; i++) {
+    r = ops[i] === '+' ? r+vals[i+1] : r-vals[i+1];
+    if (r < 0) return null;
+  }
+  return Number.isInteger(r) && r > 0 && r <= 500 ? r : null;
+}
+
+function _buildNatCombi(leerdoelId, inclSqrt, inclPow) {
+  const low = ['+','-'], high = ['×','÷'];
+  const opTeX = op => op==='×'?'\\times':op==='÷'?'\\div':op;
+  /* applyOp voor enkelvoudige stap (nat. getallen: resultaat moet > 0) */
+  const applyOp = (a, op, b) => {
+    const r = _applySimple(a, op, b);
+    return (r !== null && r > 0) ? r : null;
+  };
+
+  for (let p = 0; p < 400; p++) {
+    const terms = [0,1,2,3].map(() => _genNatTerm(inclSqrt, inclPow));
+    const ops   = [0,1,2].map(() => pick([...low,...high]));
+    const [t0,t1,t2,t3] = terms;
+    const [op0,op1,op2] = ops;
+
+    /* struct: 0 = standaard OOO, 1 = (t0○t1)○t2○t3,
+               2 = t0○t1○(t2○t3),  3 = (t0○t1)○(t2○t3) */
+    const struct = rand(0, 3);
+    let result, tex;
+
+    if (struct === 0) {
+      result = _evalNatExpr([t0.val,t1.val,t2.val,t3.val], [op0,op1,op2]);
+      if (result === null) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 1) {
+      const inner = applyOp(t0.val, op0, t1.val);
+      if (inner === null) continue;
+      result = _evalNatExpr([inner, t2.val, t3.val], [op1, op2]);
+      if (result === null) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 2) {
+      const inner = applyOp(t2.val, op2, t3.val);
+      if (inner === null) continue;
+      result = _evalNatExpr([t0.val, t1.val, inner], [op0, op1]);
+      if (result === null) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    } else {
+      const inner1 = applyOp(t0.val, op0, t1.val);
+      const inner2 = applyOp(t2.val, op2, t3.val);
+      if (inner1 === null || inner2 === null) continue;
+      result = applyOp(inner1, op1, inner2);
+      if (result === null || result > 500) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    }
+
+    const spec = terms.filter(t => t.tex.includes('^') || t.tex.includes('\\sqrt'));
+    const hasParens = struct > 0;
+    const hintMain = hasParens
+      ? 'Volgorde: haakjes eerst, dan machten/wortels, dan × en ÷, dan + en −.'
+      : 'Volgorde: machten/wortels eerst, dan × en ÷, dan + en −.';
+    const stap1 = spec.length
+      ? `Bereken machten/wortels: ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}`
+      : hasParens ? 'Begin met de haakjes.' : 'Let op de volgorde: × en ÷ vóór + en −.';
+
+    return {
+      id: uid(), leerdoel: leerdoelId,
+      vraag: `Bereken: $${tex}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: [hintMain, stap1],
+      oplossing: spec.length
+        ? `**Stap 1** (machten/wortels): ${spec.map(t=>`$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${tex} = ${result}$`
+        : `$${tex} = ${result}$`
+    };
+  }
+  const q = genG1(); q.leerdoel = leerdoelId; return q;
+}
+
+/* ── C.natGetallen – Combinatiedoel natuurlijke getallen (3 termen) ─── */
+function genC_natGetallen() {
+  const low = ['+', '-'], high = ['×', '÷'];
+  const opTeX = op => op === '×' ? '\\times' : op === '÷' ? '\\div' : op;
+  const applyOp = (a, op, b) => {
+    const r = _applySimple(a, op, b);
+    return (r !== null && r > 0) ? r : null;
+  };
+
+  for (let p = 0; p < 150; p++) {
+    const op1 = pick([...low,...high]);
+    const op2 = pick([...low,...high]);
+    const a = rand(2, 20), b = rand(2, 12), c = rand(2, 12);
+
+    /* struct: 0 = standaard OOO, 1 = (a○b)○c, 2 = a○(b○c) */
+    const struct = rand(0, 2);
+
+    if (struct === 0) {
+      /* Standaard: respecteer volgorde van bewerkingen */
+      const isOOO = low.includes(op1) && high.includes(op2);
+      let stap1, result;
+      if (isOOO) {
+        if (op2 === '÷' && b % c !== 0) continue;
+        stap1 = op2 === '×' ? b * c : b / c;
+        result = op1 === '+' ? a + stap1 : a - stap1;
+      } else {
+        stap1 = applyOp(a, op1, b);
+        if (stap1 === null) continue;
+        result = applyOp(stap1, op2, c);
+      }
+      if (!result || result > 1000) continue;
+      const s1 = isOOO
+        ? `Eerst $${b} ${opTeX(op2)} ${c} = ${stap1}$ (× en ÷ gaan vóór + en −)`
+        : `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`;
+      const s2 = isOOO
+        ? `Dan $${a} ${opTeX(op1)} ${stap1} = ${result}$`
+        : `Stap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $${a} ${opTeX(op1)} ${b} ${opTeX(op2)} ${c}$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: [isOOO ? 'Let op de volgorde: × en ÷ gaan vóór + en −.' : 'Werk van links naar rechts.', s1],
+        oplossing: `${s1}\n${s2}`
+      };
+    } else if (struct === 1) {
+      /* (a ○ b) ○ c  – haakjes gaan altijd eerst */
+      const stap1 = applyOp(a, op1, b);
+      if (stap1 === null) continue;
+      const result = applyOp(stap1, op2, c);
+      if (result === null || result > 1000) continue;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $(${a} ${opTeX(op1)} ${b}) ${opTeX(op2)} ${c}$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: ['Haakjes gaan altijd vóór alles.', `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$`],
+        oplossing: `Stap 1: $${a} ${opTeX(op1)} ${b} = ${stap1}$\nStap 2: $${stap1} ${opTeX(op2)} ${c} = ${result}$`
+      };
+    } else {
+      /* a ○ (b ○ c)  – haakjes gaan altijd eerst */
+      const stap1 = applyOp(b, op2, c);
+      if (stap1 === null) continue;
+      const result = applyOp(a, op1, stap1);
+      if (result === null || result > 1000) continue;
+      return {
+        id: uid(), leerdoel: 'C.natGetallen',
+        vraag: `Bereken: $${a} ${opTeX(op1)} (${b} ${opTeX(op2)} ${c})$`,
+        antwoordType: 'integer', antwoord: { waarde: result }, data: { a, b, c, op1, op2 },
+        hints: ['Haakjes gaan altijd vóór alles.', `Stap 1: $${b} ${opTeX(op2)} ${c} = ${stap1}$`],
+        oplossing: `Stap 1: $${b} ${opTeX(op2)} ${c} = ${stap1}$\nStap 2: $${a} ${opTeX(op1)} ${stap1} = ${result}$`
+      };
+    }
+  }
+  const q = genG1(); q.leerdoel = 'C.natGetallen'; return q;
+}
+
+/* ── C.natGetallen.b – langer, met kwadraten en wortels ─────────────── */
+function genC_natGetallen_b() { return _buildNatCombi('C.natGetallen.b', true, false); }
+
+/* ── C.natGetallen.c – langer, met kwadraten, wortels én machten ────── */
+function genC_natGetallen_c() { return _buildNatCombi('C.natGetallen.c', true, true); }
+
+/* ── C.negGetallen – Combinatiedoel negatieve getallen ──────────────── */
+function genC_negGetallen() {
+  for (let p = 0; p < 150; p++) {
+    const gens = [genG8, genG9, genG10, genG11];
+    const g1 = pick(gens)(), g2 = pick(gens)();
+    const v1 = g1.antwoord.waarde, v2 = g2.antwoord.waarde;
+    if (v1 === null || v2 === null) continue;
+    const ops = ['+', '-'];
+    const op = pick(ops);
+    const result = op === '+' ? v1 + v2 : v1 - v2;
+    if (Math.abs(result) > 100) continue;
+    const v2Str = v2 < 0 ? `(${v2})` : `${v2}`;
+    return {
+      id: uid(), leerdoel: 'C.negGetallen',
+      vraag: `Bereken stap voor stap:\n$\\bigl(${g1.vraag.replace('Bereken: $','').replace('$','')}\\bigr) ${op === '+' ? '+' : '-'} ${v2Str}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: ['Bereken eerst de haakjes, dan de rest.', `Tussenstap 1: $${v1}$, dan $${v1} ${op} ${v2Str} = ${result}$`],
+      oplossing: `Stap 1: ${g1.oplossing} $= ${v1}$\nStap 2: $${v1} ${op} ${v2Str} = ${result}$`
+    };
+  }
+  const q = genG8(); q.leerdoel = 'C.negGetallen'; return q;
+}
+
+/* ── C.negGetallen b/c – langere expressies met negatieve getallen ───── */
+function _buildNegCombi(leerdoelId, inclSqrt, inclPow) {
+  const ops_pool = ['+', '-', '×', '÷'];
+  const opTeX = op => op === '×' ? '\\times' : op === '÷' ? '\\div' : op;
+  const isOk = v => v !== null && Number.isInteger(v) && Math.abs(v) <= 200;
+
+  for (let p = 0; p < 400; p++) {
+    const terms = [0,1,2,3].map(() => _genNegTerm(inclSqrt, inclPow));
+    const ops   = [0,1,2].map(() => pick(ops_pool));
+    const [t0,t1,t2,t3] = terms;
+    const [op0,op1,op2] = ops;
+
+    /* struct: 0 = standaard OOO, 1 = (t0○t1)○t2○t3,
+               2 = t0○t1○(t2○t3),  3 = (t0○t1)○(t2○t3) */
+    const struct = rand(0, 3);
+    let result, tex;
+
+    if (struct === 0) {
+      result = _evalExprFull([t0.val,t1.val,t2.val,t3.val], [op0,op1,op2]);
+      if (!isOk(result)) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 1) {
+      const inner = _applySimple(t0.val, op0, t1.val);
+      if (!isOk(inner)) continue;
+      result = _evalExprFull([inner, t2.val, t3.val], [op1, op2]);
+      if (!isOk(result)) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} ${t2.tex} ${opTeX(op2)} ${t3.tex}`;
+    } else if (struct === 2) {
+      const inner = _applySimple(t2.val, op2, t3.val);
+      if (!isOk(inner)) continue;
+      result = _evalExprFull([t0.val, t1.val, inner], [op0, op1]);
+      if (!isOk(result)) continue;
+      tex = `${t0.tex} ${opTeX(op0)} ${t1.tex} ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    } else {
+      const inner1 = _applySimple(t0.val, op0, t1.val);
+      const inner2 = _applySimple(t2.val, op2, t3.val);
+      if (!isOk(inner1) || !isOk(inner2)) continue;
+      result = _applySimple(inner1, op1, inner2);
+      if (!isOk(result)) continue;
+      tex = `(${t0.tex} ${opTeX(op0)} ${t1.tex}) ${opTeX(op1)} (${t2.tex} ${opTeX(op2)} ${t3.tex})`;
+    }
+
+    const spec = terms.filter(t => t.tex.includes('^') || t.tex.includes('\\sqrt'));
+    const hintMain = struct > 0
+      ? 'Volgorde: haakjes eerst, dan machten, dan × en ÷, dan + en −.'
+      : 'Volgorde: machten eerst, dan × en ÷, dan + en −. Let op de tekens!';
+    const hint2 = spec.length
+      ? `Bereken machten: ${spec.map(t => `$${t.tex} = ${t.val}$`).join(', ')}`
+      : struct > 0 ? 'Bereken eerst de haakjes, dan de rest.' : 'Let op de tekens bij negatieve getallen.';
+
+    return {
+      id: uid(), leerdoel: leerdoelId,
+      vraag: `Bereken: $${tex}$`,
+      antwoordType: 'integer', antwoord: { waarde: result }, data: {},
+      hints: [hintMain, hint2],
+      oplossing: spec.length
+        ? `**Stap 1** (machten): ${spec.map(t => `$${t.tex} = ${t.val}$`).join(', ')}\n**Stap 2**: $${tex} = ${result}$`
+        : `$${tex} = ${result}$`
+    };
+  }
+  const q = genG8(); q.leerdoel = leerdoelId; return q;
+}
+
+/* b: 4 termen met negatieve getallen en kwadraten */
+function genC_negGetallen_b() { return _buildNegCombi('C.negGetallen.b', true, false); }
+
+/* c: 4 termen met negatieve getallen, kwadraten én machten */
+function genC_negGetallen_c() { return _buildNegCombi('C.negGetallen.c', true, true); }
+
 /* ── H/C-doel helpers ────────────────────────────────────────────────── */
 
 /* Fraction arithmetic on [n, d] pairs. Returns simplified [n, d] or null. */
@@ -651,6 +1320,723 @@ function genC_allBreuk() {
 }
 
 /* ── Leerdoel registry ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   PERCENTAGES – helpers en generators
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Bouw een kruistabel-vraag object.
+ *  cellen: { tl, tr, bl, br } – elk { val, type:'input'|'vraag'|'prefilled', hint }
+ *  type 'input'    → leeg invoervak, wordt gecontroleerd
+ *  type 'vraag'    → toont '?', geen invoer, antwoord gaat in apart vak
+ *  type 'prefilled'→ toont waarde in grijs, niet bewerkbaar
+ */
+function _mkKT(leerdoelId, vraagTxt, cellen, antwoord, eenheid, tolerantie, hints, oplossing) {
+  return {
+    id: uid(), leerdoel: leerdoelId,
+    vraag: vraagTxt,
+    antwoordType: 'kruistabel',
+    tabel: { cellen },
+    antwoord: { waarde: antwoord, tolerantie: tolerantie ?? 0.005 },
+    eenheid: eenheid ?? '',
+    hints, oplossing
+  };
+}
+
+/* Nette verhouding deel/geheel waarbij pct een geheel getal is */
+function _niceDeelGeheel() {
+  const opties = [
+    [1,2,50],[1,4,25],[3,4,75],[1,5,20],[2,5,40],[3,5,60],[4,5,80],
+    [1,10,10],[3,10,30],[7,10,70],[9,10,90],
+    [1,20,5],[3,20,15],[7,20,35],[9,20,45],[11,20,55],[13,20,65],[17,20,85],
+  ];
+  const [n, d, p] = pick(opties);
+  const scale = pick([1,1,2,3,4,5,10]);
+  return { deel: n*scale, geheel: d*scale, pct: p };
+}
+
+/* Nette toename/afname: oud × factor/100 is geheel getal */
+function _niceToename(isAfname) {
+  for (let i = 0; i < 120; i++) {
+    const pct  = pick([10,20,25,50]);
+    const oud  = rand(2, 24) * 4;          // veelvouden van 4 werken goed met 25%
+    const fac  = isAfname ? (100-pct) : (100+pct);
+    const nieuw = oud * fac / 100;
+    if (Number.isInteger(nieuw) && nieuw > 0 && nieuw <= 500) return { oud, pct, nieuw };
+  }
+  return isAfname ? { oud:80, pct:25, nieuw:60 } : { oud:80, pct:25, nieuw:100 };
+}
+
+/* Moeilijkere toename/afname: resultaat kan decimaal zijn */
+function _hardToename(isAfname) {
+  const pct  = pick([15,18,30,35,12,22,45]);
+  const oud  = rand(20, 200);
+  const fac  = isAfname ? (100-pct) : (100+pct);
+  const nieuw = Math.round(oud * fac / 10) / 10;
+  const afgerond = Math.abs(nieuw - oud*fac/100) > 0.001;
+  return { oud, pct, nieuw, afgerond };
+}
+
+/* ── P.1 – hoeveel % is X van Y ──────────────────────────────────── */
+function genP1a() {
+  const { deel, geheel, pct } = _niceDeelGeheel();
+  return _mkKT('P.1a',
+    `Hoeveel procent is $${deel}$ van $${geheel}$?`,
+    { tl:{val:geheel,type:'input',hint:null}, tr:{val:deel,  type:'input',hint:null},
+      bl:{val:100,   type:'input',hint:null}, br:{val:null,  type:'vraag',hint:null} },
+    pct, '%', 0.005,
+    ['Zet het <em>geheel</em> links boven 100%, het <em>deel</em> rechts.',
+     `Berekening via het kruis: $${deel} \\times 100 \\div ${geheel} = ${pct}$`],
+    `$\\dfrac{${deel} \\times 100}{${geheel}} = ${pct}\\%$`
+  );
+}
+
+function genP1b() {
+  for (let i = 0; i < 80; i++) {
+    const geheel = rand(12, 80);
+    const deel   = rand(1, geheel-1);
+    const pctEx  = deel/geheel*100;
+    const pct    = Math.round(pctEx*10)/10;
+    if (pct <= 0 || pct >= 100) continue;
+    const afr  = Math.abs(pct-pctEx) > 0.001;
+    const vTxt = afr ? `Hoeveel procent is $${deel}$ van $${geheel}$? Rond af op 1 decimaal.`
+                     : `Hoeveel procent is $${deel}$ van $${geheel}$?`;
+    return _mkKT('P.1b', vTxt,
+      { tl:{val:geheel,type:'input',hint:null}, tr:{val:deel,type:'input',hint:null},
+        bl:{val:100,   type:'input',hint:null}, br:{val:null,type:'vraag',hint:null} },
+      pct, '%', afr ? 0.005 : 0.05,
+      ['Zet het geheel links boven 100%, het deel rechts.',
+       afr ? `Kruis: $${deel} \\times 100 \\div ${geheel} \\approx ${pct}\\%$`
+           : `Kruis: $${deel} \\times 100 \\div ${geheel} = ${pct}\\%$`],
+      `$\\dfrac{${deel} \\times 100}{${geheel}} \\approx ${pct}\\%$`
+    );
+  }
+  return genP1a();
+}
+
+/* ── P.2 – geheel bij deel in % ──────────────────────────────────── */
+function genP2a() {
+  for (let i = 0; i < 100; i++) {
+    const pct    = pick([10,20,25,40,50,75,80]);
+    const geheel = rand(2,20)*10;
+    const deel   = geheel*pct/100;
+    if (!Number.isInteger(deel) || deel < 1) continue;
+    return _mkKT('P.2a',
+      `$${deel}$ is $${pct}\\%$ van welk getal?`,
+      { tl:{val:null, type:'vraag',hint:null}, tr:{val:deel, type:'input',hint:null},
+        bl:{val:100,  type:'input',hint:null}, br:{val:pct,  type:'input',hint:null} },
+      geheel, '', 0.005,
+      ['Zet het <em>bekende deel</em> rechts. Links staat het geheel (onbekend).',
+       `Kruis: $${deel} \\times 100 \\div ${pct} = ${geheel}$`],
+      `$\\dfrac{${deel} \\times 100}{${pct}} = ${geheel}$`
+    );
+  }
+  return _mkKT('P.2a','$30$ is $50\\%$ van welk getal?',
+    {tl:{val:null,type:'vraag',hint:null},tr:{val:30,type:'input',hint:null},
+     bl:{val:100,type:'input',hint:null},br:{val:50,type:'input',hint:null}},
+    60,'',0.005,['Kruis: deel × 100 ÷ %','$30 \\times 100 \\div 50 = 60$'],
+    '$30 \\times 100 \\div 50 = 60$');
+}
+
+function genP2b() {
+  for (let i = 0; i < 100; i++) {
+    const pct    = pick([12,15,18,30,35,45,60,70]);
+    const geheel = rand(10,200);
+    const deelEx = geheel*pct/100;
+    const deel   = Math.round(deelEx*10)/10;
+    if (deel < 1) continue;
+    const antw   = Math.round(deel*100/pct*10)/10;
+    const afr    = Math.abs(antw - geheel) > 0.11;
+    return _mkKT('P.2b',
+      `$${deel}$ is $${pct}\\%$ van welk getal?${afr?' Rond af op 1 decimaal.':''}`,
+      { tl:{val:null,type:'vraag',hint:null}, tr:{val:deel,type:'input',hint:null},
+        bl:{val:100, type:'input',hint:null}, br:{val:pct, type:'input',hint:null} },
+      antw, '', 0.05,
+      ['Zet het bekende deel rechts. Links staat het onbekende geheel.',
+       `Kruis: $${deel} \\times 100 \\div ${pct} \\approx ${antw}$`],
+      `$\\dfrac{${deel} \\times 100}{${pct}} \\approx ${antw}$`
+    );
+  }
+  return genP2a();
+}
+
+/* ── P.3 – procentuele verandering ───────────────────────────────── */
+function _genP3(leerdoelId, metHints) {
+  for (let i = 0; i < 100; i++) {
+    const pct      = pick([10,20,25,50]);
+    const isToename = Math.random() > 0.5;
+    const oud      = rand(2,20)*10;
+    const verander = oud*pct/100;
+    if (!Number.isInteger(verander)) continue;
+    const nieuw    = isToename ? oud+verander : oud-verander;
+    const ver      = isToename ? 'gestegen' : 'gedaald';
+    const ctx      = pick([
+      `Een prijs was €$${oud}$ en is ${ver} naar €$${nieuw}$.`,
+      `Een klas had $${oud}$ leerlingen en heeft er nu $${nieuw}$.`,
+      `Een getal was $${oud}$ en is nu $${nieuw}$.`,
+    ]);
+    const cellen = metHints
+      ? { tl:{val:oud,     type:'prefilled',hint:null},
+          tr:{val:verander,type:'prefilled',hint:null},
+          bl:{val:100,     type:'prefilled',hint:null},
+          br:{val:null,    type:'vraag',   hint:null} }
+      : { tl:{val:oud,     type:'input',   hint:null},
+          tr:{val:verander,type:'input',   hint:null},
+          bl:{val:100,     type:'input',   hint:null},
+          br:{val:null,    type:'vraag',   hint:null} };
+    return _mkKT(leerdoelId,
+      `${ctx} Met hoeveel procent is de waarde ${ver}?`,
+      cellen, pct, '%', 0.05,
+      [ metHints
+          ? 'Zet de beginwaarde links, de absolute verandering rechts. Links onderaan altijd 100.'
+          : 'Zet de beginwaarde links boven 100%, de absolute verandering rechts.',
+        `Kruis: $${verander} \\times 100 \\div ${oud} = ${pct}\\%$` ],
+      `$\\dfrac{${verander} \\times 100}{${oud}} = ${pct}\\%$`
+    );
+  }
+  return genP1a();
+}
+function genP3a() { return _genP3('P.3a', true);  }
+function genP3b() { return _genP3('P.3b', false); }
+
+/* ── P.4 – nieuwe waarde na toename ─────────────────────────────── */
+function _genP4(leerdoelId, hard) {
+  const { oud, pct, nieuw, afgerond } = hard ? _hardToename(false) : _niceToename(false);
+  const ctx = pick([
+    `Een prijs van €$${oud}$ wordt verhoogd met $${pct}\\%$.`,
+    `Een salaris van €$${oud}$ stijgt met $${pct}\\%$.`,
+    `Een getal $${oud}$ neemt toe met $${pct}\\%$.`,
+  ]);
+  const afrTxt = (hard && afgerond) ? ' Rond af op 1 decimaal.' : '';
+  return _mkKT(leerdoelId,
+    `${ctx} Wat is de nieuwe waarde?${afrTxt}`,
+    { tl:{val:oud,    type:'input',hint:null}, tr:{val:null,    type:'vraag',hint:null},
+      bl:{val:100,    type:'input',hint:null}, br:{val:100+pct, type:'input',hint:null} },
+    nieuw, '', (hard && !afgerond)?0.05:0.005,
+    ['Zet de beginwaarde links. Rechtsonder: 100% + het stijgingspercentage.',
+     `$(100+${pct})\\% = ${100+pct}\\%$. Kruis: $${oud} \\times ${100+pct} \\div 100$`],
+    `$\\dfrac{${oud} \\times ${100+pct}}{100} = ${nieuw}$`
+  );
+}
+function genP4a() { return _genP4('P.4a', false); }
+function genP4b() { return _genP4('P.4b', true);  }
+
+/* ── P.5 – nieuwe waarde na afname ──────────────────────────────── */
+function _genP5(leerdoelId, hard) {
+  const { oud, pct, nieuw, afgerond } = hard ? _hardToename(true) : _niceToename(true);
+  const ctx = pick([
+    `Een prijs van €$${oud}$ wordt verlaagd met $${pct}\\%$.`,
+    `Een product kost €$${oud}$ en er is $${pct}\\%$ korting.`,
+    `Een getal $${oud}$ neemt af met $${pct}\\%$.`,
+  ]);
+  const afrTxt = (hard && afgerond) ? ' Rond af op 1 decimaal.' : '';
+  return _mkKT(leerdoelId,
+    `${ctx} Wat is de nieuwe waarde?${afrTxt}`,
+    { tl:{val:oud,    type:'input',hint:null}, tr:{val:null,    type:'vraag',hint:null},
+      bl:{val:100,    type:'input',hint:null}, br:{val:100-pct, type:'input',hint:null} },
+    nieuw, '', (hard && !afgerond)?0.05:0.005,
+    ['Zet de beginwaarde links. Rechtsonder: 100% − het kortingspercentage.',
+     `$(100-${pct})\\% = ${100-pct}\\%$. Kruis: $${oud} \\times ${100-pct} \\div 100$`],
+    `$\\dfrac{${oud} \\times ${100-pct}}{100} = ${nieuw}$`
+  );
+}
+function genP5a() { return _genP5('P.5a', false); }
+function genP5b() { return _genP5('P.5b', true);  }
+
+/* ── P.6 – oud bij procentuele toename ──────────────────────────── */
+function _genP6(leerdoelId, hard) {
+  if (hard) {
+    for (let i = 0; i < 200; i++) {
+      const pct  = pick([12, 15, 18, 22, 30, 35]);
+      const nieuw = rand(50, 300);
+      const antw  = Math.round(nieuw * 100 / (100+pct) * 10) / 10;
+      if (antw <= 0 || Math.abs(antw - Math.round(antw)) < 0.05) continue;
+      const ctx = pick([
+        `Na een stijging van $${pct}\\%$ is de prijs nu €$${nieuw}$.`,
+        `Na $${pct}\\%$ toename is een getal nu $${nieuw}$.`,
+        `Een artikel is $${pct}\\%$ duurder geworden en kost nu €$${nieuw}$.`,
+      ]);
+      return _mkKT(leerdoelId,
+        `${ctx} Wat was de oorspronkelijke waarde? Rond af op 1 decimaal.`,
+        { tl:{val:null,   type:'vraag',hint:null}, tr:{val:nieuw,   type:'input',hint:null},
+          bl:{val:100,    type:'input',hint:null}, br:{val:100+pct, type:'input',hint:null} },
+        antw, '', 0.005,
+        ['Zet de bekende nieuwe waarde rechts. Rechtsonder: 100% + het stijgingspercentage.',
+         `Kruis: $${nieuw} \\times 100 \\div ${100+pct} \\approx ${antw}$`],
+        `$\\dfrac{${nieuw} \\times 100}{${100+pct}} \\approx ${antw}$`
+      );
+    }
+  }
+  const { oud, pct, nieuw } = _niceToename(false);
+  const ctx = pick([
+    `Na een stijging van $${pct}\\%$ is de prijs nu €$${nieuw}$.`,
+    `Na $${pct}\\%$ toename is een getal nu $${nieuw}$.`,
+    `Een artikel is $${pct}\\%$ duurder geworden en kost nu €$${nieuw}$.`,
+  ]);
+  return _mkKT(leerdoelId,
+    `${ctx} Wat was de oorspronkelijke waarde?`,
+    { tl:{val:null,   type:'vraag',hint:null}, tr:{val:nieuw,   type:'input',hint:null},
+      bl:{val:100,    type:'input',hint:null}, br:{val:100+pct, type:'input',hint:null} },
+    oud, '', 0.005,
+    ['Zet de bekende nieuwe waarde rechts. Rechtsonder: 100% + het stijgingspercentage.',
+     `Kruis: $${nieuw} \\times 100 \\div ${100+pct} = ${oud}$`],
+    `$\\dfrac{${nieuw} \\times 100}{${100+pct}} = ${oud}$`
+  );
+}
+function genP6a() { return _genP6('P.6a', false); }
+function genP6b() { return _genP6('P.6b', true);  }
+
+/* ── P.7 – oud bij procentuele afname ───────────────────────────── */
+function _genP7(leerdoelId, hard) {
+  if (hard) {
+    for (let i = 0; i < 200; i++) {
+      const pct  = pick([12, 15, 18, 22, 30, 35]);
+      if (pct >= 100) continue;
+      const nieuw = rand(30, 250);
+      const antw  = Math.round(nieuw * 100 / (100-pct) * 10) / 10;
+      if (antw <= 0 || Math.abs(antw - Math.round(antw)) < 0.05) continue;
+      const ctx = pick([
+        `Na een daling van $${pct}\\%$ is de prijs nu €$${nieuw}$.`,
+        `Na $${pct}\\%$ afname is een getal nu $${nieuw}$.`,
+        `Een product heeft $${pct}\\%$ korting en kost nu €$${nieuw}$.`,
+      ]);
+      return _mkKT(leerdoelId,
+        `${ctx} Wat was de oorspronkelijke prijs? Rond af op 1 decimaal.`,
+        { tl:{val:null,   type:'vraag',hint:null}, tr:{val:nieuw,   type:'input',hint:null},
+          bl:{val:100,    type:'input',hint:null}, br:{val:100-pct, type:'input',hint:null} },
+        antw, '', 0.005,
+        ['Zet de bekende nieuwe waarde rechts. Rechtsonder: 100% − het kortingspercentage.',
+         `Kruis: $${nieuw} \\times 100 \\div ${100-pct} \\approx ${antw}$`],
+        `$\\dfrac{${nieuw} \\times 100}{${100-pct}} \\approx ${antw}$`
+      );
+    }
+  }
+  const { oud, pct, nieuw } = _niceToename(true);
+  const ctx = pick([
+    `Na een daling van $${pct}\\%$ is de prijs nu €$${nieuw}$.`,
+    `Na $${pct}\\%$ afname is een getal nu $${nieuw}$.`,
+    `Een product heeft $${pct}\\%$ korting en kost nu €$${nieuw}$.`,
+  ]);
+  return _mkKT(leerdoelId,
+    `${ctx} Wat was de oorspronkelijke prijs?`,
+    { tl:{val:null,   type:'vraag',hint:null}, tr:{val:nieuw,   type:'input',hint:null},
+      bl:{val:100,    type:'input',hint:null}, br:{val:100-pct, type:'input',hint:null} },
+    oud, '', 0.005,
+    ['Zet de bekende nieuwe waarde rechts. Rechtsonder: 100% − het kortingspercentage.',
+     `Kruis: $${nieuw} \\times 100 \\div ${100-pct} = ${oud}$`],
+    `$\\dfrac{${nieuw} \\times 100}{${100-pct}} = ${oud}$`
+  );
+}
+function genP7a() { return _genP7('P.7a', false); }
+function genP7b() { return _genP7('P.7b', true);  }
+
+/* ── P.8 – opeenvolgende toe- en afnames ────────────────────────── */
+function genP8a() {
+  for (let i = 0; i < 100; i++) {
+    const start   = rand(5,20)*10;
+    const p1      = pick([10,20,25,50]);
+    const up1     = Math.random()>0.5;
+    const f1      = up1 ? (100+p1)/100 : (100-p1)/100;
+    const na1     = start*f1;
+    if (!Number.isInteger(na1)) continue;
+    const p2      = pick([10,20,25,50]);
+    const up2     = Math.random()>0.5;
+    const f2      = up2 ? (100+p2)/100 : (100-p2)/100;
+    const na2     = na1*f2;
+    if (!Number.isInteger(na2) || na2<=0) continue;
+    const v1 = up1?'verhoogd':'verlaagd', v2 = up2?'verhoogd':'verlaagd';
+    return {
+      id: uid(), leerdoel:'P.8a',
+      vraag:`Een product kost €$${start}$. De prijs wordt eerst met $${p1}\\%$ ${v1} en daarna met $${p2}\\%$ ${v2}. Wat is de eindprijs?`,
+      antwoordType:'integer', antwoord:{waarde:na2}, data:{},
+      hints:[`Stap 1: $${start} \\times \\frac{${Math.round(f1*100)}}{100} = ${na1}$`,
+             `Stap 2: $${na1} \\times \\frac{${Math.round(f2*100)}}{100} = ${na2}$`],
+      oplossing:`$${start} \\times \\frac{${Math.round(f1*100)}}{100} \\times \\frac{${Math.round(f2*100)}}{100} = ${na2}$`
+    };
+  }
+  return {id:uid(),leerdoel:'P.8a',vraag:'Een prijs van €$100$ wordt met $20\\%$ verhoogd en daarna met $10\\%$ verlaagd. Wat is de eindprijs?',
+    antwoordType:'integer',antwoord:{waarde:108},data:{},
+    hints:['Stap 1: $100 \\times 1{,}20 = 120$','Stap 2: $120 \\times 0{,}90 = 108$'],
+    oplossing:'$100 \\times 1{,}20 \\times 0{,}90 = 108$'};
+}
+
+function genP8b() {
+  for (let i = 0; i < 100; i++) {
+    const start = rand(100,500);
+    const p1    = pick([15,18,30,35,12,22]);
+    const p2    = pick([5,8,15,22,12]);
+    const up1   = Math.random()>0.5, up2 = Math.random()>0.5;
+    const f1    = up1?(100+p1)/100:(100-p1)/100;
+    const f2    = up2?(100+p2)/100:(100-p2)/100;
+    const na2   = Math.round(start*f1*f2*100)/100;
+    if (na2<=0) continue;
+    const v1 = up1?'verhoogd':'verlaagd', v2 = up2?'verhoogd':'verlaagd';
+    return {
+      id:uid(), leerdoel:'P.8b',
+      vraag:`Een prijs van €$${start}$ wordt met $${p1}\\%$ ${v1} en daarna met $${p2}\\%$ ${v2}. Wat is de eindprijs? Rond af op centen.`,
+      antwoordType:'decimal', antwoord:{waarde:na2, tolerantie:0.005}, data:{},
+      hints:[`Stap 1: $${start} \\times \\frac{${Math.round(f1*100)}}{100}$`,
+             `Daarna de tussenuitkomst nogmaals aanpassen met $\\frac{${Math.round(f2*100)}}{100}$`],
+      oplossing:`$${start} \\times \\frac{${Math.round(f1*100)}}{100} \\times \\frac{${Math.round(f2*100)}}{100} \\approx ${na2}$`
+    };
+  }
+  return genP8a();
+}
+
+/* ── DP / PV – omrekenen ─────────────────────────────────────────── */
+function genDP1() {
+  const pct = pick([5,10,12.5,15,20,25,30,37.5,40,50,60,62.5,75,80,90]);
+  const dec = Math.round(pct/100*10000)/10000;
+  return {
+    id:uid(), leerdoel:'DP.1',
+    vraag:`Schrijf $${pct}\\%$ als decimaal getal.`,
+    antwoordType:'decimal', antwoord:{waarde:dec,tolerantie:0.00005}, data:{},
+    hints:['Deel het percentage door 100.',`$${pct} \\div 100 = ${dec}$`],
+    oplossing:`$${pct}\\% = ${pct} \\div 100 = ${dec}$`
+  };
+}
+
+function genDP2() {
+  const decs = [0.1,0.15,0.2,0.25,0.3,0.375,0.4,0.5,0.6,0.625,0.75,0.8,0.9,0.05,0.125];
+  const dec  = pick(decs);
+  const pct  = Math.round(dec*100*10)/10;
+  return {
+    id:uid(), leerdoel:'DP.2',
+    vraag:`Schrijf $${dec}$ als percentage.`,
+    antwoordType:'percentage', antwoord:{waarde:pct}, data:{},
+    hints:['Vermenigvuldig het decimaal getal met 100.',`$${dec} \\times 100 = ${pct}$`],
+    oplossing:`$${dec} \\times 100 = ${pct}\\%$`
+  };
+}
+
+function genPV1() {
+  const vs = [[1,2],[1,4],[3,4],[1,5],[2,5],[3,5],[4,5],[1,8],[3,8],[7,8],[1,10],[3,10],[7,10]];
+  const [n, d] = pick(vs);
+  const pct = Math.round(n/d*100*10)/10;
+  return {
+    id:uid(), leerdoel:'PV.1',
+    vraag:`Schrijf de verhouding $${n}:${d}$ als percentage.`,
+    antwoordType:'percentage', antwoord:{waarde:pct, tolerantie:0.05}, data:{},
+    hints:['Deel het eerste getal door het tweede en vermenigvuldig met 100.',
+           `$${n} \\div ${d} \\times 100 = ${pct}\\%$`],
+    oplossing:`$\\dfrac{${n}}{${d}} \\times 100 = ${pct}\\%$`
+  };
+}
+
+function genPV2() {
+  const pcts = [10,20,25,40,50,60,75,80,90];
+  const pct  = pick(pcts);
+  const g    = gcd(pct,100);
+  const n    = pct/g, d = 100/g;
+  return {
+    id:uid(), leerdoel:'PV.2',
+    vraag:`Schrijf $${pct}\\%$ als verhouding (in laagste termen).`,
+    antwoordType:'ratio', antwoord:{deel1:n, deel2:d}, data:{},
+    hints:['Schrijf het percentage als breuk met noemer 100 en vereenvoudig.',
+           `$${pct}\\% = \\dfrac{${pct}}{100} = ${n}:${d}$`],
+    oplossing:`$${pct}\\% = \\dfrac{${pct}}{100} = ${n}:${d}$`
+  };
+}
+
+/* ── H.P1tot7 – husselen alle percentageberekeningen ────────────── */
+function genH_P1tot7() {
+  const gens = [genP1a,genP1b,genP2a,genP2b,genP3a,genP3b,
+                genP4a,genP4b,genP5a,genP5b,genP6a,genP6b,genP7a,genP7b];
+  const q = pick(gens)();
+  q.leerdoel = 'H.P1tot7';
+  return q;
+}
+
+/* ── Eenheden omrekenen ──────────────────────────────────────────── */
+function _eu(s) { return s.replace(/²/g,'<sup>2</sup>').replace(/³/g,'<sup>3</sup>'); }
+function _ef(n) {
+  if (Number.isInteger(n)) return String(n);
+  return String(Math.round(n * 10000) / 10000).replace('.', '{,}');
+}
+
+function _maatladder(stappen, noot) {
+  const cs = 'padding:3px 12px;border:1px solid #aac;background:#f0f4ff;font-weight:bold;text-align:center;';
+  const cf = 'font-size:.78em;color:#555;text-align:center;padding:1px 0;';
+  let h = '<div style="text-align:center;margin:.3em 0;">'
+        + '<table style="display:inline-table;border-collapse:collapse;">';
+  for (const [naam, factor] of stappen) {
+    h += `<tr><td style="${cs}">${_eu(naam)}</td></tr>`;
+    if (factor) h += `<tr><td style="${cf}">&times; ${factor}</td></tr>`;
+  }
+  h += '</table>';
+  if (noot) h += `<div style="font-size:.8em;color:#555;margin:.2em 0;">${noot}</div>`;
+  h += '</div>';
+  return h;
+}
+
+const _LG  = 'Groter → kleiner: &times; factor &nbsp;|&nbsp; Kleiner → groter: &divide; factor';
+const _LG2 = 'Elke stap &times;&nbsp;100. &nbsp; Groter → kleiner: &times; &nbsp;|&nbsp; Kleiner → groter: &divide;';
+
+const EENHEDEN_TABEL = {
+  'E.T1a': _maatladder([['uur',60],['min',60],['sec']], _LG),
+  'E.T1b': _maatladder([['week',7],['dag',24],['uur']], _LG),
+  'E.T1c': _maatladder([['week',7],['dag',24],['uur',60],['min',60],['sec']], _LG),
+  'E.L1a': _maatladder([['m',10],['dm',10],['cm',10],['mm']], _LG),
+  'E.L1b': _maatladder([['km',10],['hm',10],['dam',10],['m']], _LG),
+  'E.L1c': _maatladder([['km',10],['hm',10],['dam',10],['m',10],['dm',10],['cm',10],['mm']], _LG),
+  'E.O1a': _maatladder([['m²',100],['dm²',100],['cm²',100],['mm²']], _LG2),
+  'E.O1b': _maatladder([['km²',100],['ha',100],['are']], _LG2),
+  'E.O1c': _maatladder([['km²',100],['ha',100],['are',100],['m²',100],['dm²',100],['cm²',100],['mm²']], _LG2),
+  'E.I1':  _maatladder([['m³ (= kL)',1000],['dm³ (= L)',10],['dL',10],['cL',10],['mL (= cm³)']],
+             'Let op: m³ → dm³: &times;&nbsp;1000, overige stappen: &times;&nbsp;10'),
+  'E.S1':  '<div style="text-align:center;margin:.3em 0;font-size:.9em;">'
+         + '<table style="display:inline-table;border-collapse:collapse;">'
+         + '<tr><th style="padding:3px 10px;border:1px solid #aac;background:#f0f4ff;">Omrekening</th>'
+         +     '<th style="padding:3px 10px;border:1px solid #aac;background:#f0f4ff;">Factor</th></tr>'
+         + '<tr><td style="padding:3px 10px;border:1px solid #aac;">m/s &rarr; km/h</td>'
+         +     '<td style="padding:3px 10px;border:1px solid #aac;">&times; 3,6</td></tr>'
+         + '<tr><td style="padding:3px 10px;border:1px solid #aac;">km/h &rarr; m/s</td>'
+         +     '<td style="padding:3px 10px;border:1px solid #aac;">&divide; 3,6</td></tr>'
+         + '</table>'
+         + '<div style="font-size:.8em;color:#555;margin:.2em 0;">'
+         + '3,6 = 3600 &divide; 1000 &nbsp;(seconden per uur &divide; meters per km)'
+         + '</div></div>',
+};
+
+function _eQ(id, fv, fu, tu, tv) {
+  const isInt = Number.isInteger(tv);
+  const fac = tv / fv;
+  const invFac = fv / tv;
+  let hint1, hint2;
+  if (fac >= 1) {
+    hint1 = `$1$ ${_eu(fu)} $= ${_ef(fac)}$ ${_eu(tu)}`;
+    hint2 = `$${_ef(fv)} \\times ${_ef(fac)} = ${_ef(tv)}$`;
+  } else {
+    hint1 = `$1$ ${_eu(tu)} $= ${_ef(invFac)}$ ${_eu(fu)}`;
+    hint2 = `$${_ef(fv)} \\div ${_ef(invFac)} = ${_ef(tv)}$`;
+  }
+  const tabel = EENHEDEN_TABEL[id];
+  return {
+    id: uid(), leerdoel: id,
+    vraag: `$${_ef(fv)}$ ${_eu(fu)} $= \\ldots$ ${_eu(tu)}`,
+    antwoordType: isInt ? 'integer' : 'decimal',
+    antwoord: { waarde: tv, ...(isInt ? {} : { tolerantie: 0.0005 }) },
+    data: {},
+    hints: tabel ? [tabel, hint1, hint2] : [hint1, hint2],
+    oplossing: `$${_ef(fv)}$ ${_eu(fu)} $= ${_ef(tv)}$ ${_eu(tu)}`
+  };
+}
+
+// ── Tijdseenheden ────────────────────────────────────────────────────
+const ET1a_POOL = [
+  ...[1,2,3,4,5,6,8,10,12,24].map(v => [v,'uur','minuten',v*60]),
+  ...[1,2,3,4,6,8,10,12].map(v => [v*60,'minuten','uur',v]),
+  ...[1,2,3,5,9,10,15,20,30,45].map(v => [v,'minuten','seconden',v*60]),
+  ...[1,2,3,4,5,6,7,8,9,10].map(v => [v*60,'seconden','minuten',v]),
+];
+function genET1a() { return _eQ('E.T1a', ...pick(ET1a_POOL)); }
+
+const ET1b_POOL = [
+  ...[1,2,3,5,6,7,10,14].map(v => [v,'dag','uur',v*24]),
+  ...[1,2,3,4,5,6,7,10].map(v => [v*24,'uur','dag',v]),
+  ...[1,2,3,4,5,6,8,10].map(v => [v,'week','dagen',v*7]),
+  ...[1,2,3,4,5,6,8,10].map(v => [v*7,'dagen','week',v]),
+];
+function genET1b() { return _eQ('E.T1b', ...pick(ET1b_POOL)); }
+
+const ET1c_POOL = [
+  // week ↔ uur
+  ...[1,2,3,4].map(v => [v,'week','uur',v*168]),
+  ...[1,2,3,4].map(v => [v*168,'uur','week',v]),
+  // dag ↔ minuten
+  ...[1,2,3].map(v => [v,'dag','minuten',v*1440]),
+  ...[1,2,3].map(v => [v*1440,'minuten','dag',v]),
+  // uur ↔ seconden
+  ...[1,2,3,6,12].map(v => [v,'uur','seconden',v*3600]),
+  ...[1,2,3,6].map(v => [v*3600,'seconden','uur',v]),
+  // dag ↔ seconden
+  [1,'dag','seconden',86400], [86400,'seconden','dag',1],
+  [2,'dag','seconden',172800], [172800,'seconden','dag',2],
+  // week ↔ minuten
+  [1,'week','minuten',10080], [10080,'minuten','week',1],
+];
+function genET1c() { return _eQ('E.T1c', ...pick(ET1c_POOL)); }
+
+// ── Lengtematen ──────────────────────────────────────────────────────
+const EL1a_POOL = [
+  // mm ↔ cm
+  [10,'mm','cm',1], [20,'mm','cm',2], [27,'mm','cm',2.7], [30,'mm','cm',3],
+  [45,'mm','cm',4.5], [50,'mm','cm',5], [75,'mm','cm',7.5], [100,'mm','cm',10],
+  [1,'cm','mm',10], [2.7,'cm','mm',27], [4.5,'cm','mm',45], [8,'cm','mm',80],
+  [10,'cm','mm',100], [0.8,'cm','mm',8],
+  // cm ↔ dm
+  [10,'cm','dm',1], [25,'cm','dm',2.5], [30,'cm','dm',3], [80,'cm','dm',8],
+  [100,'cm','dm',10], [85,'cm','dm',8.5], [120,'cm','dm',12],
+  [1,'dm','cm',10], [3,'dm','cm',30], [8,'dm','cm',80], [0.5,'dm','cm',5],
+  [2.5,'dm','cm',25], [12,'dm','cm',120],
+  // dm ↔ m
+  [10,'dm','m',1], [25,'dm','m',2.5], [30,'dm','m',3], [35,'dm','m',3.5],
+  [100,'dm','m',10], [825,'dm','m',82.5],
+  [1,'m','dm',10], [3,'m','dm',30], [6,'m','dm',60], [0.4,'m','dm',4],
+  [2.5,'m','dm',25], [8.25,'m','dm',82.5],
+  // m ↔ cm
+  [1,'m','cm',100], [3,'m','cm',300], [0.4,'m','cm',40], [2.5,'m','cm',250],
+  [100,'cm','m',1], [400,'cm','m',4], [1000,'cm','m',10], [40,'cm','m',0.4],
+];
+function genEL1a() { return _eQ('E.L1a', ...pick(EL1a_POOL)); }
+
+const EL1b_POOL = [
+  // m ↔ km
+  [1000,'m','km',1], [2000,'m','km',2], [5000,'m','km',5], [42000,'m','km',42],
+  [500,'m','km',0.5], [2500,'m','km',2.5], [195,'m','km',0.195], [750,'m','km',0.75],
+  [1,'km','m',1000], [2,'km','m',2000], [5,'km','m',5000], [42,'km','m',42000],
+  [0.5,'km','m',500], [1.5,'km','m',1500], [3.5,'km','m',3500],
+  // m ↔ dam
+  [10,'m','dam',1], [50,'m','dam',5], [120,'m','dam',12], [310,'m','dam',31],
+  [1,'dam','m',10], [5,'dam','m',50], [12,'dam','m',120], [31,'dam','m',310],
+  // dam ↔ hm
+  [10,'dam','hm',1], [40,'dam','hm',4], [310,'dam','hm',31],
+  [1,'hm','dam',10], [4,'hm','dam',40], [31,'hm','dam',310],
+  // hm ↔ m
+  [1,'hm','m',100], [5,'hm','m',500],
+  [100,'m','hm',1], [400,'m','hm',4], [500,'m','hm',5],
+];
+function genEL1b() { return _eQ('E.L1b', ...pick(EL1b_POOL)); }
+
+const EL1c_POOL = [
+  // mm ↔ m (3 stappen)
+  [1000,'mm','m',1], [2000,'mm','m',2], [5000,'mm','m',5], [6000,'mm','m',6],
+  [1,'m','mm',1000], [2,'m','mm',2000], [6,'m','mm',6000],
+  // mm ↔ dm (2 stappen)
+  [100,'mm','dm',1], [200,'mm','dm',2], [500,'mm','dm',5],
+  [1,'dm','mm',100], [2,'dm','mm',200], [5,'dm','mm',500],
+  // cm ↔ dam (3 stappen)
+  [1000,'cm','dam',1], [2000,'cm','dam',2],
+  [1,'dam','cm',1000], [2,'dam','cm',2000],
+  // dm ↔ dam (2 stappen)
+  [100,'dm','dam',1], [200,'dm','dam',2],
+  [1,'dam','dm',100], [2,'dam','dm',200],
+  // cm ↔ km (5 stappen)
+  [100000,'cm','km',1], [200000,'cm','km',2], [400000,'cm','km',4],
+  [1,'km','cm',100000], [4,'km','cm',400000],
+  // dm ↔ km (4 stappen)
+  [10000,'dm','km',1], [20000,'dm','km',2],
+  [1,'km','dm',10000], [2,'km','dm',20000],
+  // cm ↔ hm (4 stappen)
+  [10000,'cm','hm',1], [20000,'cm','hm',2],
+  [1,'hm','cm',10000], [2,'hm','cm',20000],
+];
+function genEL1c() { return _eQ('E.L1c', ...pick(EL1c_POOL)); }
+
+// ── Oppervlaktematen ──────────────────────────────────────────────────
+const EO1a_POOL = [
+  // mm² ↔ cm²
+  [100,'mm²','cm²',1], [200,'mm²','cm²',2], [250,'mm²','cm²',2.5],
+  [400,'mm²','cm²',4], [500,'mm²','cm²',5],
+  [1,'cm²','mm²',100], [2,'cm²','mm²',200], [5,'cm²','mm²',500],
+  [1.5,'cm²','mm²',150], [0.5,'cm²','mm²',50], [4.5,'cm²','mm²',450],
+  // cm² ↔ dm²
+  [100,'cm²','dm²',1], [200,'cm²','dm²',2], [350,'cm²','dm²',3.5],
+  [500,'cm²','dm²',5], [1000,'cm²','dm²',10],
+  [1,'dm²','cm²',100], [2,'dm²','cm²',200], [5,'dm²','cm²',500],
+  [0.5,'dm²','cm²',50], [3.5,'dm²','cm²',350], [1.5,'dm²','cm²',150],
+  // dm² ↔ m²
+  [100,'dm²','m²',1], [200,'dm²','m²',2], [150,'dm²','m²',1.5],
+  [250,'dm²','m²',2.5], [500,'dm²','m²',5],
+  [1,'m²','dm²',100], [2,'m²','dm²',200], [5,'m²','dm²',500],
+  [1.5,'m²','dm²',150], [0.5,'m²','dm²',50],
+];
+function genEO1a() { return _eQ('E.O1a', ...pick(EO1a_POOL)); }
+
+const EO1b_POOL = [
+  // ha ↔ are
+  [1,'ha','are',100], [2,'ha','are',200], [5,'ha','are',500],
+  [0.5,'ha','are',50], [1.5,'ha','are',150], [3.5,'ha','are',350], [0.25,'ha','are',25],
+  [100,'are','ha',1], [200,'are','ha',2], [500,'are','ha',5],
+  [50,'are','ha',0.5], [150,'are','ha',1.5], [25,'are','ha',0.25],
+  // km² ↔ ha
+  [1,'km²','ha',100], [2,'km²','ha',200], [5,'km²','ha',500],
+  [0.5,'km²','ha',50], [0.25,'km²','ha',25], [1.5,'km²','ha',150],
+  [100,'ha','km²',1], [200,'ha','km²',2], [500,'ha','km²',5],
+  [50,'ha','km²',0.5], [25,'ha','km²',0.25],
+  // km² ↔ are
+  [1,'km²','are',10000], [0.5,'km²','are',5000], [2,'km²','are',20000],
+  [10000,'are','km²',1], [5000,'are','km²',0.5], [20000,'are','km²',2],
+];
+function genEO1b() { return _eQ('E.O1b', ...pick(EO1b_POOL)); }
+
+const EO1c_POOL = [
+  // m² ↔ are (1 are = 100 m²)
+  [1,'m²','are',100], [2,'m²','are',200], [5,'m²','are',500],
+  [0.5,'m²','are',50], [1.5,'m²','are',150], [3,'m²','are',300],
+  [100,'are','m²',1], [200,'are','m²',2], [50,'are','m²',0.5], [150,'are','m²',1.5],
+  // m² ↔ ha (1 ha = 10 000 m²)
+  [10000,'m²','ha',1], [20000,'m²','ha',2], [5000,'m²','ha',0.5], [25000,'m²','ha',2.5],
+  [1,'ha','m²',10000], [2,'ha','m²',20000], [0.5,'ha','m²',5000],
+  // cm² ↔ m² (1 m² = 10 000 cm²)
+  [10000,'cm²','m²',1], [1,'m²','cm²',10000],
+  [5000,'cm²','m²',0.5], [20000,'cm²','m²',2], [2,'m²','cm²',20000],
+  // mm² ↔ m² (1 m² = 1 000 000 mm², kleine getallen)
+  [10000,'mm²','m²',1], [5000,'mm²','m²',0.5], [1,'m²','mm²',10000],
+];
+function genEO1c() { return _eQ('E.O1c', ...pick(EO1c_POOL)); }
+
+const EI1_POOL = [
+  // mL ↔ cL
+  [10,'mL','cL',1], [50,'mL','cL',5], [100,'mL','cL',10], [250,'mL','cL',25],
+  [1,'cL','mL',10], [5,'cL','mL',50], [25,'cL','mL',250], [0.5,'cL','mL',5],
+  // cL ↔ dL
+  [10,'cL','dL',1], [30,'cL','dL',3], [50,'cL','dL',5], [100,'cL','dL',10],
+  [1,'dL','cL',10], [5,'dL','cL',50], [2.5,'dL','cL',25], [0.5,'dL','cL',5],
+  // dL ↔ L
+  [10,'dL','L',1], [20,'dL','L',2], [5,'dL','L',0.5], [25,'dL','L',2.5],
+  [1,'L','dL',10], [2,'L','dL',20], [5,'L','dL',50], [0.5,'L','dL',5],
+  // mL ↔ L
+  [1000,'mL','L',1], [500,'mL','L',0.5], [2000,'mL','L',2], [250,'mL','L',0.25],
+  [1,'L','mL',1000], [2,'L','mL',2000], [0.5,'L','mL',500],
+  // cL ↔ L
+  [100,'cL','L',1], [50,'cL','L',0.5], [200,'cL','L',2],
+  [1,'L','cL',100], [2.5,'L','cL',250], [0.5,'L','cL',50],
+  // dm³ ↔ L
+  [1,'dm³','L',1], [5,'dm³','L',5], [10,'dm³','L',10],
+  [0.5,'dm³','L',0.5], [2.5,'dm³','L',2.5],
+  [1,'L','dm³',1], [5,'L','dm³',5], [10,'L','dm³',10],
+  // dm³ ↔ m³
+  [1000,'dm³','m³',1], [500,'dm³','m³',0.5], [2500,'dm³','m³',2.5],
+  [1,'m³','dm³',1000], [2,'m³','dm³',2000], [0.5,'m³','dm³',500],
+  // L ↔ m³
+  [1000,'L','m³',1], [500,'L','m³',0.5], [2000,'L','m³',2], [5000,'L','m³',5],
+  [1,'m³','L',1000], [2,'m³','L',2000], [0.5,'m³','L',500],
+];
+function genEI1() { return _eQ('E.I1', ...pick(EI1_POOL)); }
+
+// ── Snelheden ────────────────────────────────────────────────────────
+const ES1_POOL = [
+  // m/s → km/h (×3.6)
+  [1,'m/s','km/h',3.6],
+  [2,'m/s','km/h',7.2],
+  [4,'m/s','km/h',14.4],
+  [5,'m/s','km/h',18],
+  [10,'m/s','km/h',36],
+  [15,'m/s','km/h',54],
+  [20,'m/s','km/h',72],
+  [25,'m/s','km/h',90],
+  [30,'m/s','km/h',108],
+  // km/h → m/s (÷3.6)
+  [3.6,'km/h','m/s',1],
+  [7.2,'km/h','m/s',2],
+  [14.4,'km/h','m/s',4],
+  [18,'km/h','m/s',5],
+  [36,'km/h','m/s',10],
+  [54,'km/h','m/s',15],
+  [72,'km/h','m/s',20],
+  [90,'km/h','m/s',25],
+  [108,'km/h','m/s',30],
+  [144,'km/h','m/s',40],
+];
+function genES1() { return _eQ('E.S1', ...pick(ES1_POOL)); }
+
+function genH_Eenheden() {
+  const gens = [genET1a, genET1b, genET1c, genEL1a, genEL1b, genEL1c, genEO1a, genEO1b, genEO1c, genEI1, genES1];
+  const q = pick(gens)();
+  q.leerdoel = 'H.Eenheden';
+  return q;
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -672,6 +2058,37 @@ const LEERDOELEN = [
   { id: 'BD.2',  titel: 'Decimaal getal → breuk',                groep: 'Omrekenen',    gen: genBD2  },
   { id: 'BV.1',  titel: 'Verhouding → breuk',                    groep: 'Verhoudingen', gen: genBV1  },
   { id: 'BV.2',  titel: 'Breuk → verhouding',                    groep: 'Verhoudingen', gen: genBV2  },
+
+  /* ── G-doelen (Gehele getallen) ──────────────────────────────────── */
+  { id: 'G.1',  titel: 'Natuurlijke getallen optellen',               groep: 'Getallen', gen: genG1  },
+  { id: 'G.2',  titel: 'Natuurlijke getallen aftrekken',              groep: 'Getallen', gen: genG2  },
+  { id: 'G.3',  titel: 'Natuurlijke getallen vermenigvuldigen',       groep: 'Getallen', gen: genG3  },
+  { id: 'G.4',  titel: 'Natuurlijke getallen delen',                  groep: 'Getallen', gen: genG4  },
+  { id: 'G.5',  titel: 'Positieve getallen kwadrateren',              groep: 'Getallen', gen: genG5  },
+  { id: 'G.6',  titel: 'Worteltrekken van positieve getallen',        groep: 'Getallen', gen: genG6  },
+  { id: 'G.14', titel: 'Machtsverheffen van positieve getallen',      groep: 'Getallen', gen: genG14 },
+  { id: 'G.7',  titel: 'Negatieve getallen vergelijken',              groep: 'Getallen', gen: genG7  },
+  { id: 'G.8',  titel: 'Negatieve gehele getallen optellen',          groep: 'Getallen', gen: genG8  },
+  { id: 'G.9',  titel: 'Negatieve gehele getallen aftrekken',         groep: 'Getallen', gen: genG9  },
+  { id: 'G.10', titel: 'Negatieve gehele getallen vermenigvuldigen',  groep: 'Getallen', gen: genG10 },
+  { id: 'G.11', titel: 'Negatieve gehele getallen delen',             groep: 'Getallen', gen: genG11 },
+  { id: 'G.12', titel: 'Gehele getallen kwadrateren',                 groep: 'Getallen', gen: genG12 },
+  { id: 'G.15', titel: 'Machtsverheffen van gehele getallen',         groep: 'Getallen', gen: genG15 },
+  { id: 'G.16', titel: 'Eigenschappen van natuurlijke getallen',      groep: 'Getallen', gen: genG16 },
+  {
+    id: 'H.G1tot6', titel: 'Natuurlijke getallen – afwisselend', groep: 'Getallen',
+    gen: () => { const q = pick([genG1,genG2,genG3,genG4,genG5,genG6])(); q.leerdoel='H.G1tot6'; return q; }
+  },
+  {
+    id: 'H.G8tot13', titel: 'Negatieve getallen – afwisselend', groep: 'Getallen',
+    gen: () => { const q = pick([genG6,genG8,genG9,genG10,genG11,genG12])(); q.leerdoel='H.G8tot13'; return q; }
+  },
+  { id: 'C.natGetallen',   titel: 'Nat. getallen – gecombineerd (basis)',          groep: 'Getallen', gen: genC_natGetallen   },
+  { id: 'C.natGetallen.b', titel: 'Nat. getallen – gecombineerd (kwadraten/wortels)', groep: 'Getallen', gen: genC_natGetallen_b },
+  { id: 'C.natGetallen.c', titel: 'Nat. getallen – gecombineerd (+ machten)',         groep: 'Getallen', gen: genC_natGetallen_c },
+  { id: 'C.negGetallen',   titel: 'Negatieve getallen – gecombineerd (basis)',          groep: 'Getallen', gen: genC_negGetallen   },
+  { id: 'C.negGetallen.b', titel: 'Neg. getallen – gecombineerd (kwadraten)',          groep: 'Getallen', gen: genC_negGetallen_b },
+  { id: 'C.negGetallen.c', titel: 'Neg. getallen – gecombineerd (+ machten)',          groep: 'Getallen', gen: genC_negGetallen_c },
 
   /* ── H-doelen (husseldoelen) ──────────────────────────────────────── */
   {
@@ -696,6 +2113,48 @@ const LEERDOELEN = [
     id: 'C.allBreuk', titel: 'Alle breukbewerkingen – gecombineerd', groep: 'Gemengd',
     gen: genC_allBreuk
   },
+
+  /* ── Procenten berekenen ─────────────────────────────────────────── */
+  { id: 'P.1a', titel: 'Hoeveel % is X van Y (netjes)',         groep: 'Procenten', gen: genP1a },
+  { id: 'P.1b', titel: 'Hoeveel % is X van Y (decimalen)',      groep: 'Procenten', gen: genP1b },
+  { id: 'P.2a', titel: 'Geheel bij deel en % (netjes)',          groep: 'Procenten', gen: genP2a },
+  { id: 'P.2b', titel: 'Geheel bij deel en % (decimalen)',       groep: 'Procenten', gen: genP2b },
+  { id: 'P.3a', titel: 'Procentuele verandering (met hints)',    groep: 'Procenten', gen: genP3a },
+  { id: 'P.3b', titel: 'Procentuele verandering (leeg)',         groep: 'Procenten', gen: genP3b },
+  { id: 'P.4a', titel: 'Nieuwe waarde na toename (netjes)',      groep: 'Procenten', gen: genP4a },
+  { id: 'P.4b', titel: 'Nieuwe waarde na toename (decimalen)',   groep: 'Procenten', gen: genP4b },
+  { id: 'P.5a', titel: 'Nieuwe waarde na afname (netjes)',       groep: 'Procenten', gen: genP5a },
+  { id: 'P.5b', titel: 'Nieuwe waarde na afname (decimalen)',    groep: 'Procenten', gen: genP5b },
+  { id: 'P.6a', titel: 'Oorspronkelijk bij toename (netjes)',    groep: 'Procenten', gen: genP6a },
+  { id: 'P.6b', titel: 'Oorspronkelijk bij toename (decimalen)', groep: 'Procenten', gen: genP6b },
+  { id: 'P.7a', titel: 'Oorspronkelijk bij afname (netjes)',     groep: 'Procenten', gen: genP7a },
+  { id: 'P.7b', titel: 'Oorspronkelijk bij afname (decimalen)',  groep: 'Procenten', gen: genP7b },
+  { id: 'P.8a', titel: 'Opeenvolgende toe-/afnames (netjes)',    groep: 'Procenten', gen: genP8a },
+  { id: 'P.8b', titel: 'Opeenvolgende toe-/afnames (decimalen)', groep: 'Procenten', gen: genP8b },
+  {
+    id: 'H.P1tot7', titel: 'Procenten – afwisselend (P.1–P.7)', groep: 'Procenten',
+    gen: genH_P1tot7
+  },
+
+  /* ── Procenten omrekenen ─────────────────────────────────────────── */
+  { id: 'DP.1', titel: 'Percentage → decimaal',   groep: 'Procenten omrekenen', gen: genDP1 },
+  { id: 'DP.2', titel: 'Decimaal → percentage',   groep: 'Procenten omrekenen', gen: genDP2 },
+  { id: 'PV.1', titel: 'Verhouding → percentage', groep: 'Procenten omrekenen', gen: genPV1 },
+  { id: 'PV.2', titel: 'Percentage → verhouding', groep: 'Procenten omrekenen', gen: genPV2 },
+
+  /* ── Eenheden omrekenen ──────────────────────────────────────────── */
+  { id: 'E.T1a',      titel: 'Tijdseenheden – uur, min, sec',            groep: 'Eenheden', gen: genET1a },
+  { id: 'E.T1b',      titel: 'Tijdseenheden – dag en week',              groep: 'Eenheden', gen: genET1b },
+  { id: 'E.T1c',      titel: 'Tijdseenheden – gecombineerd',             groep: 'Eenheden', gen: genET1c },
+  { id: 'E.L1a',      titel: 'Lengtematen – mm, cm, dm, m',              groep: 'Eenheden', gen: genEL1a },
+  { id: 'E.L1b',      titel: 'Lengtematen – m, dam, hm, km',             groep: 'Eenheden', gen: genEL1b },
+  { id: 'E.L1c',      titel: 'Lengtematen – gecombineerd mm – km',       groep: 'Eenheden', gen: genEL1c },
+  { id: 'E.O1a',      titel: 'Oppervlaktematen – mm², cm², dm², m²',     groep: 'Eenheden', gen: genEO1a },
+  { id: 'E.O1b',      titel: 'Oppervlaktematen – ha, are, km²',          groep: 'Eenheden', gen: genEO1b },
+  { id: 'E.O1c',      titel: 'Oppervlaktematen – gecombineerd m² – km²', groep: 'Eenheden', gen: genEO1c },
+  { id: 'E.I1',       titel: 'Inhoudsmaten – mL, cL, dL, L, dm³',       groep: 'Eenheden', gen: genEI1 },
+  { id: 'E.S1',       titel: 'Snelheden – m/s en km/h',                groep: 'Eenheden', gen: genES1 },
+  { id: 'H.Eenheden', titel: 'Eenheden – afwisselend',                 groep: 'Eenheden', gen: genH_Eenheden },
 ];
 
 function generateVraag(leerdoelId) {

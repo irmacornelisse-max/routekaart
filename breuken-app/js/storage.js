@@ -55,7 +55,7 @@ function registreerStudent(naam) {
   return student;
 }
 
-function slaResultaatOp(studentId, leerdoel, staat) {
+function slaResultaatOp(studentId, leerdoel, staat, metTijdlimiet = false) {
   const staatStr = typeof staat === 'boolean' ? (staat ? 'goed' : 'fout') : staat;
   const goed = staatStr === 'goed' || staatStr === 'goed_na_fouten';
   const data = loadData();
@@ -65,6 +65,7 @@ function slaResultaatOp(studentId, leerdoel, staat) {
     leerdoel,
     goed,
     staat: staatStr,
+    metTijdlimiet: !!metTijdlimiet,
     tijdstip: new Date().toISOString()
   });
   saveData(data);
