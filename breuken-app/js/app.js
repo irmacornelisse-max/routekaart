@@ -123,6 +123,35 @@ const TOC_HOOFDSTUKKEN = [
     ]
   },
   {
+    id: 'algebra', label: 'Algebra',
+    secties: [
+      {
+        id: 'alg-optellen', label: 'Optellen en aftrekken',
+        items: [
+          { label: 'Optellen en aftrekken', knoppen: [{l:'a',id:'A.O1a'},{l:'b',id:'A.O1b'},{l:'c',id:'A.O1c'}] },
+        ]
+      },
+      {
+        id: 'alg-vermenigvuldigen', label: 'Vermenigvuldigen',
+        items: [
+          { label: 'Vermenigvuldigen', knoppen: [{l:'a',id:'A.V1a'},{l:'b',id:'A.V1b'},{l:'c',id:'A.V1c'}] },
+        ]
+      },
+      {
+        id: 'alg-gemengd', label: 'Gemengd',
+        items: [
+          { label: 'Optellen, aftrekken en vermenigvuldigen', knoppen: [{l:'a',id:'A.M1a'},{l:'b',id:'A.M1b'}] },
+        ]
+      },
+      {
+        id: 'alg-delen', label: 'Delen',
+        items: [
+          { label: 'Delen', knoppen: [{l:'a',id:'A.D1a'},{l:'b',id:'A.D1b'}] },
+        ]
+      },
+    ]
+  },
+  {
     id: 'eenheden', label: 'Eenheden',
     secties: [
       {
@@ -685,6 +714,12 @@ function checkAntwoord(vraag, gegeven) {
     return f1.d === correct.noemer1 ? 'goed' : 'tussenstap';
   }
 
+  if (type === 'algebra') {
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+    return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
+  }
+
   const rawLatex = gegeven.latex.replace(/\\%/g, '');
   const sv = evaluateLatex(rawLatex);
   if (sv === null || !isFinite(sv)) return 'fout';
@@ -791,6 +826,16 @@ function feedbackBoodschap(vraag, gegeven) {
     'E.I1': 'L ↔ dL ↔ cL ↔ mL: elke stap ×10 of ÷10. Onthoud: 1 dm³ = 1 L en 1 m³ = 1000 L.',
     'E.S1': '1 m/s = 3,6 km/h. Van m/s naar km/h: ×3,6. Van km/h naar m/s: ÷3,6.',
     'H.Eenheden': 'Kijk naar de eenheden: worden ze kleiner? Dan vermenigvuldig je. Groter? Dan deel je.',
+    'A.O1a': 'Zoek gelijksoortige termen (dezelfde letter) en tel de coëfficiënten op.',
+    'A.O1b': 'Combineer alle gelijksoortige termen: zelfde letter én zelfde macht bij elkaar.',
+    'A.O1c': 'Let op de macht: $x^2$ en $x^3$ zijn verschillende termen en mogen niet worden gecombineerd.',
+    'A.V1a': 'Vermenigvuldig de getallen met elkaar; de letter blijft staan.',
+    'A.V1b': 'Vermenigvuldig de coëfficiënten; zijn de letters gelijk, tel dan de machten op.',
+    'A.V1c': 'Vermenigvuldig alle coëfficiënten; tel de machten per letter bij elkaar op.',
+    'A.M1a': 'Bereken eerst de vermenigvuldiging (vóór + en −), combineer dan gelijksoortige termen.',
+    'A.M1b': 'Bereken eerst alle vermenigvuldigingen, combineer daarna gelijksoortige termen.',
+    'A.D1a': 'Deel de coëfficiënten; trek de macht van de deler af van de macht van het deeltal.',
+    'A.D1b': 'Deel de coëfficiënten; trek per letter de macht van de deler af van die van het deeltal.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }

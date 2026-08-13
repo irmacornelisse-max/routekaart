@@ -268,6 +268,182 @@ function parseSingleFracFromLatex(latex) {
   return m ? { n: parseInt(m[1]), d: parseInt(m[2]) } : null;
 }
 
+/* ── Algebra Utilities ─────────────────────────────────────────────── */
+
+function _algTokenize(s, varVals) {
+  const tokens = [];
+  let i = 0;
+
+  function readBlock() {
+    if (s[i] !== '{') return i < s.length ? s[i++] : '';
+    let depth = 0, j = i;
+    while (j < s.length) {
+      if (s[j] === '{') depth++;
+      else if (s[j] === '}') { if (--depth === 0) break; }
+      j++;
+    }
+    const c = s.slice(i + 1, j); i = j + 1; return c;
+  }
+
+  while (i < s.length) {
+    if (/\s/.test(s[i])) { i++; continue; }
+    const prev = tokens[tokens.length - 1];
+    const needsMul = prev && (prev.t === 'n' || prev.t === 'v' || prev.t === 'rp');
+
+    if (s[i] === '^') {
+      i++;
+      const exp = readBlock();
+      const expVal = _algEval(exp, varVals);
+      const base = tokens.pop();
+      tokens.push({ t: 'v', v: base ? Math.pow(base.v, expVal) : 1 });
+      continue;
+    }
+
+    if (s[i] === '\\') {
+      i++;
+      let cmd = '';
+      while (i < s.length && /[a-zA-Z]/.test(s[i])) cmd += s[i++];
+      if (cmd === 'frac' || cmd === 'dfrac') {
+        if (needsMul) tokens.push({ t: 'op', v: '*' });
+        const nb = readBlock(), db = readBlock();
+        const dv = _algEval(db, varVals);
+        tokens.push({ t: 'v', v: dv ? _algEval(nb, varVals) / dv : 0 });
+      } else if (cmd === 'cdot' || cmd === 'times') {
+        tokens.push({ t: 'op', v: '*' });
+      } else if (cmd === 'div')   { tokens.push({ t: 'op', v: '/' }); }
+      else if (cmd === 'left')   { if (i < s.length) { i++; if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({t:'lp'}); } }
+      else if (cmd === 'right')  { if (i < s.length) { i++; tokens.push({t:'rp'}); } }
+      else if (cmd === 'sqrt')   {
+        if (needsMul) tokens.push({t:'op',v:'*'});
+        const ab = readBlock();
+        tokens.push({ t: 'v', v: Math.sqrt(Math.max(0, _algEval(ab, varVals))) });
+      }
+      continue;
+    }
+
+    if (/\d/.test(s[i])) {
+      if (needsMul) tokens.push({ t: 'op', v: '*' });
+      let n = '';
+      while (i < s.length && /\d/.test(s[i])) n += s[i++];
+      if (i < s.length && (s[i] === '.' || s[i] === ',')) { n += '.'; i++; while (i < s.length && /\d/.test(s[i])) n += s[i++]; }
+      tokens.push({ t: 'n', v: parseFloat(n) });
+      continue;
+    }
+
+    if (/[a-zA-Z]/.test(s[i])) {
+      let first = true;
+      while (i < s.length && /[a-zA-Z]/.test(s[i])) {
+        const vname = s[i++];
+        if (!first || needsMul) tokens.push({ t: 'op', v: '*' });
+        first = false;
+        tokens.push({ t: 'v', v: (varVals && varVals[vname] !== undefined) ? varVals[vname] : NaN });
+      }
+      continue;
+    }
+
+    const ch = s[i++];
+    if (ch === '+') tokens.push({ t: 'op', v: '+' });
+    else if (ch === '-') tokens.push({ t: 'op', v: '-' });
+    else if (ch === '*') tokens.push({ t: 'op', v: '*' });
+    else if (ch === '/') tokens.push({ t: 'op', v: '/' });
+    else if (ch === '(') { if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({ t: 'lp' }); }
+    else if (ch === ')') tokens.push({ t: 'rp' });
+  }
+  return tokens;
+}
+
+function _algEval(latex, varVals) {
+  const s = (latex || '').trim();
+  if (!s) return NaN;
+  try {
+    const tokens = _algTokenize(s, varVals);
+    if (!tokens.length) return NaN;
+    let pos = 0;
+    const eat = fn => (pos < tokens.length && fn(tokens[pos])) ? tokens[pos++] : null;
+    function expr() {
+      let l = term(); let op;
+      while ((op = eat(t => t.t === 'op' && (t.v === '+' || t.v === '-'))))
+        l = op.v === '+' ? l + term() : l - term();
+      return l;
+    }
+    function term() {
+      let l = atom(); let op;
+      while ((op = eat(t => t.t === 'op' && (t.v === '*' || t.v === '/'))))
+        l = op.v === '*' ? l * atom() : l / atom();
+      return l;
+    }
+    function atom() {
+      if (eat(t => t.t === 'op' && t.v === '-')) return -atom();
+      if (eat(t => t.t === 'lp')) { const v = expr(); eat(t => t.t === 'rp'); return v; }
+      const tok = eat(t => t.t === 'v' || t.t === 'n');
+      if (tok) return tok.v;
+      throw new Error('?');
+    }
+    const r = expr();
+    return isFinite(r) ? r : NaN;
+  } catch { return NaN; }
+}
+
+function _algSplitTermen(latex) {
+  const s = (latex || '').replace(/\s+/g, '');
+  const terms = []; let cur = ''; let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '{' || c === '(') depth++;
+    else if (c === '}' || c === ')') depth--;
+    else if (depth === 0 && (c === '+' || c === '-') && i > 0) { if (cur) terms.push(cur); cur = c; continue; }
+    cur += c;
+  }
+  if (cur) terms.push(cur);
+  return terms.length ? terms : [latex];
+}
+
+function _algVarDeel(term) {
+  let s = term.replace(/^[+\-]/, '').replace(/^\d+\.?\d*\*?/, '');
+  const pieces = []; const re = /([a-zA-Z])(?:\^\{(\d+)\}|\^(\d+))?/g; let m;
+  while ((m = re.exec(s)) !== null) {
+    const p = m[2] || m[3] || '1';
+    pieces.push(m[1] + (p !== '1' ? p : ''));
+  }
+  pieces.sort(); return pieces.join('');
+}
+
+function isAlgebraVereenvoudigd(latex) {
+  const s = (latex || '').trim();
+  if (!s) return false;
+  if (/\\cdot|\\times/.test(s)) return false;
+  if (/\d\*/.test(s)) return false;
+  const terms = _algSplitTermen(s);
+  // Reject explicit coefficient 1 before a variable (e.g. '1b' instead of 'b', '-1x' instead of '-x')
+  for (const t of terms) {
+    if (/^[+\-]?1[a-zA-Z]/.test(t.replace(/\s+/g, ''))) return false;
+  }
+  const seen = new Set();
+  for (const t of terms) {
+    // Reject repeated variable letters within one term (e.g. 'mm' instead of 'm^{2}')
+    const ts = t.replace(/^[+\-]/, '').replace(/^\d+\.?\d*\*?/, '');
+    const lc = {}; const re2 = /([a-zA-Z])(?:\^\{?\d+\}?)?/g; let m2;
+    while ((m2 = re2.exec(ts)) !== null) {
+      lc[m2[1]] = (lc[m2[1]] || 0) + 1;
+      if (lc[m2[1]] > 1) return false;
+    }
+    const vd = _algVarDeel(t);
+    if (seen.has(vd)) return false;
+    seen.add(vd);
+  }
+  return true;
+}
+
+function checkAlgebraAntwoord(gegeven, verwacht, vars) {
+  const sets = [[2,3,5],[3,5,7],[5,7,11]];
+  for (const vals of sets) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(g) || !isFinite(e) || Math.abs(g - e) > 1e-6) return 'fout';
+  }
+  return isAlgebraVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
+}
+
 function correcteWaarde(vraag) {
   const { antwoordType: type, antwoord: a } = vraag;
   if (type === 'fraction')   return a.teller / a.noemer;

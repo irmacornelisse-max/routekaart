@@ -2037,6 +2037,267 @@ function genH_Eenheden() {
   return q;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   ALGEBRA
+══════════════════════════════════════════════════════════════════════ */
+
+/* Formatteer een monooom voor LaTeX: _alM(3,'x',2) → '3x^{2}', _alM(-1,'x',1) → '-x' */
+function _alM(c, v, p) {
+  if (c === 0) return '0';
+  const neg = c < 0, a = Math.abs(c);
+  const cs = (a === 1 && v) ? '' : String(a);
+  const vs = v ? (p && p > 1 ? `${v}^{${p}}` : v) : '';
+  return (neg ? '-' : '') + cs + vs;
+}
+
+/* Formatteer een som van termen [{c,v,p}] */
+function _alS(termen) {
+  let r = '';
+  for (let i = 0; i < termen.length; i++) {
+    const { c, v, p } = termen[i];
+    if (c === 0) continue;
+    if (i === 0 || r === '') r += _alM(c, v, p);
+    else if (c > 0) r += ` + ${_alM(c, v, p)}`;
+    else r += ` - ${_alM(-c, v, p)}`;
+  }
+  return r || '0';
+}
+
+/* Helper: maak een algebra-vraag object */
+function _aQ(id, vraag, antwoord, vars, hints, oplossing) {
+  return {
+    id: uid(), leerdoel: id, vraag,
+    antwoordType: 'algebra',
+    antwoord: { expr: antwoord, vars },
+    data: {}, hints, oplossing
+  };
+}
+
+/* ── A.O1a – optellen/aftrekken, 2 gelijksoortige termen ────────── */
+function genAO1a() {
+  const letters = ['x','y','a','b','n','m'];
+  const v = pick(letters);
+  let c1, c2, res;
+  do {
+    c1 = rand(-9, 9); c2 = rand(-9, 9);
+    res = c1 + c2;
+  } while (!c1 || !c2 || !res || res === c1 || res === c2);
+  const q = _alS([{c:c1,v,p:1}, {c:c2,v,p:1}]);
+  const a = _alM(res, v, 1);
+  return _aQ('A.O1a', `Vereenvoudig: $${q}$`, a, [v],
+    [`Dit zijn gelijksoortige termen: beide hebben de letter $${v}$.`,
+     `Tel de getallen bij $${v}$ op: $(${c1}) + (${c2}) = ${res}$, dus: $${a}$`],
+    `$${q}$\n$= ${a}$`);
+}
+
+/* ── A.O1b – 3-4 termen, verschillende letters ──────────────────── */
+const AO1b_POOL = [
+  { q:'3x - 6y + 2y', a:'3x - 4y', vars:['x','y'], h:'Combineer de $y$-termen: $-6y + 2y = -4y$' },
+  { q:'-2n + 6 - 5n - 7', a:'-7n - 1', vars:['n'], h:'$n$-termen: $-2n-5n=-7n$; constanten: $6-7=-1$' },
+  { q:'5a + 3b - 2a + b', a:'3a + 4b', vars:['a','b'], h:'$5a-2a=3a$ en $3b+b=4b$' },
+  { q:'4x + 3y - x - 5y', a:'3x - 2y', vars:['x','y'], h:'$4x-x=3x$ en $3y-5y=-2y$' },
+  { q:'-3m + 8 + 7m - 5', a:'4m + 3', vars:['m'], h:'$-3m+7m=4m$ en $8-5=3$' },
+  { q:'2a - 4b + 3a + 2b', a:'5a - 2b', vars:['a','b'], h:'$2a+3a=5a$ en $-4b+2b=-2b$' },
+  { q:'6x - 3 - 2x + 7', a:'4x + 4', vars:['x'], h:'$6x-2x=4x$ en $-3+7=4$' },
+  { q:'-5y + 4x - 3y + x', a:'5x - 8y', vars:['x','y'], h:'$4x+x=5x$ en $-5y-3y=-8y$' },
+  { q:'8n - 3 - n + 5', a:'7n + 2', vars:['n'], h:'$8n-n=7n$ en $-3+5=2$' },
+  { q:'3p - 2q + 5p + 4q', a:'8p + 2q', vars:['p','q'], h:'$3p+5p=8p$ en $-2q+4q=2q$' },
+  { q:'7x - 4 + 3y - 2x + 6 - y', a:'5x + 2y + 2', vars:['x','y'], h:'$x$-termen: $7x-2x=5x$; $y$-termen: $3y-y=2y$; constanten: $-4+6=2$' },
+  { q:'-4a + 2b - 3 + a - 5b + 7', a:'-3a - 3b + 4', vars:['a','b'], h:'$-4a+a=-3a$; $2b-5b=-3b$; $-3+7=4$' },
+];
+function genAO1b() {
+  const e = pick(AO1b_POOL);
+  return _aQ('A.O1b', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
+    ['Zoek gelijksoortige termen bij elkaar (zelfde letter).', e.h],
+    `$${e.q}$\n$= ${e.a}$`);
+}
+
+/* ── A.O1c – 4-5 termen met machten ─────────────────────────────── */
+const AO1c_POOL = [
+  { q:'t^{3} + 2t^{2} - 3t^{3} + t^{2}', a:'-2t^{3} + 3t^{2}', vars:['t'],
+    h:'$t^3$-termen: $1-3=-2$; $t^2$-termen: $2+1=3$' },
+  { q:'2x^{2} - 5x + 3x^{2} + 2x', a:'5x^{2} - 3x', vars:['x'],
+    h:'$2x^2+3x^2=5x^2$ en $-5x+2x=-3x$' },
+  { q:'-4a^{3} + 2a - a^{3} - 5a', a:'-5a^{3} - 3a', vars:['a'],
+    h:'$-4a^3-a^3=-5a^3$ en $2a-5a=-3a$' },
+  { q:'3n^{2} + 4n - n^{2} - 7n + 2', a:'2n^{2} - 3n + 2', vars:['n'],
+    h:'$3n^2-n^2=2n^2$; $4n-7n=-3n$; constante: $2$' },
+  { q:'x^{3} - 2x^{2} + 4x^{3} - 3x^{2} + x', a:'5x^{3} - 5x^{2} + x', vars:['x'],
+    h:'$x^3+4x^3=5x^3$; $-2x^2-3x^2=-5x^2$; $+x$' },
+  { q:'-3m^{2} + 5 + 2m^{2} - m - 8 + 3m', a:'-m^{2} + 2m - 3', vars:['m'],
+    h:'$-3m^2+2m^2=-m^2$; $-m+3m=2m$; $5-8=-3$' },
+  { q:'4b^{2} - 2b^{3} + b^{2} - b^{3}', a:'-3b^{3} + 5b^{2}', vars:['b'],
+    h:'$-2b^3-b^3=-3b^3$ en $4b^2+b^2=5b^2$' },
+  { q:'2y^{4} - 3y^{2} + y^{4} + 5y^{2} - y^{4}', a:'2y^{4} + 2y^{2}', vars:['y'],
+    h:'$2y^4+y^4-y^4=2y^4$ en $-3y^2+5y^2=2y^2$' },
+  { q:'5x^{2} - 3x + 2x^{3} - x^{2} + 4x - x^{3}', a:'x^{3} + 4x^{2} + x', vars:['x'],
+    h:'$2x^3-x^3=x^3$; $5x^2-x^2=4x^2$; $-3x+4x=x$' },
+];
+function genAO1c() {
+  const e = pick(AO1c_POOL);
+  return _aQ('A.O1c', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
+    ['Let op de macht: alleen termen met dezelfde letter én dezelfde macht zijn gelijksoortig.', e.h],
+    `$${e.q}$\n$= ${e.a}$`);
+}
+
+/* ── A.V1a – getal × letterterm ─────────────────────────────────── */
+function genAV1a() {
+  const letters = ['x','y','a','b','n','m','w','p'];
+  const v = pick(letters);
+  let f1, f2, res;
+  do {
+    f1 = rand(-9, 9); f2 = rand(2, 9);
+    res = f1 * f2;
+  } while (Math.abs(f1) <= 1 || Math.abs(res) > 72);
+  const term = `${f2}${v}`;
+  const a = _alM(res, v, 1);
+  return _aQ('A.V1a', `Vereenvoudig: $${f1} \\cdot ${term}$`, a, [v],
+    [`Vermenigvuldig de getallen: $${f1} \\times ${f2} = ${res}$.`,
+     `$${f1} \\cdot ${term} = ${a}$`],
+    `$${f1} \\cdot ${term}$\n$= ${a}$`);
+}
+
+/* ── A.V1b – vermenigvuldigen van 2 monomials ───────────────────── */
+function genAV1b() {
+  const letters = ['x','y','a','b','n','m'];
+  const v1 = pick(letters);
+  const zelfde = Math.random() < 0.5;
+  const v2 = zelfde ? v1 : pick(letters.filter(l => l !== v1));
+  let c1, c2;
+  do { c1 = rand(-9, 9); c2 = rand(-9, 9); }
+  while (Math.abs(c1) <= 1 || Math.abs(c2) <= 1 || Math.abs(c1*c2) > 72);
+  const resC = c1 * c2;
+  const t1 = _alM(c1, v1, 1), t2 = _alM(c2, v2, 1);
+  const d1 = c1 < 0 ? `(${t1})` : t1, d2 = c2 < 0 ? `(${t2})` : t2;
+  let a;
+  if (zelfde) {
+    a = _alM(resC, v1, 2);
+  } else {
+    const [va, vb] = [v1, v2].sort();
+    const s = resC < 0 ? '-' : '';
+    a = `${s}${Math.abs(resC)}${va}${vb}`;
+  }
+  return _aQ('A.V1b', `Vereenvoudig: $${d1} \\cdot ${d2}$`, a, [...new Set([v1,v2])],
+    [`Vermenigvuldig de getallen: $${c1} \\times ${c2} = ${resC}$.`,
+     zelfde ? `$${v1} \\times ${v1} = ${v1}^2$ → antwoord: $${a}$`
+            : `$${v1} \\times ${v2} = ${[v1,v2].sort().join('')}$ → antwoord: $${a}$`],
+    `$${d1} \\cdot ${d2}$\n$= ${a}$`);
+}
+
+/* ── A.V1c – vermenigvuldigen van 3 monomials ───────────────────── */
+const AV1c_POOL = [
+  { q:'2x \\cdot 3x \\cdot 4x', a:'24x^{3}', vars:['x'], h:'$2\\times3\\times4=24$; $x\\cdot x\\cdot x=x^3$' },
+  { q:'(-2x) \\cdot 3x \\cdot (-x)', a:'6x^{3}', vars:['x'], h:'$(-2)\\times3\\times(-1)=6$; $x^3$' },
+  { q:'2x \\cdot (-3y) \\cdot 4x', a:'-24x^{2}y', vars:['x','y'], h:'$2\\times(-3)\\times4=-24$; $x^2y$' },
+  { q:'(-3a) \\cdot 2b \\cdot a', a:'-6a^{2}b', vars:['a','b'], h:'$(-3)\\times2=-6$; $a\\cdot a=a^2$' },
+  { q:'5x \\cdot (-2x) \\cdot 3y', a:'-30x^{2}y', vars:['x','y'], h:'$5\\times(-2)\\times3=-30$; $x^2y$' },
+  { q:'(-2n) \\cdot (-3n) \\cdot 4', a:'24n^{2}', vars:['n'], h:'$(-2)\\times(-3)\\times4=24$; $n^2$' },
+  { q:'4a \\cdot (-b) \\cdot 2a', a:'-8a^{2}b', vars:['a','b'], h:'$4\\times(-1)\\times2=-8$; $a^2b$' },
+  { q:'(-x) \\cdot (-2x) \\cdot (-3x)', a:'-6x^{3}', vars:['x'], h:'Drie factoren, drie minnetjes: negatief. $1\\times2\\times3=6$' },
+  { q:'(-2m) \\cdot 4m \\cdot (-m)', a:'8m^{3}', vars:['m'], h:'$(-2)\\times4\\times(-1)=8$; $m^3$' },
+  { q:'3x \\cdot 2y \\cdot (-5x)', a:'-30x^{2}y', vars:['x','y'], h:'$3\\times2\\times(-5)=-30$; $x^2y$' },
+];
+function genAV1c() {
+  const e = pick(AV1c_POOL);
+  return _aQ('A.V1c', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
+    ['Vermenigvuldig alle getallen; tel de machten per letter op.', e.h],
+    `$${e.q}$\n$= ${e.a}$`);
+}
+
+/* ── A.M1a – gemengd, 3 factoren/termen ────────────────────────── */
+const AM1a_POOL = [
+  { q:'3 \\cdot 2x + 4x', a:'10x', vars:['x'], h:'Eerst: $3\\cdot2x=6x$; dan: $6x+4x=10x$' },
+  { q:'5x - 2 \\cdot 3x', a:'-x', vars:['x'], h:'Eerst: $2\\cdot3x=6x$; dan: $5x-6x=-x$' },
+  { q:'4 \\cdot 3y + 2y', a:'14y', vars:['y'], h:'Eerst: $4\\cdot3y=12y$; dan: $12y+2y=14y$' },
+  { q:'-2 \\cdot 5n - 3n', a:'-13n', vars:['n'], h:'Eerst: $-2\\cdot5n=-10n$; dan: $-10n-3n=-13n$' },
+  { q:'6x + 3 \\cdot (-4x)', a:'-6x', vars:['x'], h:'Eerst: $3\\cdot(-4x)=-12x$; dan: $6x-12x=-6x$' },
+  { q:'2a \\cdot 4 - 3a', a:'5a', vars:['a'], h:'Eerst: $2a\\cdot4=8a$; dan: $8a-3a=5a$' },
+  { q:'7b - 3b \\cdot 2', a:'b', vars:['b'], h:'Eerst: $3b\\cdot2=6b$; dan: $7b-6b=b$' },
+  { q:'-4x \\cdot 3 + 20x', a:'8x', vars:['x'], h:'Eerst: $-4x\\cdot3=-12x$; dan: $-12x+20x=8x$' },
+  { q:'3m + (-2) \\cdot 4m', a:'-5m', vars:['m'], h:'Eerst: $(-2)\\cdot4m=-8m$; dan: $3m-8m=-5m$' },
+  { q:'(-3) \\cdot 2a + 10a', a:'4a', vars:['a'], h:'Eerst: $(-3)\\cdot2a=-6a$; dan: $-6a+10a=4a$' },
+];
+function genAM1a() {
+  const e = pick(AM1a_POOL);
+  return _aQ('A.M1a', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
+    ['Bereken eerst de vermenigvuldiging, daarna pas de optelling of aftrekking.', e.h],
+    `$${e.q}$\n$= ${e.a}$`);
+}
+
+/* ── A.M1b – gemengd, 4 factoren/termen ────────────────────────── */
+const AM1b_POOL = [
+  { q:'2x \\cdot 3 + 4x \\cdot 2', a:'14x', vars:['x'],
+    h:'$2x\\cdot3=6x$ en $4x\\cdot2=8x$; dan: $6x+8x=14x$' },
+  { q:'5a \\cdot 2 - 3a \\cdot 4', a:'-2a', vars:['a'],
+    h:'$5a\\cdot2=10a$ en $3a\\cdot4=12a$; dan: $10a-12a=-2a$' },
+  { q:'3 \\cdot 2n + 4 \\cdot 5n', a:'26n', vars:['n'],
+    h:'$3\\cdot2n=6n$ en $4\\cdot5n=20n$; dan: $6n+20n=26n$' },
+  { q:'2x \\cdot 3y + 4x \\cdot y', a:'10xy', vars:['x','y'],
+    h:'$2x\\cdot3y=6xy$ en $4x\\cdot y=4xy$; dan: $6xy+4xy=10xy$' },
+  { q:'6x^{2} - 2x \\cdot 3x + x^{2}', a:'x^{2}', vars:['x'],
+    h:'$2x\\cdot3x=6x^2$; dan: $6x^2-6x^2+x^2=x^2$' },
+  { q:'3x \\cdot 2x + 5x \\cdot (-x)', a:'x^{2}', vars:['x'],
+    h:'$3x\\cdot2x=6x^2$ en $5x\\cdot(-x)=-5x^2$; dan: $6x^2-5x^2=x^2$' },
+  { q:'(-2a) \\cdot 3b + 5a \\cdot b', a:'-ab', vars:['a','b'],
+    h:'$-2a\\cdot3b=-6ab$ en $5a\\cdot b=5ab$; dan: $-6ab+5ab=-ab$' },
+  { q:'4m \\cdot 2 - 3m + m \\cdot 5', a:'10m', vars:['m'],
+    h:'$4m\\cdot2=8m$ en $m\\cdot5=5m$; dan: $8m-3m+5m=10m$' },
+  { q:'2x^{2} \\cdot 3 - x \\cdot 4x + x^{2}', a:'3x^{2}', vars:['x'],
+    h:'$2x^2\\cdot3=6x^2$ en $x\\cdot4x=4x^2$; dan: $6x^2-4x^2+x^2=3x^2$' },
+];
+function genAM1b() {
+  const e = pick(AM1b_POOL);
+  return _aQ('A.M1b', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
+    ['Bereken eerst alle vermenigvuldigingen, combineer daarna gelijksoortige termen.', e.h],
+    `$${e.q}$\n$= ${e.a}$`);
+}
+
+/* ── A.D1a – delen, één letter ──────────────────────────────────── */
+const AD1a_POOL = [
+  { t:'9a^{4}', n:'3a', a:'3a^{3}', vars:['a'] },
+  { t:'8x^{3}', n:'4x', a:'2x^{2}', vars:['x'] },
+  { t:'12y^{5}', n:'4y^{2}', a:'3y^{3}', vars:['y'] },
+  { t:'15n^{4}', n:'5n', a:'3n^{3}', vars:['n'] },
+  { t:'6x^{2}', n:'2x', a:'3x', vars:['x'] },
+  { t:'-10a^{3}', n:'5a', a:'-2a^{2}', vars:['a'] },
+  { t:'20m^{4}', n:'4m^{2}', a:'5m^{2}', vars:['m'] },
+  { t:'-15b^{3}', n:'3b', a:'-5b^{2}', vars:['b'] },
+  { t:'18x^{6}', n:'6x^{3}', a:'3x^{3}', vars:['x'] },
+  { t:'16y^{3}', n:'8y', a:'2y^{2}', vars:['y'] },
+  { t:'-12a^{4}', n:'4a^{2}', a:'-3a^{2}', vars:['a'] },
+  { t:'24n^{5}', n:'6n^{2}', a:'4n^{3}', vars:['n'] },
+];
+function genAD1a() {
+  const e = pick(AD1a_POOL);
+  return _aQ('A.D1a',
+    `Vereenvoudig: $\\dfrac{${e.t}}{${e.n}}$`, e.a, e.vars,
+    ['Deel de getallen; trek de macht van de noemer af van de macht van de teller.',
+     `$\\dfrac{${e.t}}{${e.n}} = ${e.a}$`],
+    `$\\dfrac{${e.t}}{${e.n}}$\n$= ${e.a}$`);
+}
+
+/* ── A.D1b – delen, meerdere letters ────────────────────────────── */
+const AD1b_POOL = [
+  { t:'8a^{3}b^{2}', n:'4a^{2}', a:'2ab^{2}', vars:['a','b'] },
+  { t:'12x^{2}y^{3}', n:'3xy', a:'4xy^{2}', vars:['x','y'] },
+  { t:'15a^{2}b', n:'5ab', a:'3a', vars:['a','b'] },
+  { t:'-6x^{2}y', n:'2xy', a:'-3x', vars:['x','y'] },
+  { t:'20m^{3}n^{2}', n:'4mn', a:'5m^{2}n', vars:['m','n'] },
+  { t:'9a^{2}b^{3}', n:'3ab', a:'3ab^{2}', vars:['a','b'] },
+  { t:'-10x^{3}y^{2}', n:'5xy^{2}', a:'-2x^{2}', vars:['x','y'] },
+  { t:'16a^{2}b^{2}', n:'4ab', a:'4ab', vars:['a','b'] },
+  { t:'-18m^{2}n^{3}', n:'6mn^{2}', a:'-3mn', vars:['m','n'] },
+  { t:'24x^{3}y^{2}', n:'8x^{2}y', a:'3xy', vars:['x','y'] },
+];
+function genAD1b() {
+  const e = pick(AD1b_POOL);
+  return _aQ('A.D1b',
+    `Vereenvoudig: $\\dfrac{${e.t}}{${e.n}}$`, e.a, e.vars,
+    ['Deel de getallen; trek per letter de macht van de noemer af van die van de teller.',
+     `$\\dfrac{${e.t}}{${e.n}} = ${e.a}$`],
+    `$\\dfrac{${e.t}}{${e.n}}$\n$= ${e.a}$`);
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -2155,6 +2416,18 @@ const LEERDOELEN = [
   { id: 'E.I1',       titel: 'Inhoudsmaten – mL, cL, dL, L, dm³',       groep: 'Eenheden', gen: genEI1 },
   { id: 'E.S1',       titel: 'Snelheden – m/s en km/h',                groep: 'Eenheden', gen: genES1 },
   { id: 'H.Eenheden', titel: 'Eenheden – afwisselend',                 groep: 'Eenheden', gen: genH_Eenheden },
+
+  /* ── Algebra ─────────────────────────────────────────────────────── */
+  { id: 'A.O1a', titel: 'Algebra – optellen/aftrekken (a)',            groep: 'Algebra', gen: genAO1a },
+  { id: 'A.O1b', titel: 'Algebra – optellen/aftrekken (b)',            groep: 'Algebra', gen: genAO1b },
+  { id: 'A.O1c', titel: 'Algebra – optellen/aftrekken (c)',            groep: 'Algebra', gen: genAO1c },
+  { id: 'A.V1a', titel: 'Algebra – vermenigvuldigen (a)',              groep: 'Algebra', gen: genAV1a },
+  { id: 'A.V1b', titel: 'Algebra – vermenigvuldigen (b)',              groep: 'Algebra', gen: genAV1b },
+  { id: 'A.V1c', titel: 'Algebra – vermenigvuldigen (c)',              groep: 'Algebra', gen: genAV1c },
+  { id: 'A.M1a', titel: 'Algebra – gemengd (a)',                       groep: 'Algebra', gen: genAM1a },
+  { id: 'A.M1b', titel: 'Algebra – gemengd (b)',                       groep: 'Algebra', gen: genAM1b },
+  { id: 'A.D1a', titel: 'Algebra – delen (a)',                         groep: 'Algebra', gen: genAD1a },
+  { id: 'A.D1b', titel: 'Algebra – delen (b)',                         groep: 'Algebra', gen: genAD1b },
 ];
 
 function generateVraag(leerdoelId) {
