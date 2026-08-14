@@ -149,6 +149,24 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Delen', knoppen: [{l:'a',id:'A.D1a'},{l:'b',id:'A.D1b'}] },
         ]
       },
+      {
+        id: 'alg-haakjes', label: 'Haakjes uitwerken',
+        items: [
+          { label: 'Haakjes uitwerken', knoppen: [{l:'a',id:'A.H1a'},{l:'b',id:'A.H1b'},{l:'c',id:'A.H1c'},{l:'d',id:'A.H1d'}] },
+        ]
+      },
+      {
+        id: 'alg-factoren', label: 'Ontbinden in factoren',
+        items: [
+          { label: 'Ontbinden in factoren', knoppen: [{l:'a',id:'A.F1a'},{l:'b',id:'A.F1b'},{l:'c',id:'A.F1c'}] },
+        ]
+      },
+      {
+        id: 'alg-machten', label: 'Machtsverheffen',
+        items: [
+          { label: 'Machtsverheffen', knoppen: [{l:'a',id:'A.MV1a'},{l:'b',id:'A.MV1b'},{l:'c',id:'A.MV1c'},{l:'d',id:'A.MV1d'}] },
+        ]
+      },
     ]
   },
   {
@@ -717,6 +735,12 @@ function checkAntwoord(vraag, gegeven) {
   if (type === 'algebra') {
     const raw = (gegeven.latex || '').trim();
     if (!raw) return 'fout';
+    if (correct.vorm === 'merkwaardig') {
+      return checkAlgebraAntwoordMerkwaardig(raw, correct.expr, correct.vars);
+    }
+    if (correct.vorm === 'factored') {
+      return checkAlgebraAntwoordGefactoriseerd(raw, correct.expr, correct.vars);
+    }
     return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
   }
 
@@ -836,6 +860,17 @@ function feedbackBoodschap(vraag, gegeven) {
     'A.M1b': 'Bereken eerst alle vermenigvuldigingen, combineer daarna gelijksoortige termen.',
     'A.D1a': 'Deel de coëfficiënten; trek de macht van de deler af van de macht van het deeltal.',
     'A.D1b': 'Deel de coëfficiënten; trek per letter de macht van de deler af van die van het deeltal.',
+    'A.H1a': 'Vermenigvuldig elk getal tussen de haakjes met het getal ervoor (distributieve eigenschap).',
+    'A.H1b': 'Let op het minteken: $-a(b + c) = -ab - ac$ en $-a(b - c) = -ab + ac$.',
+    'A.H1c': 'Gebruik FOIL: eerste × eerste, buitenste, binnenste, laatste. Combineer daarna gelijksoortige termen.',
+    'A.H1d': 'Gebruik de merkwaardige producten: $(a+b)^2$, $(a-b)^2$ of $(a+b)(a-b)$.',
+    'A.F1a': 'Zoek de grootste gemene deler van de coëfficiënten en de laagste macht van de variabele.',
+    'A.F1b': 'Zoek twee getallen $p$ en $q$ zodat $p + q = b$ en $p \\times q = c$ (bij $x^2 + bx + c$).',
+    'A.F1c': 'Herken het patroon: $(a+b)^2$, $(a-b)^2$ of $(a+b)(a-b)$.',
+    'A.MV1a': 'Vermenigvuldig de coëfficiënten; gebruik de productregel: $a^p \\cdot a^q = a^{p+q}$.',
+    'A.MV1b': 'Gebruik: $(a^p)^q = a^{p \\cdot q}$ en $(ab)^p = a^p \\cdot b^p$.',
+    'A.MV1c': 'Gebruik de deelregel: $\\dfrac{a^p}{a^q} = a^{p-q}$. Werk haakjes eerst uit.',
+    'A.MV1d': 'Pas eerst de machtsregels toe op elk onderdeel, en tel daarna gelijksoortige termen op of trek ze af.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }

@@ -2298,6 +2298,388 @@ function genAD1b() {
     `$\\dfrac{${e.t}}{${e.n}}$\n$= ${e.a}$`);
 }
 
+/* Helper: maak een algebra-vraag object met gefactoriseerd antwoord */
+function _aQF(id, vraag, antwoord, vars, hints, oplossing) {
+  return {
+    id: uid(), leerdoel: id, vraag,
+    antwoordType: 'algebra',
+    antwoord: { expr: antwoord, vars, vorm: 'factored' },
+    data: {}, hints, oplossing
+  };
+}
+
+/* Helper: algebra-vraag met merkwaardig-product antwoord (vereist ^2 notatie voor kwadraatfactoren) */
+function _aQM(id, vraag, antwoord, vars, hints, oplossing) {
+  return {
+    id: uid(), leerdoel: id, vraag,
+    antwoordType: 'algebra',
+    antwoord: { expr: antwoord, vars, vorm: 'merkwaardig' },
+    data: {}, hints, oplossing
+  };
+}
+
+/* ── A.H1a – enkele haakjes, natuurlijke getallen ───────────────── */
+function genAH1a() {
+  const letters = ['x','y','a','b','n'];
+  const v = pick(letters);
+  const a = rand(2, 6);
+  const b = rand(2, 8);
+  const c = rand(1, 10);
+  const plus = Math.random() > 0.5;
+  const q = `${a}(${b}${v} ${plus ? '+' : '-'} ${c})`;
+  const rc = a * b, rk = a * c;
+  const ans = `${_alM(rc, v, 1)} ${plus ? '+' : '-'} ${rk}`;
+  return _aQ('A.H1a', `Werk de haakjes uit: $${q}$`, ans, [v],
+    [`Vermenigvuldig elk getal tussen de haakjes met $${a}$.`,
+     `$${a} \\cdot ${b}${v} = ${rc}${v}$ en $${a} \\cdot ${c} = ${rk}$`],
+    `$${q}$\n$= ${a} \\cdot ${b}${v} ${plus ? '+' : '-'} ${a} \\cdot ${c}$\n$= ${ans}$`);
+}
+
+/* ── A.H1b – enkele haakjes, gehele getallen (negatieve factor) ── */
+function genAH1b() {
+  const letters = ['x','y','a','b','n'];
+  const v = pick(letters);
+  const a = rand(2, 6);
+  const b = rand(2, 8);
+  const c = rand(1, 8);
+  const plus = Math.random() > 0.5;
+  const q = `-${a}(${b}${v} ${plus ? '+' : '-'} ${c})`;
+  const rc = -(a * b);
+  const rk = plus ? -(a * c) : (a * c);
+  const t1 = _alM(rc, v, 1);
+  const ans = rk > 0 ? `${t1} + ${rk}` : `${t1} - ${Math.abs(rk)}`;
+  return _aQ('A.H1b', `Werk de haakjes uit: $${q}$`, ans, [v],
+    [`Let op het minteken: $-${a}$ wordt vermenigvuldigd met elk getal tussen de haakjes.`,
+     `$-${a} \\cdot ${b}${v} = ${rc}${v}$ en $-${a} \\cdot (${plus ? '+' : '-'}${c}) = ${rk}$`],
+    `$${q}$\n$= ${ans}$`);
+}
+
+/* ── A.H1c – dubbele haakjes (FOIL) ──────────────────────────────── */
+const AH1c_POOL = [
+  { q:'(x+2)(x+3)', vars:['x'], c2:5, c1:6,  h:'$2+3=5$ en $2\\cdot3=6$' },
+  { q:'(x+1)(x+4)', vars:['x'], c2:5, c1:4,  h:'$1+4=5$ en $1\\cdot4=4$' },
+  { q:'(x+2)(x+5)', vars:['x'], c2:7, c1:10, h:'$2+5=7$ en $2\\cdot5=10$' },
+  { q:'(x+3)(x+4)', vars:['x'], c2:7, c1:12, h:'$3+4=7$ en $3\\cdot4=12$' },
+  { q:'(x-1)(x+4)', vars:['x'], c2:3, c1:-4, h:'$-1+4=3$ en $-1\\cdot4=-4$' },
+  { q:'(x+3)(x-2)', vars:['x'], c2:1, c1:-6, h:'$3-2=1$ en $3\\cdot(-2)=-6$' },
+  { q:'(x-2)(x-3)', vars:['x'], c2:-5, c1:6, h:'$-2-3=-5$ en $(-2)\\cdot(-3)=6$' },
+  { q:'(x-1)(x-5)', vars:['x'], c2:-6, c1:5, h:'$-1-5=-6$ en $(-1)\\cdot(-5)=5$' },
+  { q:'(x+4)(x-1)', vars:['x'], c2:3, c1:-4, h:'$4-1=3$ en $4\\cdot(-1)=-4$' },
+  { q:'(x-3)(x+5)', vars:['x'], c2:2, c1:-15,h:'$-3+5=2$ en $-3\\cdot5=-15$' },
+  { q:'(a+2)(a+6)', vars:['a'], c2:8, c1:12, h:'$2+6=8$ en $2\\cdot6=12$' },
+  { q:'(n-2)(n-4)', vars:['n'], c2:-6,c1:8,  h:'$-2-4=-6$ en $(-2)\\cdot(-4)=8$' },
+];
+
+function genAH1c() {
+  const e = pick(AH1c_POOL);
+  const v = e.vars[0];
+  const termen = [{c:1,v,p:2}];
+  if (e.c2 !== 0) termen.push({c:e.c2,v,p:1});
+  if (e.c1 !== 0) termen.push({c:e.c1,v:'',p:0});
+  const ans = _alS(termen);
+  return _aQ('A.H1c', `Werk de haakjes uit: $${e.q}$`, ans, e.vars,
+    ['Vermenigvuldig elk getal uit de eerste haakjes met elk getal uit de tweede (FOIL).', e.h],
+    `$${e.q}$\n$= ${ans}$`);
+}
+
+/* ── A.H1d – merkwaardige producten uitwerken ─────────────────────── */
+const AH1d_POOL = [
+  { q:'(x+2)^{2}',   ans:'x^{2} + 4x + 4',   vars:['x'], type:'kw+', a:'x', b:'2',
+    opl:'$(x+2)^2 = x^2 + 2\\cdot x\\cdot 2 + 2^2$\n$= x^{2} + 4x + 4$' },
+  { q:'(x+3)^{2}',   ans:'x^{2} + 6x + 9',   vars:['x'], type:'kw+', a:'x', b:'3',
+    opl:'$(x+3)^2 = x^2 + 2\\cdot x\\cdot 3 + 3^2$\n$= x^{2} + 6x + 9$' },
+  { q:'(x+5)^{2}',   ans:'x^{2} + 10x + 25', vars:['x'], type:'kw+', a:'x', b:'5',
+    opl:'$(x+5)^2 = x^2 + 2\\cdot x\\cdot 5 + 5^2$\n$= x^{2} + 10x + 25$' },
+  { q:'(x-2)^{2}',   ans:'x^{2} - 4x + 4',   vars:['x'], type:'kw-', a:'x', b:'2',
+    opl:'$(x-2)^2 = x^2 - 2\\cdot x\\cdot 2 + 2^2$\n$= x^{2} - 4x + 4$' },
+  { q:'(x-3)^{2}',   ans:'x^{2} - 6x + 9',   vars:['x'], type:'kw-', a:'x', b:'3',
+    opl:'$(x-3)^2 = x^2 - 2\\cdot x\\cdot 3 + 3^2$\n$= x^{2} - 6x + 9$' },
+  { q:'(x-4)^{2}',   ans:'x^{2} - 8x + 16',  vars:['x'], type:'kw-', a:'x', b:'4',
+    opl:'$(x-4)^2 = x^2 - 2\\cdot x\\cdot 4 + 4^2$\n$= x^{2} - 8x + 16$' },
+  { q:'(x+2)(x-2)',  ans:'x^{2} - 4',         vars:['x'], type:'vk',  a:'x', b:'2',
+    opl:'$(x+2)(x-2) = x^2 - 2^2$\n$= x^{2} - 4$' },
+  { q:'(x+3)(x-3)',  ans:'x^{2} - 9',         vars:['x'], type:'vk',  a:'x', b:'3',
+    opl:'$(x+3)(x-3) = x^2 - 3^2$\n$= x^{2} - 9$' },
+  { q:'(x+5)(x-5)',  ans:'x^{2} - 25',        vars:['x'], type:'vk',  a:'x', b:'5',
+    opl:'$(x+5)(x-5) = x^2 - 5^2$\n$= x^{2} - 25$' },
+  { q:'(a+4)^{2}',   ans:'a^{2} + 8a + 16',  vars:['a'], type:'kw+', a:'a', b:'4',
+    opl:'$(a+4)^2 = a^2 + 2\\cdot a\\cdot 4 + 4^2$\n$= a^{2} + 8a + 16$' },
+  { q:'(n-5)^{2}',   ans:'n^{2} - 10n + 25', vars:['n'], type:'kw-', a:'n', b:'5',
+    opl:'$(n-5)^2 = n^2 - 2\\cdot n\\cdot 5 + 5^2$\n$= n^{2} - 10n + 25$' },
+  { q:'(y+6)(y-6)',  ans:'y^{2} - 36',        vars:['y'], type:'vk',  a:'y', b:'6',
+    opl:'$(y+6)(y-6) = y^2 - 6^2$\n$= y^{2} - 36$' },
+];
+
+function genAH1d() {
+  const e = pick(AH1d_POOL);
+  const regel = e.type === 'kw+' ? `$(a+b)^2 = a^2 + 2ab + b^2$ met $a=${e.a}$, $b=${e.b}$`
+    : e.type === 'kw-' ? `$(a-b)^2 = a^2 - 2ab + b^2$ met $a=${e.a}$, $b=${e.b}$`
+    : `$(a+b)(a-b) = a^2 - b^2$ met $a=${e.a}$, $b=${e.b}$`;
+  return _aQ('A.H1d', `Werk de haakjes uit: $${e.q}$`, e.ans, e.vars,
+    ['Gebruik een merkwaardig product.', regel],
+    e.opl);
+}
+
+/* ── A.F1a – ontbinden: 1 term buiten haakjes (ggd) ──────────────── */
+const AF1a_POOL = [
+  { q:'6x^{2} + 4x',   ans:'2x(3x + 2)',  vars:['x'], h:'Ggd van $6$ en $4$ is $2$; laagste macht van $x$ is $x^1$.', opl:'$6x^{2} + 4x$\n$= 2x \\cdot 3x + 2x \\cdot 2$\n$= 2x(3x + 2)$' },
+  { q:'9x^{2} + 3x',   ans:'3x(3x + 1)',  vars:['x'], h:'Ggd van $9$ en $3$ is $3$; laagste macht van $x$ is $x^1$.', opl:'$9x^{2} + 3x$\n$= 3x \\cdot 3x + 3x \\cdot 1$\n$= 3x(3x + 1)$' },
+  { q:'12x^{2} - 8x',  ans:'4x(3x - 2)',  vars:['x'], h:'Ggd van $12$ en $8$ is $4$; laagste macht van $x$ is $x^1$.', opl:'$12x^{2} - 8x$\n$= 4x \\cdot 3x - 4x \\cdot 2$\n$= 4x(3x - 2)$' },
+  { q:'15a^{2} - 5a',  ans:'5a(3a - 1)',  vars:['a'], h:'Ggd van $15$ en $5$ is $5$; laagste macht van $a$ is $a^1$.', opl:'$15a^{2} - 5a$\n$= 5a \\cdot 3a - 5a \\cdot 1$\n$= 5a(3a - 1)$' },
+  { q:'10x^{2} + 6x',  ans:'2x(5x + 3)',  vars:['x'], h:'Ggd van $10$ en $6$ is $2$; laagste macht van $x$ is $x^1$.', opl:'$10x^{2} + 6x$\n$= 2x \\cdot 5x + 2x \\cdot 3$\n$= 2x(5x + 3)$' },
+  { q:'8y^{2} - 12y',  ans:'4y(2y - 3)',  vars:['y'], h:'Ggd van $8$ en $12$ is $4$; laagste macht van $y$ is $y^1$.', opl:'$8y^{2} - 12y$\n$= 4y \\cdot 2y - 4y \\cdot 3$\n$= 4y(2y - 3)$' },
+  { q:'4n^{2} + 6n',   ans:'2n(2n + 3)',  vars:['n'], h:'Ggd van $4$ en $6$ is $2$; laagste macht van $n$ is $n^1$.', opl:'$4n^{2} + 6n$\n$= 2n \\cdot 2n + 2n \\cdot 3$\n$= 2n(2n + 3)$' },
+  { q:'6x + 9',        ans:'3(2x + 3)',   vars:['x'], h:'Ggd van $6$ en $9$ is $3$; geen gemeenschappelijke variabele.', opl:'$6x + 9$\n$= 3 \\cdot 2x + 3 \\cdot 3$\n$= 3(2x + 3)$' },
+  { q:'10x + 15',      ans:'5(2x + 3)',   vars:['x'], h:'Ggd van $10$ en $15$ is $5$; geen gemeenschappelijke variabele.', opl:'$10x + 15$\n$= 5 \\cdot 2x + 5 \\cdot 3$\n$= 5(2x + 3)$' },
+  { q:'6a - 9',        ans:'3(2a - 3)',   vars:['a'], h:'Ggd van $6$ en $9$ is $3$; geen gemeenschappelijke variabele.', opl:'$6a - 9$\n$= 3 \\cdot 2a - 3 \\cdot 3$\n$= 3(2a - 3)$' },
+];
+
+function genAF1a() {
+  const e = pick(AF1a_POOL);
+  return _aQF('A.F1a', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
+    ['Zoek de grootste gemene deler (ggd) van de coëfficiënten en de laagste macht van de variabele.', e.h],
+    e.opl);
+}
+
+/* ── A.F1b – ontbinden: som-product methode ──────────────────────── */
+const AF1b_POOL = [
+  { q:'x^{2} + 5x + 6',  ans:'(x+2)(x+3)', vars:['x'], p:2,q_:3,  h:'$2+3=5$ en $2\\cdot3=6$' },
+  { q:'x^{2} + 7x + 12', ans:'(x+3)(x+4)', vars:['x'], p:3,q_:4,  h:'$3+4=7$ en $3\\cdot4=12$' },
+  { q:'x^{2} + 8x + 15', ans:'(x+3)(x+5)', vars:['x'], p:3,q_:5,  h:'$3+5=8$ en $3\\cdot5=15$' },
+  { q:'x^{2} + 6x + 8',  ans:'(x+2)(x+4)', vars:['x'], p:2,q_:4,  h:'$2+4=6$ en $2\\cdot4=8$' },
+  { q:'x^{2} - 5x + 6',  ans:'(x-2)(x-3)', vars:['x'], p:-2,q_:-3,h:'$-2+(-3)=-5$ en $(-2)\\cdot(-3)=6$' },
+  { q:'x^{2} - 7x + 12', ans:'(x-3)(x-4)', vars:['x'], p:-3,q_:-4,h:'$-3+(-4)=-7$ en $(-3)\\cdot(-4)=12$' },
+  { q:'x^{2} + x - 6',   ans:'(x+3)(x-2)', vars:['x'], p:3,q_:-2, h:'$3+(-2)=1$ en $3\\cdot(-2)=-6$' },
+  { q:'x^{2} + 2x - 8',  ans:'(x+4)(x-2)', vars:['x'], p:4,q_:-2, h:'$4+(-2)=2$ en $4\\cdot(-2)=-8$' },
+  { q:'x^{2} - 2x - 8',  ans:'(x-4)(x+2)', vars:['x'], p:-4,q_:2, h:'$-4+2=-2$ en $(-4)\\cdot2=-8$' },
+  { q:'x^{2} - x - 6',   ans:'(x-3)(x+2)', vars:['x'], p:-3,q_:2, h:'$-3+2=-1$ en $(-3)\\cdot2=-6$' },
+  { q:'a^{2} + 7a + 10', ans:'(a+2)(a+5)', vars:['a'], p:2,q_:5,  h:'$2+5=7$ en $2\\cdot5=10$' },
+  { q:'n^{2} - 6n + 8',  ans:'(n-2)(n-4)', vars:['n'], p:-2,q_:-4,h:'$-2+(-4)=-6$ en $(-2)\\cdot(-4)=8$' },
+];
+
+function genAF1b() {
+  const e = pick(AF1b_POOL);
+  const v = e.vars[0];
+  const pStr = e.p >= 0 ? `+${e.p}` : `${e.p}`;
+  const qStr = e.q_ >= 0 ? `+${e.q_}` : `${e.q_}`;
+  return _aQF('A.F1b', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
+    [`Zoek $p$ en $q$ zodat $p+q=${e.p+e.q_}$ en $p\\cdot q=${e.p*e.q_}$.`, e.h],
+    `$${e.q}$\n$p=${e.p},\\; q=${e.q_}$\n$= (${v}${pStr})(${v}${qStr})$`);
+}
+
+/* ── A.F1c – ontbinden: merkwaardige producten ───────────────────── */
+const AF1c_POOL = [
+  { q:'x^{2} + 6x + 9',  ans:'(x+3)^{2}',  vars:['x'], type:'kw+', a:'x',b:'3',
+    opl:'$x^2+6x+9 = x^2 + 2\\cdot x\\cdot 3 + 3^2$\n$= (x+3)^{2}$' },
+  { q:'x^{2} + 4x + 4',  ans:'(x+2)^{2}',  vars:['x'], type:'kw+', a:'x',b:'2',
+    opl:'$x^2+4x+4 = x^2 + 2\\cdot x\\cdot 2 + 2^2$\n$= (x+2)^{2}$' },
+  { q:'x^{2} + 10x + 25',ans:'(x+5)^{2}',  vars:['x'], type:'kw+', a:'x',b:'5',
+    opl:'$x^2+10x+25 = x^2 + 2\\cdot x\\cdot 5 + 5^2$\n$= (x+5)^{2}$' },
+  { q:'x^{2} - 6x + 9',  ans:'(x-3)^{2}',  vars:['x'], type:'kw-', a:'x',b:'3',
+    opl:'$x^2-6x+9 = x^2 - 2\\cdot x\\cdot 3 + 3^2$\n$= (x-3)^{2}$' },
+  { q:'x^{2} - 8x + 16', ans:'(x-4)^{2}',  vars:['x'], type:'kw-', a:'x',b:'4',
+    opl:'$x^2-8x+16 = x^2 - 2\\cdot x\\cdot 4 + 4^2$\n$= (x-4)^{2}$' },
+  { q:'x^{2} - 4x + 4',  ans:'(x-2)^{2}',  vars:['x'], type:'kw-', a:'x',b:'2',
+    opl:'$x^2-4x+4 = x^2 - 2\\cdot x\\cdot 2 + 2^2$\n$= (x-2)^{2}$' },
+  { q:'x^{2} - 9',       ans:'(x+3)(x-3)', vars:['x'], type:'vk',  a:'x',b:'3',
+    opl:'$x^2-9 = x^2 - 3^2$\n$= (x+3)(x-3)$' },
+  { q:'x^{2} - 4',       ans:'(x+2)(x-2)', vars:['x'], type:'vk',  a:'x',b:'2',
+    opl:'$x^2-4 = x^2 - 2^2$\n$= (x+2)(x-2)$' },
+  { q:'x^{2} - 25',      ans:'(x+5)(x-5)', vars:['x'], type:'vk',  a:'x',b:'5',
+    opl:'$x^2-25 = x^2 - 5^2$\n$= (x+5)(x-5)$' },
+  { q:'x^{2} - 16',      ans:'(x+4)(x-4)', vars:['x'], type:'vk',  a:'x',b:'4',
+    opl:'$x^2-16 = x^2 - 4^2$\n$= (x+4)(x-4)$' },
+  { q:'a^{2} + 8a + 16', ans:'(a+4)^{2}',  vars:['a'], type:'kw+', a:'a',b:'4',
+    opl:'$a^2+8a+16 = a^2 + 2\\cdot a\\cdot 4 + 4^2$\n$= (a+4)^{2}$' },
+  { q:'n^{2} - 1',       ans:'(n+1)(n-1)', vars:['n'], type:'vk',  a:'n',b:'1',
+    opl:'$n^2-1 = n^2 - 1^2$\n$= (n+1)(n-1)$' },
+];
+
+function genAF1c() {
+  const e = pick(AF1c_POOL);
+  const tip = e.type === 'kw+' ? `Herken $(${e.a}+${e.b})^2 = ${e.a}^2 + 2\\cdot${e.a}\\cdot${e.b} + ${e.b}^2`
+    : e.type === 'kw-' ? `Herken $(${e.a}-${e.b})^2 = ${e.a}^2 - 2\\cdot${e.a}\\cdot${e.b} + ${e.b}^2`
+    : `Herken $(${e.a}+${e.b})(${e.a}-${e.b}) = ${e.a}^2 - ${e.b}^2`;
+  const hint2 = e.type === 'vk'
+    ? `$${tip}$`
+    : `$${tip}$ — schrijf het antwoord als $(\\ldots)^2$`;
+  return _aQM('A.F1c', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
+    ['Zoek een merkwaardig product.', hint2],
+    e.opl);
+}
+
+/* ── A.MV1a – machtsverheffen: productregel (willekeurig) ────────── */
+function genAMV1a() {
+  const vLetters = ['x','y','a','b','n'];
+  const v  = pick(vLetters);
+  const tw = Math.random() > 0.5;
+  const w  = tw ? pick(vLetters.filter(l => l !== v)) : null;
+
+  const c1 = rand(2,7), p1 = rand(1,4);
+  const c2 = rand(2,7), p2 = rand(1,4);
+  const r1 = tw ? rand(1,3) : 0;
+  const r2 = tw ? rand(1,3) : 0;
+
+  function mon(c, vp, wp) {
+    let s = c === 1 ? '' : String(c);
+    s += vp === 1 ? v : `${v}^{${vp}}`;
+    if (w && wp > 0) s += wp === 1 ? w : `${w}^{${wp}}`;
+    return s;
+  }
+
+  const f1 = mon(c1, p1, r1), f2 = mon(c2, p2, r2);
+  const ac = c1 * c2, ap = p1 + p2, ar = r1 + r2;
+  const ans = mon(ac, ap, ar);
+  const vars = tw ? [v, w] : [v];
+
+  let h2 = `Coëfficiënten: $${c1} \\cdot ${c2} = ${ac}$; $${v}^{${p1}+${p2}} = ${v}^{${ap}}$`;
+  if (tw) h2 += `; $${w}^{${r1}+${r2}} = ${w}^{${ar}}$`;
+  h2 += '.';
+
+  let opl = `$${f1} \\cdot ${f2}$\n$= (${c1} \\cdot ${c2}) \\cdot ${v}^{${p1}+${p2}}`;
+  if (tw) opl += ` \\cdot ${w}^{${r1}+${r2}}`;
+  opl += `$\n$= ${ans}$`;
+
+  return _aQ('A.MV1a', `Vereenvoudig: $${f1} \\cdot ${f2}$`, ans, vars,
+    ['Gebruik de productregel: $a^p \\cdot a^q = a^{p+q}$. Vermenigvuldig de coëfficiënten apart.', h2],
+    opl);
+}
+
+/* ── A.MV1b – machtsverheffen: machtsverheffing van een macht (willekeurig) */
+function genAMV1b() {
+  const vLetters = ['x','y','a','b','n'];
+  const v  = pick(vLetters);
+  const tw = Math.random() > 0.5;
+  const w  = tw ? pick(vLetters.filter(l => l !== v)) : null;
+
+  const c = rand(2,4);             // binnenste coëfficiënt
+  const p = rand(1,3);             // macht van v binnen haakjes
+  const r = tw ? rand(1,3) : 0;   // macht van w binnen haakjes
+  const q = rand(2,3);             // buitenste macht
+
+  function inner() {
+    let s = c === 1 ? '' : String(c);
+    s += p === 1 ? v : `${v}^{${p}}`;
+    if (w && r > 0) s += r === 1 ? w : `${w}^{${r}}`;
+    return s;
+  }
+
+  const inn = inner();
+  const ac  = Math.pow(c, q);
+  const ap  = p * q;
+  const ar  = r * q;
+
+  function outer() {
+    let s = String(ac);
+    s += ap === 1 ? v : `${v}^{${ap}}`;
+    if (w && ar > 0) s += ar === 1 ? w : `${w}^{${ar}}`;
+    return s;
+  }
+
+  const ans  = outer();
+  const vars = tw ? [v, w] : [v];
+
+  let h2 = `$${c}^{${q}} = ${ac}$; $(${v}^{${p}})^{${q}} = ${v}^{${ap}}$`;
+  if (tw) h2 += `; $(${w}^{${r}})^{${q}} = ${w}^{${ar}}$`;
+  h2 += '.';
+
+  let opl = `$(${inn})^{${q}}$\n$= ${c}^{${q}} \\cdot (${v}^{${p}})^{${q}}`;
+  if (tw) opl += ` \\cdot (${w}^{${r}})^{${q}}`;
+  opl += `$\n$= ${ans}$`;
+
+  return _aQ('A.MV1b', `Vereenvoudig: $(${inn})^{${q}}$`, ans, vars,
+    ['Gebruik de machtsregels: $(a^p)^q = a^{p \\cdot q}$ en $(ab)^p = a^p \\cdot b^p$.', h2],
+    opl);
+}
+
+/* ── A.MV1c – machtsverheffen: quotiëntregel (willekeurig) ──────── */
+function genAMV1c() {
+  const vLetters = ['x','y','a','b','n'];
+  const v = pick(vLetters);
+
+  if (Math.random() > 0.4) {
+    // Basis: dfrac{c1 v^p}{c2 v^q}, c1/c2 integer, p > q
+    const c2 = rand(2,4), k = rand(2,5);
+    const c1 = k * c2;
+    const q  = rand(1,3), dp = rand(1,3);
+    const p  = q + dp;
+
+    const numV = p  === 1 ? v : `${v}^{${p}}`;
+    const denV = q  === 1 ? v : `${v}^{${q}}`;
+    const qStr = `\\dfrac{${c1}${numV}}{${c2}${denV}}`;
+    const ans  = _alM(k, v, dp);
+
+    const h2  = `Coëfficiënten: $${c1}/${c2} = ${k}$; $${v}^{${p}-${q}} = ${v}^{${dp}}$.`;
+    const opl = `$${qStr}$\n$= \\dfrac{${c1}}{${c2}} \\cdot ${v}^{${p}-${q}}$\n$= ${ans}$`;
+
+    return _aQ('A.MV1c', `Vereenvoudig: $${qStr}$`, ans, [v],
+      ['Gebruik de deelregel: $\\dfrac{a^p}{a^q} = a^{p-q}$. Deel ook de coëfficiënten.', h2],
+      opl);
+
+  } else {
+    // Gecombineerd: dfrac{(c v^p)^q}{v^r}, p*q > r
+    const c = rand(2,3), p = rand(1,3), q = rand(2,3);
+    const pq = p * q;
+    const r  = rand(1, pq - 1);
+
+    const ac  = Math.pow(c, q);
+    const ap  = pq - r;
+    const inn = _alM(c, v, p);
+    const den = r === 1 ? v : `${v}^{${r}}`;
+    const exp = _alM(ac, v, pq);
+    const ans = _alM(ac, v, ap);
+    const apS = ap === 1 ? v : `${v}^{${ap}}`;
+
+    const h2  = `$(${inn})^{${q}} = ${exp}$; $${v}^{${pq}-${r}} = ${apS}$.`;
+    const opl = `$\\dfrac{(${inn})^{${q}}}{${den}}$\n$= \\dfrac{${exp}}{${den}}$\n$= ${ans}$`;
+
+    return _aQ('A.MV1c', `Vereenvoudig: $\\dfrac{(${inn})^{${q}}}{${den}}$`, ans, [v],
+      ['Werk eerst de macht tussen de haakjes uit, gebruik dan de deelregel.', h2],
+      opl);
+  }
+}
+
+/* ── A.MV1d – machtsverheffen: gecombineerde sommen ─────────────── */
+const AMV1d_POOL = [
+  { q:'3a^{2} \\cdot 2a + 4a^{3}',                   ans:'10a^{3}', vars:['a'],
+    h:'Productregel: $3a^{2} \\cdot 2a = 6a^{3}$; optellen: $6a^{3} + 4a^{3} = 10a^{3}$.',
+    opl:'$3a^{2} \\cdot 2a + 4a^{3}$\n$= 6a^{3} + 4a^{3}$\n$= 10a^{3}$' },
+  { q:'(2x)^{2} - 3x^{2}',                           ans:'x^{2}',   vars:['x'],
+    h:'$(2x)^{2} = 4x^{2}$; aftrekken: $4x^{2} - 3x^{2} = x^{2}$.',
+    opl:'$(2x)^{2} - 3x^{2}$\n$= 4x^{2} - 3x^{2}$\n$= x^{2}$' },
+  { q:'5(x^{2})^{3} - 2x^{6}',                       ans:'3x^{6}',  vars:['x'],
+    h:'$(x^{2})^{3} = x^{6}$; aftrekken: $5x^{6} - 2x^{6} = 3x^{6}$.',
+    opl:'$5(x^{2})^{3} - 2x^{6}$\n$= 5x^{6} - 2x^{6}$\n$= 3x^{6}$' },
+  { q:'(3a)^{2} + 2a \\cdot a',                       ans:'11a^{2}', vars:['a'],
+    h:'$(3a)^{2} = 9a^{2}$ en $2a \\cdot a = 2a^{2}$; optellen: $9a^{2} + 2a^{2} = 11a^{2}$.',
+    opl:'$(3a)^{2} + 2a \\cdot a$\n$= 9a^{2} + 2a^{2}$\n$= 11a^{2}$' },
+  { q:'4x^{3} \\cdot 2x - 3x^{4}',                   ans:'5x^{4}',  vars:['x'],
+    h:'Productregel: $4x^{3} \\cdot 2x = 8x^{4}$; aftrekken: $8x^{4} - 3x^{4} = 5x^{4}$.',
+    opl:'$4x^{3} \\cdot 2x - 3x^{4}$\n$= 8x^{4} - 3x^{4}$\n$= 5x^{4}$' },
+  { q:'\\dfrac{x^{8}}{x^{2}} + 3x^{6}',               ans:'4x^{6}',  vars:['x'],
+    h:'Deelregel: $x^{8}/x^{2} = x^{6}$; optellen: $x^{6} + 3x^{6} = 4x^{6}$.',
+    opl:'$\\dfrac{x^{8}}{x^{2}} + 3x^{6}$\n$= x^{6} + 3x^{6}$\n$= 4x^{6}$' },
+  { q:'3a^{2} \\cdot 4a^{3} - 2a^{5}',               ans:'10a^{5}', vars:['a'],
+    h:'Productregel: $3a^{2} \\cdot 4a^{3} = 12a^{5}$; aftrekken: $12a^{5} - 2a^{5} = 10a^{5}$.',
+    opl:'$3a^{2} \\cdot 4a^{3} - 2a^{5}$\n$= 12a^{5} - 2a^{5}$\n$= 10a^{5}$' },
+  { q:'\\dfrac{(2x^{2})^{3}}{x^{2}} - 5x^{4}',        ans:'3x^{4}',  vars:['x'],
+    h:'$(2x^{2})^{3} = 8x^{6}$; deelregel: $8x^{6}/x^{2} = 8x^{4}$; aftrekken: $8x^{4} - 5x^{4} = 3x^{4}$.',
+    opl:'$\\dfrac{(2x^{2})^{3}}{x^{2}} - 5x^{4}$\n$= \\dfrac{8x^{6}}{x^{2}} - 5x^{4}$\n$= 8x^{4} - 5x^{4}$\n$= 3x^{4}$' },
+  { q:'(2a)^{3} + 3a \\cdot a^{2}',                   ans:'11a^{3}', vars:['a'],
+    h:'$(2a)^{3} = 8a^{3}$ en $3a \\cdot a^{2} = 3a^{3}$; optellen: $8a^{3} + 3a^{3} = 11a^{3}$.',
+    opl:'$(2a)^{3} + 3a \\cdot a^{2}$\n$= 8a^{3} + 3a^{3}$\n$= 11a^{3}$' },
+  { q:'5x^{2} \\cdot x^{3} - \\dfrac{x^{7}}{x^{2}}', ans:'4x^{5}',  vars:['x'],
+    h:'Productregel: $5x^{2} \\cdot x^{3} = 5x^{5}$; deelregel: $x^{7}/x^{2} = x^{5}$; aftrekken: $5x^{5} - x^{5} = 4x^{5}$.',
+    opl:'$5x^{2} \\cdot x^{3} - \\dfrac{x^{7}}{x^{2}}$\n$= 5x^{5} - x^{5}$\n$= 4x^{5}$' },
+];
+
+function genAMV1d() {
+  const e = pick(AMV1d_POOL);
+  return _aQ('A.MV1d', `Vereenvoudig: $${e.q}$`, e.ans, e.vars,
+    ['Pas eerst de machtsregels toe, combineer daarna de gelijksoortige termen.', e.h],
+    e.opl);
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -2428,6 +2810,17 @@ const LEERDOELEN = [
   { id: 'A.M1b', titel: 'Algebra – gemengd (b)',                       groep: 'Algebra', gen: genAM1b },
   { id: 'A.D1a', titel: 'Algebra – delen (a)',                         groep: 'Algebra', gen: genAD1a },
   { id: 'A.D1b', titel: 'Algebra – delen (b)',                         groep: 'Algebra', gen: genAD1b },
+  { id: 'A.H1a', titel: 'Algebra – haakjes uitwerken (a)',             groep: 'Algebra', gen: genAH1a },
+  { id: 'A.H1b', titel: 'Algebra – haakjes uitwerken (b)',             groep: 'Algebra', gen: genAH1b },
+  { id: 'A.H1c', titel: 'Algebra – haakjes uitwerken (c)',             groep: 'Algebra', gen: genAH1c },
+  { id: 'A.H1d', titel: 'Algebra – merkwaardige producten uitwerken',  groep: 'Algebra', gen: genAH1d },
+  { id: 'A.F1a', titel: 'Algebra – ontbinden: ggd factoring',          groep: 'Algebra', gen: genAF1a },
+  { id: 'A.F1b', titel: 'Algebra – ontbinden: som-product',            groep: 'Algebra', gen: genAF1b },
+  { id: 'A.F1c', titel: 'Algebra – ontbinden: merkwaardige producten', groep: 'Algebra', gen: genAF1c },
+  { id: 'A.MV1a', titel: 'Algebra – machtsverheffen: productregel',    groep: 'Algebra', gen: genAMV1a },
+  { id: 'A.MV1b', titel: 'Algebra – machtsverheffen: machtsverheffing',groep: 'Algebra', gen: genAMV1b },
+  { id: 'A.MV1c', titel: 'Algebra – machtsverheffen: quotiëntregel',   groep: 'Algebra', gen: genAMV1c },
+  { id: 'A.MV1d', titel: 'Algebra – machtsverheffen: gecombineerd',    groep: 'Algebra', gen: genAMV1d },
 ];
 
 function generateVraag(leerdoelId) {

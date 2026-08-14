@@ -294,8 +294,8 @@ function _algTokenize(s, varVals) {
       i++;
       const exp = readBlock();
       const expVal = _algEval(exp, varVals);
-      const base = tokens.pop();
-      tokens.push({ t: 'v', v: base ? Math.pow(base.v, expVal) : 1 });
+      tokens.push({ t: 'op', v: '^' });
+      tokens.push({ t: 'n', v: expVal });
       continue;
     }
 
@@ -367,9 +367,14 @@ function _algEval(latex, varVals) {
       return l;
     }
     function term() {
-      let l = atom(); let op;
+      let l = power(); let op;
       while ((op = eat(t => t.t === 'op' && (t.v === '*' || t.v === '/'))))
-        l = op.v === '*' ? l * atom() : l / atom();
+        l = op.v === '*' ? l * power() : l / power();
+      return l;
+    }
+    function power() {
+      let l = atom();
+      if (eat(t => t.t === 'op' && t.v === '^')) l = Math.pow(l, atom());
       return l;
     }
     function atom() {
@@ -442,6 +447,42 @@ function checkAlgebraAntwoord(gegeven, verwacht, vars) {
     if (!isFinite(g) || !isFinite(e) || Math.abs(g - e) > 1e-6) return 'fout';
   }
   return isAlgebraVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
+}
+
+function isAlgebraGefactoriseerd(latex) {
+  const s = (latex || '').trim();
+  if (!s.includes('(')) return false;
+  return _algSplitTermen(s).length === 1;
+}
+
+function isAlgebraMerkwaardigGefactoriseerd(latex) {
+  if (!isAlgebraGefactoriseerd(latex)) return false;
+  // Normalize \left( → ( and \right) → ) before regex check
+  const s = (latex || '').trim().replace(/\s+/g, '')
+    .replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  // Reject (X)(X) — identical repeated factors must be written as (X)^2
+  if (/\(([^)]+)\)\(\1\)/.test(s)) return false;
+  return true;
+}
+
+function checkAlgebraAntwoordMerkwaardig(gegeven, verwacht, vars) {
+  const sets = [[2,3,5],[3,5,7],[5,7,11]];
+  for (const vals of sets) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(g) || !isFinite(e) || Math.abs(g - e) > 1e-6) return 'fout';
+  }
+  return isAlgebraMerkwaardigGefactoriseerd(gegeven) ? 'goed' : 'tussenstap';
+}
+
+function checkAlgebraAntwoordGefactoriseerd(gegeven, verwacht, vars) {
+  const sets = [[2,3,5],[3,5,7],[5,7,11]];
+  for (const vals of sets) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(g) || !isFinite(e) || Math.abs(g - e) > 1e-6) return 'fout';
+  }
+  return isAlgebraGefactoriseerd(gegeven) ? 'goed' : 'tussenstap';
 }
 
 function correcteWaarde(vraag) {
