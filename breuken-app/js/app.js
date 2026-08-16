@@ -15,6 +15,8 @@ const APP = {
   resultaatOpgeslagen: false,
   timerInterval: null,
   tabelGecontroleerd: false,
+  grafiekPunten: null,
+  mqFormule: null,
 };
 window.APP = APP;
 
@@ -165,6 +167,25 @@ const TOC_HOOFDSTUKKEN = [
         id: 'alg-machten', label: 'Machtsverheffen',
         items: [
           { label: 'Machtsverheffen', knoppen: [{l:'a',id:'A.MV1a'},{l:'b',id:'A.MV1b'},{l:'c',id:'A.MV1c'},{l:'d',id:'A.MV1d'}] },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'lineair', label: 'Lineaire verbanden',
+    secties: [
+      {
+        id: 'lin-grafiek', label: 'Grafiek tekenen',
+        items: [
+          { label: 'Lineaire grafiek tekenen', knoppen: [{l:'a',id:'L.G1a'},{l:'b',id:'L.G1b'},{l:'c',id:'L.G1c'}] },
+          { label: 'Grafiek bij tabel tekenen', knoppen: [{l:'a',id:'L.G2a'},{l:'b',id:'L.G2b'},{l:'c',id:'L.G2c'}] },
+        ]
+      },
+      {
+        id: 'lin-formule', label: 'Formule opstellen',
+        items: [
+          { label: 'Formule bij grafiek',  knoppen: [{l:'a',id:'L.F1a'},{l:'b',id:'L.F1b'},{l:'c',id:'L.F1c'}] },
+          { label: 'Formule bij tabel',    knoppen: [{l:'a',id:'L.F2a'},{l:'b',id:'L.F2b'},{l:'c',id:'L.F2c'}] },
         ]
       },
     ]
@@ -538,6 +559,7 @@ function renderOefenen(leerdoelId) {
     APP.stappen = [];
     APP.resultaatOpgeslagen = false;
     APP.tabelGecontroleerd = false;
+    APP.grafiekPunten = null;
   }
   if (!APP.huidigVraag) APP.huidigVraag = generateVraag(leerdoelId);
 
@@ -546,11 +568,15 @@ function renderOefenen(leerdoelId) {
 
   const vraag = APP.huidigVraag;
   const type = vraag.antwoordType;
-  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'kruistabel';
-  const needsKbd = useStepList || type === 'two-fracs' || type === 'kruistabel';
+  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'kruistabel' && type !== 'grafiek' && type !== 'formule-lijn';
+  const needsKbd = useStepList || type === 'two-fracs' || type === 'kruistabel' || type === 'formule-lijn';
 
   let antwoordInhoud = '';
-  if (type === 'two-fracs') {
+  if (type === 'formule-lijn') {
+    antwoordInhoud = `<div style="padding:10px 14px 4px">
+      <div class="mq-field-box" id="mq-formule"></div>
+    </div>`;
+  } else if (type === 'two-fracs') {
     antwoordInhoud = `<div class="two-mq-wrap" style="padding:10px 14px 4px">
       <div>
         <div class="two-mq-label">Eerste breuk:</div>
@@ -585,6 +611,8 @@ function renderOefenen(leerdoelId) {
           </div>
           <div class="vraag-tekst" id="vraag-tekst">${vraag.vraag}</div>
           ${type === 'drag' ? renderDragArea(vraag) : ''}
+          ${type === 'grafiek' ? renderGrafiekArea(vraag) : ''}
+          ${type === 'formule-lijn' && vraag.data?.toon === 'grafiek' ? renderGrafiekLijn(vraag) : ''}
           ${type === 'mc' ? `<div class="mc-sectie">${renderMcOpties(vraag)}</div>` : ''}
         </div>
         <div class="oefenen-antwoord">
@@ -627,6 +655,193 @@ function renderDragArea(vraag) {
     <p style="font-size:.82rem;color:var(--text-soft);margin-top:6px;text-align:center">
       Sleep de breuk naar de juiste plek op de getallenlijn.
     </p>
+  </div>`;
+}
+
+/* ── Grafiek area for L.G1a/b ────────────────────────────────────────────── */
+function _extendLineToBounds(A, B, xMin, xMax, yMin, yMax) {
+  const dx = B.x - A.x, dy = B.y - A.y;
+  if (dx === 0 && dy === 0) return null;
+  let tMin = -Infinity, tMax = Infinity;
+  if (dx !== 0) {
+    const t1 = (xMin - A.x) / dx, t2 = (xMax - A.x) / dx;
+    tMin = Math.max(tMin, Math.min(t1, t2));
+    tMax = Math.min(tMax, Math.max(t1, t2));
+  } else if (A.x < xMin || A.x > xMax) return null;
+  if (dy !== 0) {
+    const t1 = (yMin - A.y) / dy, t2 = (yMax - A.y) / dy;
+    tMin = Math.max(tMin, Math.min(t1, t2));
+    tMax = Math.min(tMax, Math.max(t1, t2));
+  } else if (A.y < yMin || A.y > yMax) return null;
+  if (tMin > tMax + 1e-9) return null;
+  return { x1: A.x + tMin * dx, y1: A.y + tMin * dy, x2: A.x + tMax * dx, y2: A.y + tMax * dy };
+}
+
+function renderGrafiekArea(vraag) {
+  const d = vraag.data;
+  const { xMin, xMax, yMin, yMax, initA, initB } = d;
+  const stapX = d.stapX ?? d.stap, stapY = d.stapY ?? d.stap;
+  const CELL = 24, PL = 40, PR = 28, PT = 24, PB = 28;
+  const gW = (xMax - xMin) / stapX, gH = (yMax - yMin) / stapY;
+  const W = PL + gW * CELL + PR, H = PT + gH * CELL + PB;
+  function sx(gx) { return PL + (gx - xMin) / stapX * CELL; }
+  function sy(gy) { return PT + (yMax - gy) / stapY * CELL; }
+  const ax = sx(0), ay = sy(0);
+  const parts = [];
+
+  for (let x = xMin; x <= xMax; x += stapX) {
+    if (x !== 0) parts.push(`<line x1="${sx(x)}" y1="${PT}" x2="${sx(x)}" y2="${PT + gH * CELL}" stroke="#ddd" stroke-width="0.8"/>`);
+  }
+  for (let y = yMin; y <= yMax; y += stapY) {
+    if (y !== 0) parts.push(`<line x1="${PL}" y1="${sy(y)}" x2="${PL + gW * CELL}" y2="${sy(y)}" stroke="#ddd" stroke-width="0.8"/>`);
+  }
+
+  const axEnd = PL + gW * CELL + 8, ayEnd = PT - 8;
+  parts.push(`<line x1="${PL}" y1="${ay}" x2="${axEnd}" y2="${ay}" stroke="#999" stroke-width="1.5"/>`);
+  parts.push(`<polygon points="${axEnd + 6},${ay} ${axEnd},${ay - 4} ${axEnd},${ay + 4}" fill="#999"/>`);
+  parts.push(`<line x1="${ax}" y1="${PT + gH * CELL}" x2="${ax}" y2="${ayEnd}" stroke="#999" stroke-width="1.5"/>`);
+  parts.push(`<polygon points="${ax},${ayEnd - 6} ${ax - 4},${ayEnd} ${ax + 4},${ayEnd}" fill="#999"/>`);
+  parts.push(`<text x="${axEnd + 10}" y="${ay + 4}" font-size="12" fill="#666" font-style="italic">x</text>`);
+  parts.push(`<text x="${ax + 5}" y="${ayEnd - 2}" font-size="12" fill="#666" font-style="italic">y</text>`);
+
+  parts.push(`<text x="${ax - 3}" y="${ay + 13}" font-size="10" fill="#888" text-anchor="end">0</text>`);
+  for (let x = xMin; x <= xMax; x += stapX) {
+    if (x !== 0) parts.push(`<text x="${sx(x)}" y="${ay + 14}" font-size="10" fill="#888" text-anchor="middle">${x}</text>`);
+  }
+  for (let y = yMin; y <= yMax; y += stapY) {
+    if (y !== 0) parts.push(`<text x="${ax - 4}" y="${sy(y) + 4}" font-size="10" fill="#888" text-anchor="end">${y}</text>`);
+  }
+
+  const ext = _extendLineToBounds(initA, initB, xMin, xMax, yMin, yMax);
+  const lx1 = ext ? sx(ext.x1) : sx(initA.x), ly1 = ext ? sy(ext.y1) : sy(initA.y);
+  const lx2 = ext ? sx(ext.x2) : sx(initB.x), ly2 = ext ? sy(ext.y2) : sy(initB.y);
+  parts.push(`<line id="grafiek-lijn" x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="#e84141" stroke-width="2.5"/>`);
+
+  const [cax, cay] = [sx(initA.x), sy(initA.y)];
+  const [cbx, cby] = [sx(initB.x), sy(initB.y)];
+  parts.push(`<circle id="grafiek-pt-A" cx="${cax}" cy="${cay}" r="8" fill="#1976d2" stroke="white" stroke-width="2" style="cursor:grab"/>`);
+  parts.push(`<text id="grafiek-lbl-A" x="${cax + 10}" y="${cay - 6}" font-size="12" fill="#1976d2" font-weight="bold">A</text>`);
+  parts.push(`<circle id="grafiek-pt-B" cx="${cbx}" cy="${cby}" r="8" fill="white" stroke="#1976d2" stroke-width="2" style="cursor:grab"/>`);
+  parts.push(`<text id="grafiek-lbl-B" x="${cbx + 10}" y="${cby - 6}" font-size="12" fill="#1976d2" font-weight="bold">B</text>`);
+
+  return `<div style="overflow-x:auto;margin:12px 0;text-align:center">
+    <svg id="grafiek-svg" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"
+      style="background:white;border:1px solid #e0e0e0;border-radius:6px;user-select:none;touch-action:none;max-width:100%">
+      ${parts.join('\n      ')}
+    </svg>
+    <p style="font-size:.82rem;color:var(--text-soft);text-align:center;margin-top:4px">Sleep de punten naar de juiste plek op de lijn.</p>
+  </div>`;
+}
+
+function initGrafiek(vraag) {
+  const d = vraag.data;
+  const { xMin, xMax, yMin, yMax, initA, initB } = d;
+  const stapX = d.stapX ?? d.stap, stapY = d.stapY ?? d.stap;
+  APP.grafiekPunten = { A: { ...initA }, B: { ...initB } };
+  const CELL = 24, PL = 40, PT = 24;
+
+  function toSX(gx) { return PL + (gx - xMin) / stapX * CELL; }
+  function toSY(gy) { return PT + (yMax - gy) / stapY * CELL; }
+  function snapX(v) { return Math.max(xMin, Math.min(xMax, Math.round(v / stapX) * stapX)); }
+  function snapY(v) { return Math.max(yMin, Math.min(yMax, Math.round(v / stapY) * stapY)); }
+
+  function updateDisplay() {
+    const A = APP.grafiekPunten.A, B = APP.grafiekPunten.B;
+    const ptA = document.getElementById('grafiek-pt-A');
+    const ptB = document.getElementById('grafiek-pt-B');
+    if (!ptA || !ptB) return;
+    ptA.setAttribute('cx', toSX(A.x)); ptA.setAttribute('cy', toSY(A.y));
+    ptB.setAttribute('cx', toSX(B.x)); ptB.setAttribute('cy', toSY(B.y));
+    const la = document.getElementById('grafiek-lbl-A');
+    const lb = document.getElementById('grafiek-lbl-B');
+    if (la) { la.setAttribute('x', toSX(A.x) + 10); la.setAttribute('y', toSY(A.y) - 6); }
+    if (lb) { lb.setAttribute('x', toSX(B.x) + 10); lb.setAttribute('y', toSY(B.y) - 6); }
+    const lijn = document.getElementById('grafiek-lijn');
+    if (lijn) {
+      const ext = (A.x !== B.x || A.y !== B.y)
+        ? _extendLineToBounds(A, B, xMin, xMax, yMin, yMax) : null;
+      if (ext) {
+        lijn.setAttribute('x1', toSX(ext.x1)); lijn.setAttribute('y1', toSY(ext.y1));
+        lijn.setAttribute('x2', toSX(ext.x2)); lijn.setAttribute('y2', toSY(ext.y2));
+        lijn.style.display = '';
+      } else {
+        lijn.style.display = 'none';
+      }
+    }
+  }
+
+  const svg = document.getElementById('grafiek-svg');
+  if (!svg) return;
+  let dragging = null;
+
+  function getSVGCoords(e) {
+    const pt = svg.createSVGPoint();
+    const src = e.touches ? e.touches[0] : e;
+    pt.x = src.clientX; pt.y = src.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return {
+      x: snapX((p.x - PL) / CELL * stapX + xMin),
+      y: snapY(yMax - (p.y - PT) / CELL * stapY),
+    };
+  }
+
+  document.getElementById('grafiek-pt-A')?.addEventListener('mousedown', e => { dragging = 'A'; e.preventDefault(); });
+  document.getElementById('grafiek-pt-B')?.addEventListener('mousedown', e => { dragging = 'B'; e.preventDefault(); });
+  svg.addEventListener('mousemove', e => { if (!dragging) return; APP.grafiekPunten[dragging] = getSVGCoords(e); updateDisplay(); });
+  svg.addEventListener('mouseup', () => { dragging = null; });
+  svg.addEventListener('mouseleave', () => { dragging = null; });
+  document.getElementById('grafiek-pt-A')?.addEventListener('touchstart', e => { dragging = 'A'; e.preventDefault(); }, { passive: false });
+  document.getElementById('grafiek-pt-B')?.addEventListener('touchstart', e => { dragging = 'B'; e.preventDefault(); }, { passive: false });
+  svg.addEventListener('touchmove', e => { if (!dragging) return; e.preventDefault(); APP.grafiekPunten[dragging] = getSVGCoords(e); updateDisplay(); }, { passive: false });
+  svg.addEventListener('touchend', () => { dragging = null; });
+
+  updateDisplay();
+}
+
+/* ── Grafiek met getekende lijn (formule-lijn vragen) ───────────────────── */
+function renderGrafiekLijn(vraag) {
+  const d = vraag.data;
+  const { xMin, xMax, yMin, yMax, m, b } = d;
+  const stapX = d.stapX ?? d.stap, stapY = d.stapY ?? d.stap;
+  const CELL = 24, PL = 40, PR = 28, PT = 24, PB = 28;
+  const gW = (xMax - xMin) / stapX, gH = (yMax - yMin) / stapY;
+  const W = PL + gW * CELL + PR, H = PT + gH * CELL + PB;
+  function sx(gx) { return PL + (gx - xMin) / stapX * CELL; }
+  function sy(gy) { return PT + (yMax - gy) / stapY * CELL; }
+  const ax = sx(0), ay = sy(0);
+  const parts = [];
+
+  for (let x = xMin; x <= xMax; x += stapX) {
+    if (x !== 0) parts.push(`<line x1="${sx(x)}" y1="${PT}" x2="${sx(x)}" y2="${PT + gH * CELL}" stroke="#ddd" stroke-width="0.8"/>`);
+  }
+  for (let y = yMin; y <= yMax; y += stapY) {
+    if (y !== 0) parts.push(`<line x1="${PL}" y1="${sy(y)}" x2="${PL + gW * CELL}" y2="${sy(y)}" stroke="#ddd" stroke-width="0.8"/>`);
+  }
+  const axEnd = PL + gW * CELL + 8, ayEnd = PT - 8;
+  parts.push(`<line x1="${PL}" y1="${ay}" x2="${axEnd}" y2="${ay}" stroke="#999" stroke-width="1.5"/>`);
+  parts.push(`<polygon points="${axEnd + 6},${ay} ${axEnd},${ay - 4} ${axEnd},${ay + 4}" fill="#999"/>`);
+  parts.push(`<line x1="${ax}" y1="${PT + gH * CELL}" x2="${ax}" y2="${ayEnd}" stroke="#999" stroke-width="1.5"/>`);
+  parts.push(`<polygon points="${ax},${ayEnd - 6} ${ax - 4},${ayEnd} ${ax + 4},${ayEnd}" fill="#999"/>`);
+  parts.push(`<text x="${axEnd + 10}" y="${ay + 4}" font-size="12" fill="#666" font-style="italic">x</text>`);
+  parts.push(`<text x="${ax + 5}" y="${ayEnd - 2}" font-size="12" fill="#666" font-style="italic">y</text>`);
+  parts.push(`<text x="${ax - 3}" y="${ay + 13}" font-size="10" fill="#888" text-anchor="end">0</text>`);
+  for (let x = xMin; x <= xMax; x += stapX) {
+    if (x !== 0) parts.push(`<text x="${sx(x)}" y="${ay + 14}" font-size="10" fill="#888" text-anchor="middle">${x}</text>`);
+  }
+  for (let y = yMin; y <= yMax; y += stapY) {
+    if (y !== 0) parts.push(`<text x="${ax - 4}" y="${sy(y) + 4}" font-size="10" fill="#888" text-anchor="end">${y}</text>`);
+  }
+
+  const ext = _extendLineToBounds({x: 0, y: b}, {x: 1, y: m + b}, xMin, xMax, yMin, yMax);
+  if (ext) {
+    parts.push(`<line x1="${sx(ext.x1)}" y1="${sy(ext.y1)}" x2="${sx(ext.x2)}" y2="${sy(ext.y2)}" stroke="#1976d2" stroke-width="2.5"/>`);
+  }
+
+  return `<div style="overflow-x:auto;margin:12px 0;text-align:center">
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"
+      style="background:white;border:1px solid #e0e0e0;border-radius:6px;user-select:none;max-width:100%">
+      ${parts.join('\n      ')}
+    </svg>
   </div>`;
 }
 
@@ -697,8 +912,10 @@ window.controleerTabel = controleerTabel;
 /* ── Read student answer ─────────────────────────────────────────────────── */
 function leesAntwoord(vraag) {
   const type = vraag.antwoordType;
-  if (type === 'mc')   return { keuze: APP.mcKeuze };
-  if (type === 'drag') return { positie: APP.nlMarkerPos };
+  if (type === 'mc')      return { keuze: APP.mcKeuze };
+  if (type === 'drag')    return { positie: APP.nlMarkerPos };
+  if (type === 'grafiek') return { puntA: APP.grafiekPunten?.A, puntB: APP.grafiekPunten?.B };
+  if (type === 'formule-lijn') return { latex: APP.mqFormule?.latex() || '' };
   if (type === 'two-fracs') {
     return { latex1: APP.mqField1?.latex() || '', latex2: APP.mqField2?.latex() || '' };
   }
@@ -708,6 +925,8 @@ function leesAntwoord(vraag) {
 function valideerAntwoord(type, gegeven) {
   if (type === 'mc')         return gegeven.keuze !== null && gegeven.keuze !== undefined;
   if (type === 'drag')       return gegeven.positie !== null && gegeven.positie !== undefined;
+  if (type === 'grafiek')      return !!(gegeven.puntA && gegeven.puntB);
+  if (type === 'formule-lijn') return !!(gegeven.latex?.trim());
   if (type === 'two-fracs')  return !!(gegeven.latex1?.trim()) && !!(gegeven.latex2?.trim());
   if (type === 'kruistabel') return APP.tabelGecontroleerd && !!(gegeven.latex?.trim());
   return !!(gegeven.latex?.trim());
@@ -720,6 +939,28 @@ function checkAntwoord(vraag, gegeven) {
 
   if (type === 'mc')   return gegeven.keuze === correct.correct ? 'goed' : 'fout';
   if (type === 'drag') return Math.abs(gegeven.positie - correct.positie) <= 0.08 ? 'goed' : 'fout';
+
+  if (type === 'grafiek') {
+    const { puntA, puntB } = gegeven;
+    const { m, b } = correct;
+    if (!puntA || !puntB) return 'fout';
+    if (puntA.x === puntB.x && puntA.y === puntB.y) return 'fout';
+    const onA = Math.abs(puntA.y - (m * puntA.x + b)) < 1e-9;
+    const onB = Math.abs(puntB.y - (m * puntB.x + b)) < 1e-9;
+    return onA && onB ? 'goed' : 'fout';
+  }
+
+  if (type === 'formule-lijn') {
+    const { m, b } = correct;
+    const raw = (gegeven.latex || '').replace(/^y\s*=\s*/, '').trim();
+    if (!raw) return 'fout';
+    const formule = _lgFormule(m, b, vraag.data?.mDisplay);
+    const expectedRhs = formule.replace('y = ', '');
+    try {
+      const res = checkAlgebraAntwoord(raw, expectedRhs, ['x']);
+      return (res === 'goed' || res === 'tussenstap') ? 'goed' : 'fout';
+    } catch { return 'fout'; }
+  }
 
   if (type === 'two-fracs') {
     const f1 = parseSingleFracFromLatex(gegeven.latex1);
@@ -764,6 +1005,29 @@ function checkAntwoord(vraag, gegeven) {
 
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
+  if (vraag.antwoordType === 'grafiek') {
+    const { puntA, puntB } = gegeven;
+    const { m, b } = vraag.antwoord;
+    if (!puntA || !puntB) return 'Sleep de punten naar de juiste plek op de lijn.';
+    const onA = Math.abs(puntA.y - (m * puntA.x + b)) < 1e-9;
+    const onB = Math.abs(puntB.y - (m * puntB.x + b)) < 1e-9;
+    if (!onA && !onB) return 'Geen van beide punten ligt op de lijn. Bereken $y$ opnieuw via de formule.';
+    if (!onA) {
+      const ey = Math.round((m * puntA.x + b) * 1e9) / 1e9;
+      return Number.isInteger(ey)
+        ? `Punt A (${puntA.x}, ${puntA.y}) ligt niet op de lijn. Bij $x = ${puntA.x}$ hoort $y = ${ey}$.`
+        : `Punt A (${puntA.x}, ${puntA.y}) ligt niet op de lijn. Kies een andere $x$-waarde voor A.`;
+    }
+    const ey = Math.round((m * puntB.x + b) * 1e9) / 1e9;
+    return Number.isInteger(ey)
+      ? `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Bij $x = ${puntB.x}$ hoort $y = ${ey}$.`
+      : `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Kies een andere $x$-waarde voor B.`;
+  }
+  if (vraag.antwoordType === 'formule-lijn') {
+    const { m, b } = vraag.antwoord;
+    const formule = _lgFormule(m, b, vraag.data?.mDisplay);
+    return `Niet helemaal. De formule is $${formule}$.`;
+  }
   if (vraag.antwoordType === 'two-fracs') {
     const f1 = parseSingleFracFromLatex(gegeven.latex1 || '');
     const f2 = parseSingleFracFromLatex(gegeven.latex2 || '');
@@ -871,6 +1135,18 @@ function feedbackBoodschap(vraag, gegeven) {
     'A.MV1b': 'Gebruik: $(a^p)^q = a^{p \\cdot q}$ en $(ab)^p = a^p \\cdot b^p$.',
     'A.MV1c': 'Gebruik de deelregel: $\\dfrac{a^p}{a^q} = a^{p-q}$. Werk haakjes eerst uit.',
     'A.MV1d': 'Pas eerst de machtsregels toe op elk onderdeel, en tel daarna gelijksoortige termen op of trek ze af.',
+    'L.G1a': 'Vul een x-waarde in de formule in om $y$ te berekenen. Beide punten moeten op de lijn liggen.',
+    'L.G1b': 'Kies geschikte x-waarden zodat $y$ een geheel getal wordt. Beide punten moeten exact op de lijn liggen.',
+    'L.G2a': 'Zoek twee rijen in de tabel en sleep punt A en punt B naar die coördinaten op het rooster.',
+    'L.G2b': 'Gebruik twee punten uit de tabel. Let op de stapgrootte van de assen en de exacte rasterpositie.',
+    'L.G1c': 'De x-as en y-as hebben verschillende stapgroottes. Lees de assen goed af voordat je de punten sleept.',
+    'L.G2c': 'De x-as en y-as hebben verschillende stapgroottes. Lees de assen goed af en gebruik twee rijen uit de tabel.',
+    'L.F1a': 'Zoek twee roosterpunten op de lijn en bereken $m$ en $b$. Typ de formule als rechterkant: bijv. $2x + 3$.',
+    'L.F1b': 'Kies twee duidelijke roosterpunten op de lijn. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ en bepaal $b$.',
+    'L.F1c': 'Let op de stapgroottes van de assen. Lees de coördinaten van twee punten af in eenheden, niet in vakjes.',
+    'L.F2a': 'Bereken $m$ uit twee rijen in de tabel. Zoek daarna $b$ door een punt in de formule in te vullen.',
+    'L.F2b': 'Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ precies. Bij een gebroken helling: typ bijv. $\\frac{1}{2}x + 3$.',
+    'L.F2c': 'Let op de stapgroottes van de assen. Gebruik de werkelijke waarden uit de tabel, niet de positie in het rooster.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
@@ -929,6 +1205,8 @@ function nieuweVraag() {
   APP.opgaveNr++;
   APP.nlMarkerPos = null;
   APP.mcKeuze = null;
+  APP.grafiekPunten = null;
+  APP.mqFormule = null;
   APP.mqField1 = null;
   APP.mqField2 = null;
   APP.activeMQField = null;
@@ -962,10 +1240,22 @@ function bindOefenen(leerdoelId) {
 
   const type = vraag.antwoordType;
 
-  if (typeof MathQuill !== 'undefined' && type !== 'mc' && type !== 'drag') {
+  if (typeof MathQuill !== 'undefined' && type !== 'mc' && type !== 'drag' && type !== 'grafiek') {
     const MQ = MathQuill.getInterface(2);
 
-    if (type === 'two-fracs') {
+    if (type === 'formule-lijn') {
+      const el = document.getElementById('mq-formule');
+      if (el) {
+        APP.mqFormule = MQ.MathField(el, {
+          spaceBehavesLikeTab: false,
+          handlers: { enter: () => document.getElementById('btn-controleer')?.click() },
+        });
+        const ta = el.querySelector('textarea');
+        if (ta) ta.addEventListener('focus', () => { APP.activeMQField = APP.mqFormule; });
+        APP.activeMQField = APP.mqFormule;
+        APP.mqFormule.focus();
+      }
+    } else if (type === 'two-fracs') {
       function setupTwoFracsMQ(el, onEnter) {
         if (!el) return null;
         const mq = MQ.MathField(el, {
@@ -1007,7 +1297,8 @@ function bindOefenen(leerdoelId) {
     renderKatex(document.querySelector('.mc-grid'));
   }
 
-  if (type === 'drag') initDrag(vraag);
+  if (type === 'drag')    initDrag(vraag);
+  if (type === 'grafiek') initGrafiek(vraag);
 
   document.getElementById('btn-hint')?.addEventListener('click', () => {
     if (APP.hintIdx >= vraag.hints.length) APP.hintIdx = 0;
@@ -1112,7 +1403,7 @@ function controleer(vraag) {
 
   const staat = checkAntwoord(vraag, gegeven);
   const type = vraag.antwoordType;
-  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs';
+  const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'grafiek' && type !== 'formule-lijn';
 
   if (staat === 'goed') {
     stopTimer();
