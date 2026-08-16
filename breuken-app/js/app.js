@@ -188,6 +188,12 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Formule bij tabel',    knoppen: [{l:'a',id:'L.F2a'},{l:'b',id:'L.F2b'},{l:'c',id:'L.F2c'}] },
         ]
       },
+      {
+        id: 'lin-vergelijking', label: 'Lineaire vergelijkingen',
+        items: [
+          { label: 'Lineaire vergelijkingen', knoppen: [{l:'a',id:'L.V1a'},{l:'b',id:'L.V1b'},{l:'c',id:'L.V1c'}] },
+        ]
+      },
     ]
   },
   {
@@ -950,6 +956,35 @@ function checkAntwoord(vraag, gegeven) {
     return onA && onB ? 'goed' : 'fout';
   }
 
+  if (type === 'vergelijking') {
+    const { teller, noemer } = correct;
+    const expected = teller / noemer;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    // Eindvorm: x = [waarde]
+    const stripped = raw.replace(/^x\s*=\s*/, '');
+    if (stripped !== raw) {
+      try {
+        const val = _algEval(stripped, {});
+        if (typeof val === 'number' && isFinite(val) && Math.abs(val - expected) < 1e-9) return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // Tussenstap: lhs = rhs die geldig is voor x = expected
+    const parts = raw.split('=');
+    if (parts.length === 2) {
+      try {
+        const lhs = _algEval(parts[0].trim(), { x: expected });
+        const rhs = _algEval(parts[1].trim(), { x: expected });
+        if (typeof lhs === 'number' && isFinite(lhs) && Math.abs(lhs - rhs) < 1e-9) return 'tussenstap';
+      } catch {}
+    }
+
+    return 'fout';
+  }
+
   if (type === 'formule-lijn') {
     const { m, b } = correct;
     const raw = (gegeven.latex || '').replace(/^y\s*=\s*/, '').trim();
@@ -1022,6 +1057,11 @@ function feedbackBoodschap(vraag, gegeven) {
     return Number.isInteger(ey)
       ? `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Bij $x = ${puntB.x}$ hoort $y = ${ey}$.`
       : `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Kies een andere $x$-waarde voor B.`;
+  }
+  if (vraag.antwoordType === 'vergelijking') {
+    const { teller, noemer } = vraag.antwoord;
+    const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
+    return `Niet helemaal. Het antwoord is $x = ${xStr}$.`;
   }
   if (vraag.antwoordType === 'formule-lijn') {
     const { m, b } = vraag.antwoord;
@@ -1147,6 +1187,9 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.F2a': 'Bereken $m$ uit twee rijen in de tabel. Zoek daarna $b$ door een punt in de formule in te vullen.',
     'L.F2b': 'Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ precies. Bij een gebroken helling: typ bijv. $\\frac{1}{2}x + 3$.',
     'L.F2c': 'Let op de stapgroottes van de assen. Gebruik de werkelijke waarden uit de tabel, niet de positie in het rooster.',
+    'L.V1a': 'Pas één bewerking toe op beide kanten tegelijk, zodat $x$ alleen komt te staan.',
+    'L.V1b': 'Zet eerst alle $x$-termen naar links en alle getallen naar rechts. Deel daarna door de coëfficiënt van $x$.',
+    'L.V1c': 'Werk eerst de haakjes uit. Dan heb je een vergelijking zonder haakjes en kun je verder oplossen.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }

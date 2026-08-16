@@ -2680,6 +2680,916 @@ function genAMV1d() {
     e.opl);
 }
 
+/* ── L.G1a/b – helpers voor lineaire grafieken ───────────────────── */
+function _lgFormule(m, b, mDisplay) {
+  const mS = mDisplay || (m === 1 ? '' : m === -1 ? '-' : String(m));
+  const bS = b === 0 ? '' : b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
+  return `y = ${mS}x${bS}`;
+}
+
+function _lgStap(m, b, x, mDisplay) {
+  if (x === 0) return `y = ${b}`;
+  const mS = mDisplay ? `${mDisplay} \\cdot ` : m === 1 ? '' : m === -1 ? '-' : `${m} \\cdot `;
+  const xS = x < 0 ? `(${x})` : String(x);
+  const bS = b === 0 ? '' : b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
+  return `y = ${mS}${xS}${bS} = ${Math.round((m * x + b) * 1e9) / 1e9}`;
+}
+
+function _lgOplPunten(m, b, p1, p2, formule, mDisplay, stapGrootte) {
+  const stapNote = stapGrootte && stapGrootte > 1
+    ? `\nLet op: de assen hebben stapgrootte ${stapGrootte}.` : '';
+  return `Kies twee x-waarden en bereken $y$ via $${formule}$:
+$x = ${p1.x}$: $${_lgStap(m, b, p1.x, mDisplay)}$ → punt $A(${p1.x},\\ ${p1.y})$
+$x = ${p2.x}$: $${_lgStap(m, b, p2.x, mDisplay)}$ → punt $B(${p2.x},\\ ${p2.y})$${stapNote}
+Sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`;
+}
+
+/* ── L.G1a – lineaire grafiek: eenvoudig ─────────────────────────── */
+function genLG1a() {
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = rand(-6, 6);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+  const h2 = `Bij $x = ${p1.x}$: $${_lgStap(m, b, p1.x, null)}$, dus punt $(${p1.x},\\ ${p1.y})$.`;
+
+  return {
+    id: uid(), leerdoel: 'L.G1a',
+    vraag: `Teken de grafiek van $${formule}$.`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -5, y: yMin + 2}, initB: {x: 4, y: yMin + 2} },
+    hints: [
+      'Vul twee x-waarden in de formule in om twee punten te berekenen. Sleep de punten daarna naar die plekken.',
+      h2,
+    ],
+    oplossing: _lgOplPunten(m, b, p1, p2, formule, null, null),
+  };
+}
+
+/* ── L.G1b helpers ────────────────────────────────────────────────── */
+function _lgbFractional() {
+  const fracs = [
+    {mVal: 0.5,         mDisplay: '\\dfrac{1}{2}',  d: 2},
+    {mVal: -0.5,        mDisplay: '-\\dfrac{1}{2}', d: 2},
+    {mVal: 2 / 3,       mDisplay: '\\dfrac{2}{3}',  d: 3},
+    {mVal: -(2 / 3),    mDisplay: '-\\dfrac{2}{3}', d: 3},
+    {mVal: 1.5,         mDisplay: '\\dfrac{3}{2}',  d: 2},
+    {mVal: -1.5,        mDisplay: '-\\dfrac{3}{2}', d: 2},
+  ];
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let fr, b, vis;
+  do {
+    fr = pick(fracs);
+    b = rand(-4, 4);
+    vis = [];
+    for (let k = Math.ceil(xMin / fr.d); k <= Math.floor(xMax / fr.d); k++) {
+      const x = k * fr.d;
+      const y = fr.mVal * x + b;
+      if (Math.abs(y - Math.round(y)) < 1e-9 && Math.round(y) >= yMin && Math.round(y) <= yMax)
+        vis.push({x, y: Math.round(y)});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(fr.mVal, b, fr.mDisplay);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+  const h2 = `Bij $x = ${p1.x}$: $${_lgStap(fr.mVal, b, p1.x, fr.mDisplay)}$, dus punt $(${p1.x},\\ ${p1.y})$.`;
+
+  return {
+    id: uid(), leerdoel: 'L.G1b',
+    vraag: `Teken de grafiek van $${formule}$.`,
+    antwoordType: 'grafiek',
+    antwoord: { m: fr.mVal, b },
+    data: { m: fr.mVal, b, mDisplay: fr.mDisplay, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -4, y: yMin + 2}, initB: {x: 4, y: yMin + 2} },
+    hints: [
+      `Kies x-waarden die een veelvoud zijn van ${fr.d}, zodat $y$ een geheel getal wordt.`,
+      h2,
+    ],
+    oplossing: _lgOplPunten(fr.mVal, b, p1, p2, formule, fr.mDisplay, null),
+  };
+}
+
+function _lgbBigStep() {
+  const stap = 2, xMin = -10, xMax = 10, yMin = -10, yMax = 10;
+  let m, b, vis;
+  do {
+    m = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    b = rand(-4, 4) * stap;
+    vis = [];
+    for (let x = xMin; x <= xMax; x += stap) {
+      const y = m * x + b;
+      if (y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+  const h2 = `Bij $x = ${p1.x}$: $${_lgStap(m, b, p1.x, null)}$, dus punt $(${p1.x},\\ ${p1.y})$.`;
+
+  return {
+    id: uid(), leerdoel: 'L.G1b',
+    vraag: `Teken de grafiek van $${formule}$.`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: xMin + stap * 2, y: yMin + stap * 2},
+            initB: {x: xMax - stap * 2, y: yMin + stap * 2} },
+    hints: [
+      `Let op: elke stap op de assen staat voor ${stap} eenheden.`,
+      h2,
+    ],
+    oplossing: _lgOplPunten(m, b, p1, p2, formule, null, stap),
+  };
+}
+
+function _lgbOffScreen() {
+  const stap = 1, xMin = -8, xMax = 8, yMin = -8, yMax = 8;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = Math.random() > 0.5 ? rand(yMax + 1, yMax + 5) : rand(yMin - 5, yMin - 1);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 2);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis[0];
+  const p2 = vis.length > 1 ? vis[1] : vis[0];
+  const bStr = b > 0 ? `+${b}` : String(b);
+  const h2 = `Bij $x = ${p1.x}$: $${_lgStap(m, b, p1.x, null)}$, dus punt $(${p1.x},\\ ${p1.y})$ ligt wél in beeld.`;
+
+  return {
+    id: uid(), leerdoel: 'L.G1b',
+    vraag: `Teken de grafiek van $${formule}$.`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -4, y: yMin + 1}, initB: {x: 4, y: yMin + 1} },
+    hints: [
+      `Het snijpunt met de y-as ($y = ${bStr}$) ligt buiten beeld. Bereken twee punten met $y \\in [${yMin},\\ ${yMax}]$.`,
+      h2,
+    ],
+    oplossing: _lgOplPunten(m, b, p1, p2, formule, null, null),
+  };
+}
+
+function genLG1b() {
+  const v = pick(['fractional', 'bigStep', 'offScreen']);
+  if (v === 'fractional') return _lgbFractional();
+  if (v === 'bigStep')    return _lgbBigStep();
+  return _lgbOffScreen();
+}
+
+/* ── L.F1/F2 – formule opstellen helpers ─────────────────────────────── */
+function _lfOpl(m, b, p1, p2, mDisplay) {
+  const formule = _lgFormule(m, b, mDisplay);
+  const dy = p2.y - p1.y, dx = p2.x - p1.x;
+  const mStr = mDisplay || String(m);
+  return `Kies twee punten op de lijn: $(${p1.x},\\ ${p1.y})$ en $(${p2.x},\\ ${p2.y})$.
+$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})} = \\dfrac{${dy}}{${dx}} = ${mStr}$
+$b = ${p1.y} - ${mStr} \\cdot ${p1.x} = ${b}$
+De formule is $${formule}$.`;
+}
+
+function _lfOplTabel(m, b, p1, p2, mDisplay) {
+  const formule = _lgFormule(m, b, mDisplay);
+  const dy = p2.y - p1.y, dx = p2.x - p1.x;
+  const mStr = mDisplay || String(m);
+  return `Bereken $m$ uit de tabel:
+$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})} = \\dfrac{${dy}}{${dx}} = ${mStr}$
+Vul in met $(${p1.x},\\ ${p1.y})$: $\\ ${p1.y} = ${mStr} \\cdot ${p1.x} + b \\Rightarrow b = ${b}$
+De formule is $${formule}$.`;
+}
+
+/* ── L.F1a – formule bij grafiek: eenvoudig ─────────────────────────── */
+function genLF1a() {
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = rand(-6, 6);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+  const mSign = m > 0 ? 'omhoog' : 'omlaag';
+
+  return {
+    id: uid(), leerdoel: 'L.F1a',
+    vraag: 'Welke formule hoort bij de grafiek?',
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            toon: 'grafiek', initA: {x: 0, y: b}, initB: {x: 1, y: m + b} },
+    hints: [
+      `Kijk waar de lijn de $y$-as kruist: dat is $b$. Ga daarna 1 stap naar rechts — gaat $y$ dan ${mSign}? Dat geeft $m$.`,
+      `Kijk op de lijn bij $x = ${p1.x}$ en $x = ${p2.x}$. Lees de $y$-waarden af en bereken zelf $m = \\dfrac{\\Delta y}{\\Delta x}$, daarna $b$.`,
+    ],
+    oplossing: _lfOpl(m, b, p1, p2, null),
+  };
+}
+
+/* ── L.F1b helpers ────────────────────────────────────────────────────── */
+function _lfb1Fractional() {
+  const fracs = [
+    {mVal: 0.5,         mDisplay: '\\dfrac{1}{2}',  d: 2},
+    {mVal: -0.5,        mDisplay: '-\\dfrac{1}{2}', d: 2},
+    {mVal: 2 / 3,       mDisplay: '\\dfrac{2}{3}',  d: 3},
+    {mVal: -(2 / 3),    mDisplay: '-\\dfrac{2}{3}', d: 3},
+    {mVal: 1.5,         mDisplay: '\\dfrac{3}{2}',  d: 2},
+    {mVal: -1.5,        mDisplay: '-\\dfrac{3}{2}', d: 2},
+  ];
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let fr, b, vis;
+  do {
+    fr = pick(fracs);
+    b = rand(-4, 4);
+    vis = [];
+    for (let k = Math.ceil(xMin / fr.d); k <= Math.floor(xMax / fr.d); k++) {
+      const x = k * fr.d;
+      const y = fr.mVal * x + b;
+      if (Math.abs(y - Math.round(y)) < 1e-9 && Math.round(y) >= yMin && Math.round(y) <= yMax)
+        vis.push({x, y: Math.round(y)});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(fr.mVal, b, fr.mDisplay);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+
+  return {
+    id: uid(), leerdoel: 'L.F1b',
+    vraag: 'Welke formule hoort bij de grafiek?',
+    antwoordType: 'formule-lijn',
+    antwoord: { m: fr.mVal, b },
+    data: { m: fr.mVal, b, mDisplay: fr.mDisplay, xMin, xMax, yMin, yMax, stap,
+            toon: 'grafiek', initA: {x: 0, y: b}, initB: {x: fr.d, y: Math.round(fr.mVal * fr.d + b)} },
+    hints: [
+      `Kies twee punten die een veelvoud van ${fr.d} uit elkaar liggen op de $x$-as, zodat $y$ een geheel getal is.`,
+      `Kijk op de lijn bij $x = ${p1.x}$ en $x = ${p2.x}$. Lees de $y$-waarden af en bereken $m = \\dfrac{\\Delta y}{\\Delta x}$, daarna $b$.`,
+    ],
+    oplossing: _lfOpl(fr.mVal, b, p1, p2, fr.mDisplay),
+  };
+}
+
+function _lfb1BigStep() {
+  const stap = 2, xMin = -10, xMax = 10, yMin = -10, yMax = 10;
+  let m, b, vis;
+  do {
+    m = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    b = rand(-4, 4) * stap;
+    vis = [];
+    for (let x = xMin; x <= xMax; x += stap) {
+      const y = m * x + b;
+      if (y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis.find(p => p.x === 0) || vis[0];
+  const p2 = vis.find(p => p.x !== p1.x && p.x > p1.x) || vis.find(p => p.x !== p1.x);
+
+  return {
+    id: uid(), leerdoel: 'L.F1b',
+    vraag: 'Welke formule hoort bij de grafiek?',
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            toon: 'grafiek', initA: {x: 0, y: b}, initB: {x: stap, y: m * stap + b} },
+    hints: [
+      `Let op: de assen tellen per ${stap}. Lees de coördinaten af in eenheden.`,
+      `Kijk op de lijn bij $x = ${p1.x}$ en $x = ${p2.x}$. Let op de schaalverdeling en bereken zelf $m$ en $b$.`,
+    ],
+    oplossing: _lfOpl(m, b, p1, p2, null) + `\nLet op: de assen tellen per ${stap}.`,
+  };
+}
+
+function _lfb1OffScreen() {
+  const stap = 1, xMin = -8, xMax = 8, yMin = -8, yMax = 8;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = Math.random() > 0.5 ? rand(yMax + 1, yMax + 5) : rand(yMin - 5, yMin - 1);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 2);
+
+  const formule = _lgFormule(m, b, null);
+  const p1 = vis[0], p2 = vis[vis.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.F1b',
+    vraag: 'Welke formule hoort bij de grafiek?',
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            toon: 'grafiek', initA: {x: p1.x, y: p1.y}, initB: {x: p2.x, y: p2.y} },
+    hints: [
+      'Het snijpunt met de y-as ligt buiten beeld. Kies twee zichtbare roosterpunten op de lijn en bereken $m$ en daarna $b$.',
+      `Kijk op de lijn bij $x = ${p1.x}$ en $x = ${p2.x}$. Lees de $y$-waarden af en bereken $m = \\dfrac{\\Delta y}{\\Delta x}$, daarna $b = y - m \\cdot x$.`,
+    ],
+    oplossing: _lfOpl(m, b, p1, p2, null),
+  };
+}
+
+function genLF1b() {
+  const v = pick(['fractional', 'bigStep', 'offScreen']);
+  if (v === 'fractional') return _lfb1Fractional();
+  if (v === 'bigStep')    return _lfb1BigStep();
+  return _lfb1OffScreen();
+}
+
+/* ── L.F1c – formule bij grafiek: variabele assen ───────────────────── */
+function genLF1c() {
+  const { stapX, stapY, xMin, xMax, yMin, yMax, m, b, vis } = _lgcParams();
+  const formule = _lgFormule(m, b, null);
+  const rows = _lgPickRows(vis, 3);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const stapNote = _lgcStapNote(stapX, stapY);
+
+  return {
+    id: uid(), leerdoel: 'L.F1c',
+    vraag: 'Welke formule hoort bij de grafiek?',
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stapX, stapY,
+            toon: 'grafiek', initA: {x: p1.x, y: p1.y}, initB: {x: p2.x, y: p2.y} },
+    hints: [
+      stapNote + ' Lees twee punten af in coördinaten (niet in vakjes!) en bereken $m = \\dfrac{\\Delta y}{\\Delta x}$.',
+      `Kijk op de lijn bij $x = ${p1.x}$ en $x = ${p2.x}$. Lees de $y$-waarden af in eenheden en bereken $m$ en $b$.`,
+    ],
+    oplossing: _lfOpl(m, b, p1, p2, null) + `\n${stapNote}`,
+  };
+}
+
+/* ── L.F2a – formule bij tabel: eenvoudig ───────────────────────────── */
+function genLF2a() {
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = rand(-6, 6);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const formule = _lgFormule(m, b, null);
+
+  return {
+    id: uid(), leerdoel: 'L.F2a',
+    vraag: `Welke formule hoort bij de tabel?${_lgTabelHtml(rows)}`,
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null },
+    hints: [
+      'Bereken $m$: hoeveel verandert $y$ als $x$ met 1 toeneemt? Zoek daarna $b$ bij $x = 0$.',
+      `Gebruik de rijen met $x = ${p1.x}$ en $x = ${p2.x}$ uit de tabel. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ en daarna $b$.`,
+    ],
+    oplossing: _lfOplTabel(m, b, p1, p2, null),
+  };
+}
+
+/* ── L.F2b helpers ────────────────────────────────────────────────────── */
+function _lfb2Fractional() {
+  const fracs = [
+    {mVal: 0.5,         mDisplay: '\\dfrac{1}{2}',  d: 2},
+    {mVal: -0.5,        mDisplay: '-\\dfrac{1}{2}', d: 2},
+    {mVal: 2 / 3,       mDisplay: '\\dfrac{2}{3}',  d: 3},
+    {mVal: -(2 / 3),    mDisplay: '-\\dfrac{2}{3}', d: 3},
+    {mVal: 1.5,         mDisplay: '\\dfrac{3}{2}',  d: 2},
+    {mVal: -1.5,        mDisplay: '-\\dfrac{3}{2}', d: 2},
+  ];
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8;
+  let fr, b, vis;
+  do {
+    fr = pick(fracs);
+    b = rand(-4, 4);
+    vis = [];
+    for (let k = Math.ceil(xMin / fr.d); k <= Math.floor(xMax / fr.d); k++) {
+      const x = k * fr.d;
+      const y = fr.mVal * x + b;
+      if (Math.abs(y - Math.round(y)) < 1e-9 && Math.round(y) >= yMin && Math.round(y) <= yMax)
+        vis.push({x, y: Math.round(y)});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.F2b',
+    vraag: `Welke formule hoort bij de tabel?${_lgTabelHtml(rows)}`,
+    antwoordType: 'formule-lijn',
+    antwoord: { m: fr.mVal, b },
+    data: { m: fr.mVal, b, mDisplay: fr.mDisplay },
+    hints: [
+      `De $x$-waarden in de tabel zijn veelvouden van ${fr.d}. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ precies.`,
+      `Gebruik de rijen met $x = ${p1.x}$ en $x = ${p2.x}$. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ precies en daarna $b$. Typ een breuk via de breukknop.`,
+    ],
+    oplossing: _lfOplTabel(fr.mVal, b, p1, p2, fr.mDisplay),
+  };
+}
+
+function _lfb2BigStep() {
+  const stap = 2, xMin = -10, xMax = 10, yMin = -10, yMax = 10;
+  let m, b, vis;
+  do {
+    m = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    b = rand(-4, 4) * stap;
+    vis = [];
+    for (let x = xMin; x <= xMax; x += stap) {
+      const y = m * x + b;
+      if (y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.F2b',
+    vraag: `Welke formule hoort bij de tabel?${_lgTabelHtml(rows)}`,
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null },
+    hints: [
+      `Let op: de $x$-waarden lopen met stap ${stap}. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ met de werkelijke waarden.`,
+      `Gebruik de rijen met $x = ${p1.x}$ en $x = ${p2.x}$. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ en daarna $b$.`,
+    ],
+    oplossing: _lfOplTabel(m, b, p1, p2, null),
+  };
+}
+
+function _lfb2OffScreen() {
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = Math.random() > 0.5 ? rand(yMax + 1, yMax + 5) : rand(yMin - 5, yMin - 1);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 2);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const bStr = b > 0 ? `+${b}` : String(b);
+
+  return {
+    id: uid(), leerdoel: 'L.F2b',
+    vraag: `Welke formule hoort bij de tabel?${_lgTabelHtml(rows)}`,
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null },
+    hints: [
+      'Het snijpunt met de $y$-as staat niet in de tabel. Bereken $m$ uit twee rijen en daarna $b = y - m \\cdot x$.',
+      `Gebruik de rijen met $x = ${p1.x}$ en $x = ${p2.x}$. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ en daarna $b = y - m \\cdot x$.`,
+    ],
+    oplossing: _lfOplTabel(m, b, p1, p2, null),
+  };
+}
+
+function genLF2b() {
+  const v = pick(['fractional', 'bigStep', 'offScreen']);
+  if (v === 'fractional') return _lfb2Fractional();
+  if (v === 'bigStep')    return _lfb2BigStep();
+  return _lfb2OffScreen();
+}
+
+/* ── L.F2c – formule bij tabel: variabele assen ─────────────────────── */
+function genLF2c() {
+  const { stapX, stapY, m, b, vis } = _lgcParams();
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const stapNote = _lgcStapNote(stapX, stapY);
+
+  return {
+    id: uid(), leerdoel: 'L.F2c',
+    vraag: `Welke formule hoort bij de tabel?${_lgTabelHtml(rows)}`,
+    antwoordType: 'formule-lijn',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null },
+    hints: [
+      stapNote + ' Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ met de echte waarden uit de tabel.',
+      `Gebruik de rijen met $x = ${p1.x}$ en $x = ${p2.x}$. Bereken $m = \\dfrac{\\Delta y}{\\Delta x}$ en daarna $b$.`,
+    ],
+    oplossing: _lfOplTabel(m, b, p1, p2, null) + `\n${stapNote}`,
+  };
+}
+
+/* ── L.G2a/b – grafiek bij tabel ─────────────────────────────────────── */
+function _lgTabelHtml(rows) {
+  const xCells = rows.map(({x}) => `<td>${x}</td>`).join('');
+  const yCells = rows.map(({y}) => `<td>${y}</td>`).join('');
+  return `<table class="lg-tabel"><tbody><tr><th>x</th>${xCells}</tr><tr><th>y</th>${yCells}</tr></tbody></table>`;
+}
+
+function _lgPickRows(vis, n) {
+  if (vis.length <= n) return vis;
+  const step = (vis.length - 1) / (n - 1);
+  return Array.from({length: n}, (_, i) => vis[Math.round(i * step)]);
+}
+
+function _lgOplTabel(p1, p2, stapGrootte) {
+  const stapNote = stapGrootte && stapGrootte > 1
+    ? `\nLet op: de assen hebben stapgrootte ${stapGrootte}.` : '';
+  return `In de tabel staan de coördinaten van punten op de lijn.
+Sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.${stapNote}`;
+}
+
+/* ── L.G2a – grafiek bij tabel: eenvoudig ──────────────────────────── */
+function genLG2a() {
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = rand(-6, 6);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0];
+  const p2 = rows[rows.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.G2a',
+    vraag: `Teken de grafiek bij de tabel.${_lgTabelHtml(rows)}`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -5, y: yMin + 2}, initB: {x: 4, y: yMin + 2} },
+    hints: [
+      'De tabel geeft meerdere punten op de lijn. Kies er twee en sleep punt A en punt B naar die coördinaten.',
+      `Bijvoorbeeld: sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`,
+    ],
+    oplossing: _lgOplTabel(p1, p2, null),
+  };
+}
+
+/* ── L.G2b helpers ─────────────────────────────────────────────────── */
+function _lgb2Fractional() {
+  const fracs = [
+    {mVal: 0.5,         mDisplay: '\\dfrac{1}{2}',  d: 2},
+    {mVal: -0.5,        mDisplay: '-\\dfrac{1}{2}', d: 2},
+    {mVal: 2 / 3,       mDisplay: '\\dfrac{2}{3}',  d: 3},
+    {mVal: -(2 / 3),    mDisplay: '-\\dfrac{2}{3}', d: 3},
+    {mVal: 1.5,         mDisplay: '\\dfrac{3}{2}',  d: 2},
+    {mVal: -1.5,        mDisplay: '-\\dfrac{3}{2}', d: 2},
+  ];
+  const xMin = -8, xMax = 8, yMin = -8, yMax = 8, stap = 1;
+  let fr, b, vis;
+  do {
+    fr = pick(fracs);
+    b = rand(-4, 4);
+    vis = [];
+    for (let k = Math.ceil(xMin / fr.d); k <= Math.floor(xMax / fr.d); k++) {
+      const x = k * fr.d;
+      const y = fr.mVal * x + b;
+      if (Math.abs(y - Math.round(y)) < 1e-9 && Math.round(y) >= yMin && Math.round(y) <= yMax)
+        vis.push({x, y: Math.round(y)});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0];
+  const p2 = rows[rows.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.G2b',
+    vraag: `Teken de grafiek bij de tabel.${_lgTabelHtml(rows)}`,
+    antwoordType: 'grafiek',
+    antwoord: { m: fr.mVal, b },
+    data: { m: fr.mVal, b, mDisplay: fr.mDisplay, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -4, y: yMin + 2}, initB: {x: 4, y: yMin + 2} },
+    hints: [
+      `De tabel laat punten zien met een veelvoud van ${fr.d} voor $x$. Sleep punt A en punt B naar twee van die punten.`,
+      `Bijvoorbeeld: sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`,
+    ],
+    oplossing: _lgOplTabel(p1, p2, null),
+  };
+}
+
+function _lgb2BigStep() {
+  const stap = 2, xMin = -10, xMax = 10, yMin = -10, yMax = 10;
+  let m, b, vis;
+  do {
+    m = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    b = rand(-4, 4) * stap;
+    vis = [];
+    for (let x = xMin; x <= xMax; x += stap) {
+      const y = m * x + b;
+      if (y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0];
+  const p2 = rows[rows.length - 1];
+
+  return {
+    id: uid(), leerdoel: 'L.G2b',
+    vraag: `Teken de grafiek bij de tabel.${_lgTabelHtml(rows)}`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: xMin + stap * 2, y: yMin + stap * 2},
+            initB: {x: xMax - stap * 2, y: yMin + stap * 2} },
+    hints: [
+      `Let op: de assen tellen per ${stap}. Sleep punt A en punt B naar twee punten uit de tabel.`,
+      `Bijvoorbeeld: sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`,
+    ],
+    oplossing: _lgOplTabel(p1, p2, stap),
+  };
+}
+
+function _lgb2OffScreen() {
+  const stap = 1, xMin = -8, xMax = 8, yMin = -8, yMax = 8;
+  let m, b, vis;
+  do {
+    m = pick([-3, -2, -1, 1, 2, 3]);
+    b = Math.random() > 0.5 ? rand(yMax + 1, yMax + 5) : rand(yMin - 5, yMin - 1);
+    vis = [];
+    for (let x = xMin; x <= xMax; x++) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= yMin && y <= yMax) vis.push({x, y});
+    }
+  } while (vis.length < 2);
+
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0];
+  const p2 = rows[rows.length - 1];
+  const bStr = b > 0 ? `+${b}` : String(b);
+
+  return {
+    id: uid(), leerdoel: 'L.G2b',
+    vraag: `Teken de grafiek bij de tabel.${_lgTabelHtml(rows)}`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stap,
+            initA: {x: -4, y: yMin + 1}, initB: {x: 4, y: yMin + 1} },
+    hints: [
+      `De tabel laat de punten zien die in beeld zijn. Het snijpunt met de y-as ($y = ${bStr}$) ligt buiten het rooster.`,
+      `Gebruik twee punten uit de tabel: sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`,
+    ],
+    oplossing: _lgOplTabel(p1, p2, null),
+  };
+}
+
+function genLG2b() {
+  const v = pick(['fractional', 'bigStep', 'offScreen']);
+  if (v === 'fractional') return _lgb2Fractional();
+  if (v === 'bigStep')    return _lgb2BigStep();
+  return _lgb2OffScreen();
+}
+
+/* ── L.G1c/G2c – assen met verschillende stapgroottes ───────────────── */
+function _lgcParams() {
+  const configs = [
+    { stapX:  5, stapY: 10, xMin: -20, xMax: 20, yMin: -40, yMax: 40, mPool: [-4, -2, 2, 4] },
+    { stapX: 10, stapY: 20, xMin: -30, xMax: 30, yMin: -60, yMax: 60, mPool: [-4, -2, 2, 4] },
+    { stapX: 20, stapY: 10, xMin: -60, xMax: 60, yMin: -40, yMax: 40, mPool: [-2, -1, 1, 2] },
+  ];
+  let cfg, m, b, vis;
+  do {
+    cfg = pick(configs);
+    m   = pick(cfg.mPool);
+    b   = pick([-3, -2, -1, 0, 1, 2, 3]) * cfg.stapY;
+    vis = [];
+    for (let x = cfg.xMin; x <= cfg.xMax; x += cfg.stapX) {
+      const y = m * x + b;
+      if (Number.isInteger(y) && y >= cfg.yMin && y <= cfg.yMax) vis.push({x, y});
+    }
+  } while (vis.length < 3);
+
+  const { stapX, stapY, xMin, xMax, yMin, yMax } = cfg;
+  const initA = { x: -2 * stapX, y: yMin + stapY };
+  const initB = { x:  2 * stapX, y: yMin + stapY };
+  return { stapX, stapY, xMin, xMax, yMin, yMax, m, b, vis, initA, initB };
+}
+
+function _lgcStapNote(stapX, stapY) {
+  return `Let op: de x-as heeft stapgrootte ${stapX}, de y-as heeft stapgrootte ${stapY}.`;
+}
+
+/* ── L.G1c – grafiek bij formule, variabele assen ──────────────────── */
+function genLG1c() {
+  const { stapX, stapY, xMin, xMax, yMin, yMax, m, b, vis, initA, initB } = _lgcParams();
+  const formule = _lgFormule(m, b, null);
+  const rows = _lgPickRows(vis, 3);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const stapNote = _lgcStapNote(stapX, stapY);
+
+  return {
+    id: uid(), leerdoel: 'L.G1c',
+    vraag: `Teken de grafiek van $${formule}$.`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stapX, stapY, initA, initB },
+    hints: [
+      stapNote + ' Bereken twee punten via de formule en sleep de punten daarheen.',
+      `Bij $x = ${p1.x}$: $${_lgStap(m, b, p1.x, null)}$, dus punt $(${p1.x},\\ ${p1.y})$.`,
+    ],
+    oplossing: _lgOplPunten(m, b, p1, p2, formule, null, null) + `\n${stapNote}`,
+  };
+}
+
+/* ── L.G2c – grafiek bij tabel, variabele assen ────────────────────── */
+function genLG2c() {
+  const { stapX, stapY, xMin, xMax, yMin, yMax, m, b, vis, initA, initB } = _lgcParams();
+  const rows = _lgPickRows(vis, 4);
+  const p1 = rows[0], p2 = rows[rows.length - 1];
+  const stapNote = _lgcStapNote(stapX, stapY);
+
+  return {
+    id: uid(), leerdoel: 'L.G2c',
+    vraag: `Teken de grafiek bij de tabel.${_lgTabelHtml(rows)}`,
+    antwoordType: 'grafiek',
+    antwoord: { m, b },
+    data: { m, b, mDisplay: null, xMin, xMax, yMin, yMax, stapX, stapY, initA, initB },
+    hints: [
+      stapNote + ' Kies twee punten uit de tabel en sleep punt A en punt B daarheen.',
+      `Bijvoorbeeld: sleep punt A naar $(${p1.x},\\ ${p1.y})$ en punt B naar $(${p2.x},\\ ${p2.y})$.`,
+    ],
+    oplossing: _lgOplTabel(p1, p2, null) + `\n${stapNote}`,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   L.V – Lineaire vergelijkingen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function _lvGcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : _lvGcd(b, a % b); }
+function _lvFrac(t, n) {
+  if (n < 0) { t = -t; n = -n; }
+  const g = _lvGcd(Math.abs(t), n) || 1;
+  return { t: t / g, n: n / g };
+}
+function _lvXTeX(t, n) {
+  if (n === 1) return `${t}`;
+  return t < 0 ? `-\\dfrac{${-t}}{${n}}` : `\\dfrac{${t}}{${n}}`;
+}
+function _lvSideTeX(a, b) {
+  let s = a === 1 ? 'x' : a === -1 ? '-x' : `${a}x`;
+  if (b === 0) return s;
+  return b > 0 ? `${s} + ${b}` : `${s} - ${Math.abs(b)}`;
+}
+
+/* ── L.V1a – 1-staps vergelijkingen ──────────────────────────────────────── */
+function genLV1a() {
+  const subtype = pick(['ax=b', 'ax=b', 'xpb=c', 'xmb=c']);
+  let eqTeX, teller, noemer, hints, opl;
+
+  if (subtype === 'ax=b') {
+    const a = pick([2, 3, 4, 5]);
+    let b; do { b = rand(-9, 9); } while (b === 0);
+    const fr = _lvFrac(b, a);
+    teller = fr.t; noemer = fr.n;
+    eqTeX = `${a}x = ${b}`;
+    const xTex = _lvXTeX(fr.t, fr.n);
+    hints = [`Deel beide kanten door $${a}$: dan staat $x$ alleen.`];
+    opl = fr.n === 1
+      ? `$${a}x = ${b}$\nDeel door $${a}$: $x = ${b} \\div ${a} = ${fr.t}$`
+      : `$${a}x = ${b}$\nDeel door $${a}$: $x = \\dfrac{${b}}{${a}} = ${xTex}$`;
+  } else if (subtype === 'xpb=c') {
+    const b = rand(2, 9);
+    const c = rand(-8, 8);
+    teller = c - b; noemer = 1;
+    eqTeX = `x + ${b} = ${c}`;
+    hints = [`Trek $${b}$ af van beide kanten.`];
+    opl = `$x + ${b} = ${c}$\n$x = ${c} - ${b} = ${teller}$`;
+  } else {
+    const b = rand(2, 9);
+    const c = rand(-8, 8);
+    teller = c + b; noemer = 1;
+    eqTeX = `x - ${b} = ${c}`;
+    hints = [`Tel $${b}$ op bij beide kanten.`];
+    opl = `$x - ${b} = ${c}$\n$x = ${c} + ${b} = ${teller}$`;
+  }
+
+  return {
+    id: uid(), leerdoel: 'L.V1a',
+    vraag: `Los op: $${eqTeX}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller, noemer },
+    hints,
+    oplossing: opl,
+  };
+}
+
+/* ── L.V1b – 2-staps vergelijkingen ──────────────────────────────────────── */
+function genLV1b() {
+  let a, b, c, d, coefX, rhs;
+  do {
+    a = pick([2, 3, 4, 5]);
+    c = pick([-4, -3, -2, -1, 1, 2, 3]);
+    b = rand(-8, 8);
+    d = rand(-8, 8);
+    coefX = a - c;
+    rhs = d - b;
+  } while (coefX === 0);
+
+  const fr = _lvFrac(rhs, coefX);
+  const xTex = _lvXTeX(fr.t, fr.n);
+  const lhsTeX = _lvSideTeX(a, b);
+  const rhsTeX = _lvSideTeX(c, d);
+  const midTeX = `${coefX}x = ${rhs}`;
+
+  return {
+    id: uid(), leerdoel: 'L.V1b',
+    vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller: fr.t, noemer: fr.n },
+    hints: [
+      'Zet alle termen met $x$ naar links en alle getallen naar rechts.',
+      `Na herschikken: $${midTeX}$. Deel nu beide kanten door $${coefX}$.`,
+    ],
+    oplossing: [
+      `$${lhsTeX} = ${rhsTeX}$`,
+      `Herschik: $${midTeX}$`,
+      `$x = ${xTex}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── L.V1c – vergelijkingen met haakjes ──────────────────────────────────── */
+function genLV1c() {
+  let a, bi, c, d, e, coefX, rhs;
+  do {
+    a  = pick([2, 3, 4]);
+    bi = pick([1, 2, 3]);
+    c  = rand(-5, 5); if (c === 0) c = pick([-2, -1, 1, 2]);
+    d  = pick([1, 2, 3, 4]);
+    e  = rand(-8, 8);
+    coefX = a * bi - d;
+    rhs   = e - a * c;
+  } while (coefX === 0);
+
+  const fr = _lvFrac(rhs, coefX);
+  const xTex = _lvXTeX(fr.t, fr.n);
+  const expA = a * bi, expC = a * c;
+
+  let innerTeX = bi === 1 ? 'x' : `${bi}x`;
+  innerTeX += c > 0 ? ` + ${c}` : ` - ${Math.abs(c)}`;
+  const lhsTeX    = `${a}(${innerTeX})`;
+  const rhsTeX    = _lvSideTeX(d, e);
+  const expandedTeX = _lvSideTeX(expA, expC);
+  const midTeX    = `${coefX}x = ${rhs}`;
+
+  return {
+    id: uid(), leerdoel: 'L.V1c',
+    vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller: fr.t, noemer: fr.n },
+    hints: [
+      `Werk eerst de haakjes uit: vermenigvuldig $${a}$ met elk getal tussen de haakjes.`,
+      `Na uitwerken: $${expandedTeX} = ${rhsTeX}$. Herschik nu de vergelijking.`,
+    ],
+    oplossing: [
+      `$${lhsTeX} = ${rhsTeX}$`,
+      `Haakjes uitwerken: $${expandedTeX} = ${rhsTeX}$`,
+      `Herschik: $${midTeX}$`,
+      `$x = ${xTex}$`,
+    ].join('\n'),
+  };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -2821,6 +3731,21 @@ const LEERDOELEN = [
   { id: 'A.MV1b', titel: 'Algebra – machtsverheffen: machtsverheffing',groep: 'Algebra', gen: genAMV1b },
   { id: 'A.MV1c', titel: 'Algebra – machtsverheffen: quotiëntregel',   groep: 'Algebra', gen: genAMV1c },
   { id: 'A.MV1d', titel: 'Algebra – machtsverheffen: gecombineerd',    groep: 'Algebra', gen: genAMV1d },
+  { id: 'L.G1a',  titel: 'Lineair – grafiek tekenen: eenvoudig',      groep: 'Lineair', gen: genLG1a  },
+  { id: 'L.G1b',  titel: 'Lineair – grafiek tekenen: gevorderd',      groep: 'Lineair', gen: genLG1b  },
+  { id: 'L.G2a',  titel: 'Lineair – grafiek bij tabel: eenvoudig',    groep: 'Lineair', gen: genLG2a  },
+  { id: 'L.G2b',  titel: 'Lineair – grafiek bij tabel: gevorderd',    groep: 'Lineair', gen: genLG2b  },
+  { id: 'L.G1c',  titel: 'Lineair – grafiek bij formule: var. assen', groep: 'Lineair', gen: genLG1c  },
+  { id: 'L.G2c',  titel: 'Lineair – grafiek bij tabel: var. assen',   groep: 'Lineair', gen: genLG2c  },
+  { id: 'L.F1a',  titel: 'Lineair – formule bij grafiek: eenvoudig',  groep: 'Lineair', gen: genLF1a  },
+  { id: 'L.F1b',  titel: 'Lineair – formule bij grafiek: gevorderd',  groep: 'Lineair', gen: genLF1b  },
+  { id: 'L.F1c',  titel: 'Lineair – formule bij grafiek: var. assen', groep: 'Lineair', gen: genLF1c  },
+  { id: 'L.F2a',  titel: 'Lineair – formule bij tabel: eenvoudig',    groep: 'Lineair', gen: genLF2a  },
+  { id: 'L.F2b',  titel: 'Lineair – formule bij tabel: gevorderd',    groep: 'Lineair', gen: genLF2b  },
+  { id: 'L.F2c',  titel: 'Lineair – formule bij tabel: var. assen',   groep: 'Lineair', gen: genLF2c  },
+  { id: 'L.V1a',  titel: 'Lineair – vergelijking: 1-stap',            groep: 'Lineair', gen: genLV1a  },
+  { id: 'L.V1b',  titel: 'Lineair – vergelijking: 2-stap',            groep: 'Lineair', gen: genLV1b  },
+  { id: 'L.V1c',  titel: 'Lineair – vergelijking: met haakjes',       groep: 'Lineair', gen: genLV1c  },
 ];
 
 function generateVraag(leerdoelId) {
