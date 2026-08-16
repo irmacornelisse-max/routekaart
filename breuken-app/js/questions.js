@@ -3538,7 +3538,7 @@ function genLV1b() {
     antwoord: { teller: fr.t, noemer: fr.n },
     hints: [
       'Zet alle termen met $x$ naar links en alle getallen naar rechts.',
-      `Na herschikken: $${midTeX}$. Deel nu beide kanten door $${coefX}$.`,
+      'Je hebt nu de vorm $ax = b$. Deel beide kanten door de coëfficiënt van $x$.',
     ],
     oplossing: [
       `$${lhsTeX} = ${rhsTeX}$`,
@@ -3579,13 +3579,145 @@ function genLV1c() {
     antwoord: { teller: fr.t, noemer: fr.n },
     hints: [
       `Werk eerst de haakjes uit: vermenigvuldig $${a}$ met elk getal tussen de haakjes.`,
-      `Na uitwerken: $${expandedTeX} = ${rhsTeX}$. Herschik nu de vergelijking.`,
+      'Na uitwerken staan er geen haakjes meer. Zet nu de $x$-termen links en de getallen rechts.',
     ],
     oplossing: [
       `$${lhsTeX} = ${rhsTeX}$`,
       `Haakjes uitwerken: $${expandedTeX} = ${rhsTeX}$`,
       `Herschik: $${midTeX}$`,
       `$x = ${xTex}$`,
+    ].join('\n'),
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   L.O – Lineaire ongelijkheden
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function _loFlip(op) {
+  if (op === '<')    return '>';
+  if (op === '>')    return '<';
+  if (op === '\\le') return '\\ge';
+  if (op === '\\ge') return '\\le';
+  return op;
+}
+
+/* ── L.O1a – 1-staps ongelijkheden ───────────────────────────────────────── */
+function genLO1a() {
+  const a  = pick([-5, -4, -3, -2, 2, 3, 4, 5]);
+  const op = pick(['<', '>', '\\le', '\\ge']);
+  let b; do { b = rand(-9, 9); } while (b === 0);
+
+  const fr     = _lvFrac(b, a);
+  const finalOp = a < 0 ? _loFlip(op) : op;
+  const xTex   = _lvXTeX(fr.t, fr.n);
+  const s      = a === 1 ? 'x' : a === -1 ? '-x' : `${a}x`;
+  const eqTeX  = `${s} ${op} ${b}`;
+
+  const hint = a < 0
+    ? `Deel beide kanten door $${a}$. Let op: het ongelijkheidsteken draait om bij delen door een negatief getal!`
+    : `Deel beide kanten door $${a}$.`;
+  const opl  = fr.n === 1
+    ? `$${eqTeX}$\n${a < 0 ? `Deel door $${a}$ (teken draait om)` : `Deel door $${a}$`}: $x ${finalOp} ${fr.t}$`
+    : `$${eqTeX}$\n${a < 0 ? `Deel door $${a}$ (teken draait om)` : `Deel door $${a}$`}: $x ${finalOp} ${xTex}$`;
+
+  return {
+    id: uid(), leerdoel: 'L.O1a',
+    vraag: `Los op: $${eqTeX}$`,
+    antwoordType: 'ongelijkheid',
+    antwoord: { teller: fr.t, noemer: fr.n, operator: finalOp },
+    hints: [hint],
+    oplossing: opl,
+  };
+}
+
+/* ── L.O1b – 2-staps ongelijkheden ───────────────────────────────────────── */
+function genLO1b() {
+  let a, b, c, d, coefX, rhs;
+  do {
+    a = pick([2, 3, 4, 5]);
+    c = pick([-4, -3, -2, -1, 1, 2, 3]);
+    b = rand(-8, 8);
+    d = rand(-8, 8);
+    coefX = a - c;
+    rhs   = d - b;
+  } while (coefX === 0);
+
+  const op      = pick(['<', '>', '\\le', '\\ge']);
+  const fr      = _lvFrac(rhs, coefX);
+  const finalOp = coefX < 0 ? _loFlip(op) : op;
+  const xTex    = _lvXTeX(fr.t, fr.n);
+  const lhsTeX  = _lvSideTeX(a, b);
+  const rhsTeX  = _lvSideTeX(c, d);
+  const coefXs  = _lvSideTeX(coefX, 0);
+  const midTeX  = `${coefXs} ${op} ${rhs}`;
+
+  const divLine = coefX < 0
+    ? `Deel door $${coefX}$ (teken draait om): $x ${finalOp} ${xTex}$`
+    : `$x ${finalOp} ${xTex}$`;
+
+  return {
+    id: uid(), leerdoel: 'L.O1b',
+    vraag: `Los op: $${lhsTeX} ${op} ${rhsTeX}$`,
+    antwoordType: 'ongelijkheid',
+    antwoord: { teller: fr.t, noemer: fr.n, operator: finalOp },
+    hints: [
+      'Zet alle termen met $x$ naar links en alle getallen naar rechts.',
+      coefX < 0
+        ? 'Je hebt nu de coëfficiënt van $x$ links. Deel door die coëfficiënt — hij is negatief, dus het ongelijkheidsteken draait om!'
+        : 'Je hebt nu de coëfficiënt van $x$ links. Deel beide kanten daardoor.',
+    ],
+    oplossing: [`$${lhsTeX} ${op} ${rhsTeX}$`, `Herschik: $${midTeX}$`, divLine].join('\n'),
+  };
+}
+
+/* ── L.O1c – ongelijkheden met haakjes ───────────────────────────────────── */
+function genLO1c() {
+  let a, bi, c, d, e, coefX, rhs;
+  do {
+    a  = pick([2, 3, 4]);
+    bi = pick([1, 2, 3]);
+    c  = rand(-5, 5); if (c === 0) c = pick([-2, -1, 1, 2]);
+    d  = pick([1, 2, 3, 4]);
+    e  = rand(-8, 8);
+    coefX = a * bi - d;
+    rhs   = e - a * c;
+  } while (coefX === 0);
+
+  const op      = pick(['<', '>', '\\le', '\\ge']);
+  const fr      = _lvFrac(rhs, coefX);
+  const finalOp = coefX < 0 ? _loFlip(op) : op;
+  const xTex    = _lvXTeX(fr.t, fr.n);
+  const expA    = a * bi, expC = a * c;
+
+  let innerTeX = bi === 1 ? 'x' : `${bi}x`;
+  innerTeX += c > 0 ? ` + ${c}` : ` - ${Math.abs(c)}`;
+  const lhsTeX      = `${a}(${innerTeX})`;
+  const rhsTeX      = _lvSideTeX(d, e);
+  const expandedTeX = _lvSideTeX(expA, expC);
+  const coefXs      = _lvSideTeX(coefX, 0);
+  const midTeX      = `${coefXs} ${op} ${rhs}`;
+
+  const divLine = coefX < 0
+    ? `Deel door $${coefX}$ (teken draait om): $x ${finalOp} ${xTex}$`
+    : `$x ${finalOp} ${xTex}$`;
+
+  return {
+    id: uid(), leerdoel: 'L.O1c',
+    vraag: `Los op: $${lhsTeX} ${op} ${rhsTeX}$`,
+    antwoordType: 'ongelijkheid',
+    antwoord: { teller: fr.t, noemer: fr.n, operator: finalOp },
+    hints: [
+      `Werk eerst de haakjes uit: vermenigvuldig $${a}$ met elk getal tussen de haakjes.`,
+      coefX < 0
+        ? 'Na uitwerken staan er geen haakjes meer. Zet de $x$-termen links en de getallen rechts. Let op: de coëfficiënt van $x$ is negatief — het teken draait om bij het delen!'
+        : 'Na uitwerken staan er geen haakjes meer. Zet nu de $x$-termen links en de getallen rechts.',
+    ],
+    oplossing: [
+      `$${lhsTeX} ${op} ${rhsTeX}$`,
+      `Haakjes uitwerken: $${expandedTeX} ${op} ${rhsTeX}$`,
+      `Herschik: $${midTeX}$`,
+      divLine,
     ].join('\n'),
   };
 }
@@ -3746,6 +3878,9 @@ const LEERDOELEN = [
   { id: 'L.V1a',  titel: 'Lineair – vergelijking: 1-stap',            groep: 'Lineair', gen: genLV1a  },
   { id: 'L.V1b',  titel: 'Lineair – vergelijking: 2-stap',            groep: 'Lineair', gen: genLV1b  },
   { id: 'L.V1c',  titel: 'Lineair – vergelijking: met haakjes',       groep: 'Lineair', gen: genLV1c  },
+  { id: 'L.O1a',  titel: 'Lineair – ongelijkheid: 1-stap',            groep: 'Lineair', gen: genLO1a  },
+  { id: 'L.O1b',  titel: 'Lineair – ongelijkheid: 2-stap',            groep: 'Lineair', gen: genLO1b  },
+  { id: 'L.O1c',  titel: 'Lineair – ongelijkheid: met haakjes',       groep: 'Lineair', gen: genLO1c  },
 ];
 
 function generateVraag(leerdoelId) {

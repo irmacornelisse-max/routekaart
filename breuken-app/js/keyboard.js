@@ -30,6 +30,13 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-mixed" data-val="MIXED">1 a/b</button>
       <button class="kbd-btn kbd-btn-clear" data-val="CLR">C</button>
     </div>
+    <div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="=">=</button>
+      <button class="kbd-btn kbd-btn-op" data-val="<">&lt;</button>
+      <button class="kbd-btn kbd-btn-op" data-val=">">&gt;</button>
+      <button class="kbd-btn kbd-btn-op" data-val="LE">≤</button>
+      <button class="kbd-btn kbd-btn-op" data-val="GE">≥</button>
+    </div>
   </div>`;
 }
 
@@ -63,6 +70,8 @@ function handleKbdKey(val) {
     case '+':     mq.typedText('+'); break;
     case '-':     mq.typedText('-'); break;
     case 'TIMES': mq.cmd('\\times'); break;
+    case 'LE':    mq.cmd('\\le'); break;
+    case 'GE':    mq.cmd('\\ge'); break;
     default:      mq.typedText(val); break;
   }
 }
