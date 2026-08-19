@@ -4157,6 +4157,264 @@ function genKWE() {
   };
 }
 
+/* ── Stelsels – hulpfuncties ─────────────────────────────────────────────── */
+function _stelselEqTeX(a, b, c) {
+  let s = '';
+  if (a !== 0) {
+    const aA = Math.abs(a);
+    s = (a < 0 ? '-' : '') + (aA === 1 ? 'x' : `${aA}x`);
+  }
+  if (b !== 0) {
+    const bA = Math.abs(b);
+    const bTeX = bA === 1 ? 'y' : `${bA}y`;
+    s += a !== 0 ? (b > 0 ? ` + ${bTeX}` : ` - ${bTeX}`) : ((b < 0 ? '-' : '') + bTeX);
+  }
+  s += ` = ${c}`;
+  return s;
+}
+
+function _stelselIsoTex(b1, c1) {
+  if (b1 === 0) return `${c1}`;
+  const bA = Math.abs(b1);
+  const bTeX = bA === 1 ? 'y' : `${bA}y`;
+  return b1 > 0 ? `${c1} - ${bTeX}` : `${c1} + ${bTeX}`;
+}
+
+/* ── S.E1a – eliminatiemethode ───────────────────────────────────────────── */
+function genStelselE() {
+  const xSol = rand(-6, 6);
+  const ySol = rand(-6, 6);
+  const a1 = rand(1, 4);
+  const b1 = pick([-3, -2, -1, 1, 2, 3]);
+  const c1 = a1 * xSol + b1 * ySol;
+
+  const elimX = Math.random() < 0.5;
+  let a2, b2, det = 0, tries = 0;
+  do {
+    if (elimX) {
+      a2 = Math.random() < 0.5 ? a1 : -a1;
+      b2 = rand(-4, 4); if (b2 === 0) b2 = pick([-3, -2, 2, 3]);
+    } else {
+      b2 = Math.random() < 0.5 ? b1 : -b1;
+      a2 = rand(-4, 4); if (a2 === 0) a2 = pick([-3, -2, 2, 3]);
+    }
+    det = a1 * b2 - a2 * b1;
+  } while (det === 0 && ++tries < 20);
+  const c2 = a2 * xSol + b2 * ySol;
+
+  const eq1 = _stelselEqTeX(a1, b1, c1);
+  const eq2 = _stelselEqTeX(a2, b2, c2);
+
+  let elimCoeff, elimRhs, foundVar, foundVal, backSubEq, otherVar, otherVal;
+  if (elimX) {
+    const add = a2 === -a1;
+    elimCoeff = add ? b1 + b2 : b1 - b2;
+    elimRhs   = add ? c1 + c2 : c1 - c2;
+    foundVar = 'y'; foundVal = ySol; otherVar = 'x'; otherVal = xSol;
+    backSubEq = _stelselEqTeX(a1, 0, c1 - b1 * ySol);
+  } else {
+    const add = b2 === -b1;
+    elimCoeff = add ? a1 + a2 : a1 - a2;
+    elimRhs   = add ? c1 + c2 : c1 - c2;
+    foundVar = 'x'; foundVal = xSol; otherVar = 'y'; otherVal = ySol;
+    backSubEq = _stelselEqTeX(0, b1, c1 - a1 * xSol);
+  }
+
+  const elimEqTeX = elimX
+    ? _stelselEqTeX(0, elimCoeff, elimRhs)
+    : _stelselEqTeX(elimCoeff, 0, elimRhs);
+  const opStr = (elimX ? a2 === -a1 : b2 === -b1) ? 'optellen' : 'aftrekken';
+
+  return {
+    id: uid(), leerdoel: 'S.1a',
+    vraag: `Los op: $\\begin{cases}${eq1}\\\\${eq2}\\end{cases}$`,
+    antwoordType: 'stelsel',
+    antwoord: { x: xSol, y: ySol },
+    hints: [
+      `Kies een methode: eliminatie (vergelijkingen optellen of aftrekken) of substitutie (variabele vrijmaken en invullen).`,
+      `Tip: de coëfficiënten van $${elimX ? 'x' : 'y'}$ zijn ${(elimX ? a2 === a1 : b2 === b1) ? 'gelijk' : 'tegengesteld'} — dat maakt eliminatie handig hier.`,
+    ],
+    oplossing: [
+      `$(1)\\;${eq1}$`,
+      `$(2)\\;${eq2}$`,
+      `Na ${opStr}: $${elimEqTeX}$`,
+      `$${foundVar} = ${foundVal}$`,
+      `Invullen in $(1)$: $${backSubEq}$`,
+      `$${otherVar} = ${otherVal}$`,
+      `De oplossing is $(x,\\;y) = (${xSol},\\;${ySol})$.`,
+    ].join('\n'),
+  };
+}
+
+/* ── S.S1a – substitutiemethode ─────────────────────────────────────────── */
+function genStelselS() {
+  const xSol = rand(-6, 6);
+  const ySol = rand(-6, 6);
+  const b1 = pick([-3, -2, -1, 1, 2, 3]);
+  const c1 = xSol + b1 * ySol;
+  let a2, b2, det = 0, tries = 0;
+  do {
+    a2 = rand(-4, 4); if (a2 === 0) a2 = pick([-3, -2, 2, 3]);
+    b2 = rand(-4, 4); if (b2 === 0) b2 = pick([-3, -2, 2, 3]);
+    det = b2 - a2 * b1;
+  } while (det === 0 && ++tries < 20);
+  const c2 = a2 * xSol + b2 * ySol;
+
+  const eq1 = _stelselEqTeX(1, b1, c1);
+  const eq2 = _stelselEqTeX(a2, b2, c2);
+  const isoTex = _stelselIsoTex(b1, c1);
+  const newCoeff = b2 - a2 * b1;
+  const newRhs   = c2 - a2 * c1;
+
+  return {
+    id: uid(), leerdoel: 'S.1a',
+    vraag: `Los op: $\\begin{cases}${eq1}\\\\${eq2}\\end{cases}$`,
+    antwoordType: 'stelsel',
+    antwoord: { x: xSol, y: ySol },
+    hints: [
+      `Kies een methode: eliminatie (vergelijkingen optellen of aftrekken) of substitutie (variabele vrijmaken en invullen).`,
+      `Tip: vergelijking $(1)$ heeft coëfficiënt 1 voor $x$ — dat maakt substitutie handig hier.`,
+    ],
+    oplossing: [
+      `$(1)\\;${eq1}$`,
+      `$(2)\\;${eq2}$`,
+      `Uit $(1)$: $x = ${isoTex}$`,
+      `Invullen in $(2)$ en vereenvoudigen: $${_stelselEqTeX(0, newCoeff, newRhs)}$`,
+      `$y = ${ySol}$`,
+      `Invullen in $(1)$: $x = ${xSol}$`,
+      `De oplossing is $(x,\\;y) = (${xSol},\\;${ySol})$.`,
+    ].join('\n'),
+  };
+}
+
+/* ── S.1b – eliminatie na vermenigvuldiging ──────────────────────────────── */
+function genStelselB() {
+  const xSol = rand(-5, 5);
+  const ySol = rand(-5, 5);
+  let a1, b1, a2, b2, det = 0, tries = 0;
+  do {
+    a1 = rand(2, 5); b1 = pick([-3, -2, -1, 1, 2, 3]);
+    a2 = rand(2, 5); b2 = pick([-3, -2, -1, 1, 2, 3]);
+    det = a1 * b2 - a2 * b1;
+    tries++;
+  } while ((det === 0 || a1 === a2 || a1 === -a2 || b1 === b2 || b1 === -b2) && tries < 50);
+  const c1 = a1 * xSol + b1 * ySol;
+  const c2 = a2 * xSol + b2 * ySol;
+  const eq1 = _stelselEqTeX(a1, b1, c1);
+  const eq2 = _stelselEqTeX(a2, b2, c2);
+  // Elimineer x: (1)×a2 − (2)×a1
+  const newB = b1 * a2 - b2 * a1;
+  const newC = c1 * a2 - c2 * a1;
+  const elimEq = _stelselEqTeX(0, newB, newC);
+  const backSubEq = _stelselEqTeX(a1, 0, c1 - b1 * ySol);
+  return {
+    id: uid(), leerdoel: 'S.1b',
+    vraag: `Los op: $\\begin{cases}${eq1}\\\\${eq2}\\end{cases}$`,
+    antwoordType: 'stelsel',
+    antwoord: { x: xSol, y: ySol },
+    hints: [
+      `De coëfficiënten zijn niet gelijk en niet tegengesteld. Vermenigvuldig de vergelijkingen zodat een variabele wegvalt.`,
+      `Vermenigvuldig vergelijking $(1)$ met $${a2}$ en vergelijking $(2)$ met $${a1}$. Trek dan de vergelijkingen van elkaar af om $x$ weg te werken.`,
+    ],
+    oplossing: [
+      `$(1)\\;${eq1}$`,
+      `$(2)\\;${eq2}$`,
+      `$(1) \\times ${a2} - (2) \\times ${a1}\\!$: $${elimEq}$`,
+      `$y = ${ySol}$`,
+      `Invullen in $(1)$: $${backSubEq}$`,
+      `$x = ${xSol}$`,
+      `De oplossing is $(x,\\;y) = (${xSol},\\;${ySol})$.`,
+    ].join('\n'),
+  };
+}
+
+/* ── hulp: y=ax+b of x=ay+b als LaTeX-string ────────────────────────────── */
+function _stelselSlopeForm(varL, a, varR, b) {
+  const aA = Math.abs(a);
+  const term = (a < 0 ? '-' : '') + (aA === 1 ? varR : `${aA}${varR}`);
+  if (b === 0) return `${varL} = ${term}`;
+  return b > 0 ? `${varL} = ${term} + ${b}` : `${varL} = ${term} - ${Math.abs(b)}`;
+}
+
+/* ── S.1c – één vergelijking in y=ax+b of x=ay+b vorm ───────────────────── */
+function genStelselC() {
+  const xSol = rand(-5, 5);
+  const ySol = rand(-5, 5);
+  const useYform = Math.random() < 0.5;
+
+  if (useYform) {
+    // Vergelijking (1): y = a*x + b
+    const a = pick([-3, -2, -1, 1, 2, 3]);
+    const b = ySol - a * xSol;
+    const eq1 = _stelselSlopeForm('y', a, 'x', b);
+    // Vergelijking (2): c*x + d*y = e
+    let c, d, tries = 0;
+    do {
+      c = rand(-4, 4); if (c === 0) c = pick([-2, -1, 1, 2]);
+      d = rand(-4, 4); if (d === 0) d = pick([-2, -1, 1, 2]);
+      tries++;
+    } while (c + d * a === 0 && tries < 20);
+    const e = c * xSol + d * ySol;
+    const eq2 = _stelselEqTeX(c, d, e);
+    const newCoeff = c + d * a;
+    const newRhs = e - d * b;
+    const substEq = _stelselEqTeX(newCoeff, 0, newRhs);
+    return {
+      id: uid(), leerdoel: 'S.1c',
+      vraag: `Los op: $\\begin{cases}${eq1}\\\\${eq2}\\end{cases}$`,
+      antwoordType: 'stelsel',
+      antwoord: { x: xSol, y: ySol },
+      hints: [
+        `Vergelijking $(1)$ geeft $y$ al vrij. Vul die uitdrukking voor $y$ direct in vergelijking $(2)$ in.`,
+        `Na invullen krijg je een vergelijking met alleen $x$. Los die op en vul dan terug in voor $y$.`,
+      ],
+      oplossing: [
+        `$(1)\\;${eq1}$`,
+        `$(2)\\;${eq2}$`,
+        `Invullen van $(1)$ in $(2)$: $${substEq}$`,
+        `$x = ${xSol}$`,
+        `Invullen in $(1)$: $y = ${ySol}$`,
+        `De oplossing is $(x,\\;y) = (${xSol},\\;${ySol})$.`,
+      ].join('\n'),
+    };
+  } else {
+    // Vergelijking (1): x = a*y + b
+    const a = pick([-3, -2, -1, 1, 2, 3]);
+    const b = xSol - a * ySol;
+    const eq1 = _stelselSlopeForm('x', a, 'y', b);
+    // Vergelijking (2): c*x + d*y = e
+    let c, d, tries = 0;
+    do {
+      c = rand(-4, 4); if (c === 0) c = pick([-2, -1, 1, 2]);
+      d = rand(-4, 4); if (d === 0) d = pick([-2, -1, 1, 2]);
+      tries++;
+    } while (c * a + d === 0 && tries < 20);
+    const e = c * xSol + d * ySol;
+    const eq2 = _stelselEqTeX(c, d, e);
+    const newCoeff = c * a + d;
+    const newRhs = e - c * b;
+    const substEq = _stelselEqTeX(0, newCoeff, newRhs);
+    return {
+      id: uid(), leerdoel: 'S.1c',
+      vraag: `Los op: $\\begin{cases}${eq1}\\\\${eq2}\\end{cases}$`,
+      antwoordType: 'stelsel',
+      antwoord: { x: xSol, y: ySol },
+      hints: [
+        `Vergelijking $(1)$ geeft $x$ al vrij. Vul die uitdrukking voor $x$ direct in vergelijking $(2)$ in.`,
+        `Na invullen krijg je een vergelijking met alleen $y$. Los die op en vul dan terug in voor $x$.`,
+      ],
+      oplossing: [
+        `$(1)\\;${eq1}$`,
+        `$(2)\\;${eq2}$`,
+        `Invullen van $(1)$ in $(2)$: $${substEq}$`,
+        `$y = ${ySol}$`,
+        `Invullen in $(1)$: $x = ${xSol}$`,
+        `De oplossing is $(x,\\;y) = (${xSol},\\;${ySol})$.`,
+      ].join('\n'),
+    };
+  }
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -4329,6 +4587,11 @@ const LEERDOELEN = [
   { id: 'K.C1a', titel: 'Kwadratisch – ax² + bx + c = 0 (product-som)',            groep: 'Kwadratisch', gen: genKWC },
   { id: 'K.D1a', titel: 'Kwadratisch – abc-formule (decimaal afronden)',            groep: 'Kwadratisch', gen: genKWD },
   { id: 'K.E1a', titel: 'Kwadratisch – abc-formule (exact antwoord)',               groep: 'Kwadratisch', gen: genKWE },
+
+  /* ── S-doelen (Stelsels vergelijkingen) ─────────────────────────────── */
+  { id: 'S.1a', titel: 'Stelsel – direct optellen of aftrekken',    groep: 'Lineair', gen: genStelselE },
+  { id: 'S.1b', titel: 'Stelsel – eerst vermenigvuldigen',          groep: 'Lineair', gen: genStelselB },
+  { id: 'S.1c', titel: 'Stelsel – één vergelijking in y=ax+b-vorm', groep: 'Lineair', gen: genStelselC },
 ];
 
 function generateVraag(leerdoelId) {

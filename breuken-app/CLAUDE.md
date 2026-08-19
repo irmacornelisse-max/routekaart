@@ -129,5 +129,6 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | lin-formule | L.F1a, L.F1b, L.F1c, L.F2a, L.F2b, L.F2c |
 | lin-vergelijking | L.V1a, L.V1b, L.V1c |
 | lin-ongelijkheid | L.O1a, L.O1b, L.O1c |
+| lin-stelsel | S.1a, S.1b, S.1c |
 | kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
 | machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d |

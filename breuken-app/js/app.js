@@ -200,6 +200,12 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Lineaire ongelijkheden', knoppen: [{l:'a',id:'L.O1a'},{l:'b',id:'L.O1b'},{l:'c',id:'L.O1c'}] },
         ]
       },
+      {
+        id: 'lin-stelsel', label: 'Stelsels vergelijkingen',
+        items: [
+          { label: 'Stelsels vergelijkingen', knoppen: [{l:'a',id:'S.1a'},{l:'b',id:'S.1b'},{l:'c',id:'S.1c'}] },
+        ]
+      },
     ]
   },
   {
@@ -626,6 +632,8 @@ function renderOefenen(leerdoelId) {
   } else if (useStepList) {
     const extraTip = ((type === 'machtsvergelijking' && vraag.antwoord?.hasNeg) || type === 'kwadratisch')
       ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor twee oplossingen: getal <strong>v</strong> getal'
+      : type === 'stelsel'
+      ? ' &nbsp;·&nbsp; Eindantwoord als coördinaat: <em>(x, y)</em>'
       : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}</div>`;
@@ -1162,6 +1170,44 @@ function checkAntwoord(vraag, gegeven) {
     return 'fout';
   }
 
+  if (type === 'stelsel') {
+    const { x: xSol, y: ySol } = correct;
+    const tol = 0.005;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    // Normaliseer: verwijder \left, \right, \quad
+    const rawV = raw
+      .replace(/\\left/g, '').replace(/\\right/g, '')
+      .replace(/\\quad/g, ' ').replace(/\\;/g, ' ')
+      .trim();
+
+    // Eindvorm: (val1, val2) — geordend paar (x,y) of (y,x) allebei goed
+    const pairMatch = rawV.match(/^\(\s*(.+?)\s*,\s*(.+?)\s*\)$/);
+    if (pairMatch) {
+      try {
+        const v1 = _algEval(pairMatch[1].trim(), {});
+        const v2 = _algEval(pairMatch[2].trim(), {});
+        if (isFinite(v1) && isFinite(v2)) {
+          if (Math.abs(v1 - xSol) <= tol && Math.abs(v2 - ySol) <= tol)
+            return 'goed';
+        }
+      } catch {}
+      return 'fout';
+    }
+
+    // Tussenstap: geldige vergelijking die klopt voor de oplossing (x, y)
+    const parts = rawV.split('=');
+    if (parts.length === 2) {
+      try {
+        const lhs = _algEval(parts[0].trim(), { x: xSol, y: ySol });
+        const rhs = _algEval(parts[1].trim(), { x: xSol, y: ySol });
+        if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) return 'tussenstap';
+      } catch {}
+    }
+    return 'fout';
+  }
+
   if (type === 'formule-lijn') {
     const { m, b } = correct;
     const raw = (gegeven.latex || '').replace(/^y\s*=\s*/, '').trim();
@@ -1261,6 +1307,12 @@ function feedbackBoodschap(vraag, gegeven) {
     if (ld === 'K.D1a') return 'Gebruik de abc-formule en rond af op <strong>2 decimalen</strong>. Geef twee oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'K.E1a') return 'Gebruik de abc-formule en geef het <strong>exacte</strong> antwoord met de wortel. Geen decimalen.';
     return 'Geef twee oplossingen met de <strong>v</strong>-knop.';
+  }
+  if (vraag.antwoordType === 'stelsel') {
+    const ld = vraag.leerdoel;
+    if (ld === 'S.1b') return 'Vermenigvuldig eerst één of beide vergelijkingen zodat coëfficiënten gelijk of tegengesteld worden. Geef het eindantwoord als coördinaat: <em>(x, y)</em>.';
+    if (ld === 'S.1c') return 'Vul de uitdrukking voor $y$ (of $x$) uit vergelijking (1) direct in vergelijking (2) in. Geef het eindantwoord als coördinaat: <em>(x, y)</em>.';
+    return 'Kijk naar de coëfficiënten: zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als coördinaat: <em>(x, y)</em>.';
   }
   if (vraag.antwoordType === 'formule-lijn') {
     const { m, b } = vraag.antwoord;
@@ -1401,6 +1453,9 @@ function feedbackBoodschap(vraag, gegeven) {
     'K.C1a': 'Product-som methode: zoek twee getallen met het juiste product en de juiste som. Gebruik daarna de nulpuntsregel.',
     'K.D1a': 'Vul $a$, $b$ en $c$ in de abc-formule in: $v = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$. Rond af op 2 decimalen.',
     'K.E1a': 'Vul $a$, $b$ en $c$ in de abc-formule in. Vereenvoudig de wortel en de breuk volledig. Geef het exacte antwoord.',
+    'S.1a': 'Vergelijk de coëfficiënten van $x$ en van $y$. Zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als $(x, y)$.',
+    'S.1b': 'Vermenigvuldig één of beide vergelijkingen met een getal zodat een coëfficiënt gelijk of tegengesteld wordt. Dan optellen of aftrekken. Geef het eindantwoord als $(x, y)$.',
+    'S.1c': 'Vergelijking $(1)$ geeft $y$ of $x$ al vrij. Vul die uitdrukking direct in vergelijking $(2)$ in. Geef het eindantwoord als $(x, y)$.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
