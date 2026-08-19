@@ -3906,6 +3906,146 @@ function genMV1d() {
   };
 }
 
+/* ── M.V2 – hulpfuncties ─────────────────────────────────────────────────── */
+function _mvcTerm(coeff, varTeX, first) {
+  if (coeff === 0) return '';
+  const a = Math.abs(coeff);
+  const term = varTeX ? (a === 1 ? varTeX : `${a}${varTeX}`) : `${a}`;
+  if (first) return coeff < 0 ? `-${term}` : term;
+  return coeff < 0 ? ` - ${term}` : ` + ${term}`;
+}
+
+function _mvcFactor(root) {
+  return root > 0 ? `(x - ${root})` : `(x + ${Math.abs(root)})`;
+}
+
+function _mvcSqrtTeX(n) {
+  const k = Math.round(Math.sqrt(n));
+  return k * k === n ? `${k}` : `\\sqrt{${n}}`;
+}
+
+/* ── M.V2a – x³-vergelijking (herschikking → x eruit factoriseren) ──────── */
+function genMV2a() {
+  let p, q, tries = 0;
+  do {
+    p = rand(-5, 5);
+    q = rand(-5, 5);
+    tries++;
+  } while ((p === 0 || q === 0 || p === q || p + q === 0) && tries < 100);
+
+  const β = -(p + q);  // x²-coëfficiënt in standaardvorm
+  const γ = p * q;     // x-coëfficiënt in standaardvorm
+
+  const stdForm   = `x^3${_mvcTerm(β, 'x^{2}', false)}${_mvcTerm(γ, 'x', false)} = 0`;
+  const quadTeX   = `x^{2}${_mvcTerm(β, 'x', false)}${_mvcTerm(γ, '', false)}`;
+  const factored  = `x${_mvcFactor(p)}${_mvcFactor(q)} = 0`;
+
+  // Vraagvorm: herschikking (γx naar rechts, of βx²+γx naar rechts)
+  let vraagTeX;
+  if (Math.random() < 0.5) {
+    // Optie A: x³ + βx² = −γx
+    const lhs = `x^3${_mvcTerm(β, 'x^{2}', false)}`;
+    const rhs = _mvcTerm(-γ, 'x', true);
+    vraagTeX = `${lhs} = ${rhs}`;
+  } else {
+    // Optie B: x³ = −βx² − γx
+    const rhs = `${_mvcTerm(-β, 'x^{2}', true)}${_mvcTerm(-γ, 'x', false)}`;
+    vraagTeX = `x^3 = ${rhs}`;
+  }
+
+  return {
+    id: uid(), leerdoel: 'M.V2a',
+    vraag: `Los op: $${vraagTeX}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [0, p, q] },
+    hints: [
+      `Breng alles naar één kant: $${stdForm}$ Daarna kun je $x$ buiten haakjes brengen.`,
+      `Na uitfactoriseren: $x(${quadTeX}) = 0$. Ontbind de kwadratische factor verder en pas de nulpuntsregel toe.`,
+    ],
+    oplossing: [
+      `$${stdForm}$`,
+      `$x(${quadTeX}) = 0$`,
+      `$${factored}$`,
+      `$x = 0 \\vee x = ${p} \\vee x = ${q}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── M.V2b – biquadratische vergelijking (substitutie u = x²) ────────────── */
+function genMV2b() {
+  const sqCandidates = [1, 2, 3, 4, 5, 6, 8, 9, 12, 16, 25];
+  let u1, u2, b, tries = 0;
+  do {
+    if (Math.random() < 0.4) {
+      u1 = pick([1, 4, 9, 16, 25]);
+      u2 = pick([-1, -2, -3, -4, -5]);
+    } else {
+      u1 = pick(sqCandidates);
+      u2 = pick(sqCandidates);
+    }
+    b = -(u1 + u2);
+    tries++;
+  } while ((b === 0 || u1 === u2) && tries < 50);
+
+  // Zorg dat u1 ≥ u2 voor consistente weergave
+  if (u2 > 0 && u2 > u1) { const t = u1; u1 = u2; u2 = t; b = -(u1 + u2); }
+
+  const c         = u1 * u2;
+  const stdForm   = `x^4${_mvcTerm(b, 'x^{2}', false)}${_mvcTerm(c, '', false)} = 0`;
+  const uQuadTeX  = `u^2${_mvcTerm(b, 'u', false)}${_mvcTerm(c, '', false)}`;
+  const uFactor1  = u1 > 0 ? `(u - ${u1})` : `(u + ${Math.abs(u1)})`;
+  const uFactor2  = u2 > 0 ? `(u - ${u2})` : `(u + ${Math.abs(u2)})`;
+  const sol1Tex   = _mvcSqrtTeX(u1);
+
+  // x-oplossingen
+  const sols = [Math.sqrt(u1), -Math.sqrt(u1)];
+  let oplU2Line, oplSolLine;
+  if (u2 > 0) {
+    const sol2Tex = _mvcSqrtTeX(u2);
+    sols.push(Math.sqrt(u2), -Math.sqrt(u2));
+    oplU2Line  = `$x^2 = ${u1} \\Rightarrow x = \\pm ${sol1Tex}$\\quad en\\quad $x^2 = ${u2} \\Rightarrow x = \\pm ${sol2Tex}$`;
+    oplSolLine = `$x = ${sol1Tex} \\vee x = -${sol1Tex} \\vee x = ${sol2Tex} \\vee x = -${sol2Tex}$`;
+  } else {
+    oplU2Line  = `$x^2 = ${u1} \\Rightarrow x = \\pm ${sol1Tex}$\\quad en\\quad $x^2 = ${u2}$ heeft geen reële oplossing`;
+    oplSolLine = `$x = ${sol1Tex} \\vee x = -${sol1Tex}$`;
+  }
+
+  // Vraagvorm: 3 varianten
+  let vraagTeX;
+  const form = Math.floor(Math.random() * 3);
+  if (form === 0) {
+    vraagTeX = stdForm;
+  } else if (form === 1) {
+    // x⁴ + c = −bx² (x²-term naar rechts)
+    const lhs = `x^4${_mvcTerm(c, '', false)}`;
+    const rhs = _mvcTerm(-b, 'x^{2}', true);
+    vraagTeX = `${lhs} = ${rhs}`;
+  } else {
+    // x⁴ = −bx² − c
+    const rhs = `${_mvcTerm(-b, 'x^{2}', true)}${_mvcTerm(-c, '', false)}`;
+    vraagTeX = `x^4 = ${rhs}`;
+  }
+
+  return {
+    id: uid(), leerdoel: 'M.V2b',
+    vraag: `Los exact op: $${vraagTeX}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols },
+    hints: [
+      `Breng alles naar één kant en stel $u = x^2$. De vergelijking wordt $${uQuadTeX} = 0$.`,
+      `Los de kwadratische vergelijking in $u$ op. Neem dan de vierkantswortel van elke positieve $u$-waarde. Vergeet $\\pm$ niet!`,
+    ],
+    oplossing: [
+      `$${stdForm}$`,
+      `Stel $u = x^2\\!$: $${uQuadTeX} = 0$`,
+      `$${uFactor1}${uFactor2} = 0$`,
+      `$u = ${u1} \\vee u = ${u2}$`,
+      oplU2Line,
+      oplSolLine,
+    ].join('\n'),
+  };
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    K – Kwadratische verbanden
    ══════════════════════════════════════════════════════════════════════════ */
@@ -4580,6 +4720,8 @@ const LEERDOELEN = [
   { id: 'M.V1b', titel: 'Machtsvergelijking: met vermenigvuldiging (ax^n = c)',  groep: 'Machtsverbanden', gen: genMV1b },
   { id: 'M.V1c', titel: 'Machtsvergelijking: met optellen/aftrekken',            groep: 'Machtsverbanden', gen: genMV1c },
   { id: 'M.V1d', titel: 'Machtsvergelijking: met haakjes',                       groep: 'Machtsverbanden', gen: genMV1d },
+  { id: 'M.V2a', titel: 'Machtsvergelijking: x³-vorm (factoriseren)',            groep: 'Machtsverbanden', gen: genMV2a },
+  { id: 'M.V2b', titel: 'Machtsvergelijking: x⁴-vorm (substitutie u = x²)',     groep: 'Machtsverbanden', gen: genMV2b },
 
   /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
   { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },

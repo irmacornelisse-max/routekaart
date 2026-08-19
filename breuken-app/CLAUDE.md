@@ -131,4 +131,4 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | lin-ongelijkheid | L.O1a, L.O1b, L.O1c |
 | lin-stelsel | S.1a, S.1b, S.1c |
 | kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
-| machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d |
+| machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b |

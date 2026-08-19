@@ -226,6 +226,7 @@ const TOC_HOOFDSTUKKEN = [
         id: 'machts-vergelijking', label: 'Machtsvergelijkingen',
         items: [
           { label: 'Machtsvergelijkingen', knoppen: [{l:'a',id:'M.V1a'},{l:'b',id:'M.V1b'},{l:'c',id:'M.V1c'},{l:'d',id:'M.V1d'}] },
+          { label: 'Specifieke vormen',   knoppen: [{l:'a',id:'M.V2a'},{l:'b',id:'M.V2b'}] },
         ]
       },
     ]
@@ -630,8 +631,8 @@ function renderOefenen(leerdoelId) {
   } else if (type === 'kruistabel') {
     antwoordInhoud = renderKruistabelUI(vraag);
   } else if (useStepList) {
-    const extraTip = ((type === 'machtsvergelijking' && vraag.antwoord?.hasNeg) || type === 'kwadratisch')
-      ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor twee oplossingen: getal <strong>v</strong> getal'
+    const extraTip = ((type === 'machtsvergelijking' && vraag.antwoord?.hasNeg) || type === 'kwadratisch' || type === 'vergelijking-mv')
+      ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor meerdere oplossingen: getal <strong>v</strong> getal'
       : type === 'stelsel'
       ? ' &nbsp;·&nbsp; Eindantwoord als coördinaat: <em>(x, y)</em>'
       : '';
@@ -1125,6 +1126,50 @@ function checkAntwoord(vraag, gegeven) {
     return 'fout';
   }
 
+  if (type === 'vergelijking-mv') {
+    const { sols } = correct;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+    const rawV = raw.replace(/\\quad/g, ' ').replace(/\\;/g, ' ').trim();
+
+    // Eindantwoord: "x = val1 v x = val2 v ..."
+    const xParts = rawV.split(/\s*v\s*(?=x\s*=)/);
+    if (xParts.length === sols.length) {
+      const parsed = [];
+      let ok = true;
+      for (const part of xParts) {
+        const m = part.trim().match(/^x\s*=\s*(.+)$/);
+        if (!m) { ok = false; break; }
+        try {
+          const v = _algEval(m[1].trim(), {});
+          if (!isFinite(v)) { ok = false; break; }
+          parsed.push(v);
+        } catch { ok = false; break; }
+      }
+      if (ok && parsed.length === sols.length) {
+        const sp = [...parsed].sort((a, b) => a - b);
+        const ss = [...sols].sort((a, b) => a - b);
+        if (sp.every((v, i) => Math.abs(v - ss[i]) < 1e-6)) return 'goed';
+      }
+    }
+
+    // Tussenstap: elk v-segment apart controleren (bijv. "x=0 v x²+7x+12=0")
+    const segments = rawV.split(/\s*v\s*/);
+    for (const seg of segments) {
+      const eqParts = seg.split('=');
+      if (eqParts.length === 2) {
+        for (const xv of sols) {
+          try {
+            const lhs = _algEval(eqParts[0].trim(), { x: xv });
+            const rhs = _algEval(eqParts[1].trim(), { x: xv });
+            if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) return 'tussenstap';
+          } catch {}
+        }
+      }
+    }
+    return 'fout';
+  }
+
   if (type === 'kwadratisch') {
     const { sols, v, decimaal } = correct;
     const tol = decimaal ? 0.005 : 1e-6;
@@ -1314,6 +1359,12 @@ function feedbackBoodschap(vraag, gegeven) {
     if (ld === 'S.1c') return 'Vul de uitdrukking voor $y$ (of $x$) uit vergelijking (1) direct in vergelijking (2) in. Geef het eindantwoord als coördinaat: <em>(x, y)</em>.';
     return 'Kijk naar de coëfficiënten: zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als coördinaat: <em>(x, y)</em>.';
   }
+  if (vraag.antwoordType === 'vergelijking-mv') {
+    const ld = vraag.leerdoel;
+    if (ld === 'M.V2a') return 'Breng alles naar één kant, haal $x$ eruit en ontbind de kwadratische factor. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'M.V2b') return 'Substitueer $u = x^2$, los de kwadratische vergelijking in $u$ op en neem dan de vierkantswortel. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    return 'Geef alle oplossingen met de <strong>v</strong>-knop.';
+  }
   if (vraag.antwoordType === 'formule-lijn') {
     const { m, b } = vraag.antwoord;
     const formule = _lgFormule(m, b, vraag.data?.mDisplay);
@@ -1444,6 +1495,8 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.O1a': 'Pas dezelfde bewerking toe op beide kanten. Let op: het ongelijkheidsteken draait om bij delen door een negatief getal.',
     'L.O1b': 'Zet $x$-termen links en getallen rechts. Controleer het teken van de coëfficiënt vóór je deelt.',
     'L.O1c': 'Werk eerst de haakjes uit. Herschik daarna en let op het teken bij het delen.',
+    'M.V2a': 'Breng alles naar één kant zodat de vergelijking $= 0$ is. Haal $x$ eruit → kwadratische vergelijking. Nulpuntsregel: elke factor $= 0$. Geef alle oplossingen met de v-knop.',
+    'M.V2b': 'Stel $u = x^2$: dan wordt $x^4 = u^2$. Los de kwadratische in $u$ op, neem dan de vierkantswortel voor $x$ ($\\pm$). Geef alle oplossingen met de v-knop.',
     'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
     'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
     'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',
@@ -1666,7 +1719,8 @@ function addNewActiveRow() {
     ta.addEventListener('keydown', e => {
       const _kq = APP.huidigVraag;
       const _needsV = (_kq?.antwoordType === 'machtsvergelijking' && _kq?.antwoord?.hasNeg)
-                    || _kq?.antwoordType === 'kwadratisch';
+                    || _kq?.antwoordType === 'kwadratisch'
+                    || _kq?.antwoordType === 'vergelijking-mv';
       if (e.key === 'v' && _needsV) {
         e.preventDefault();
         mq.write('\\quad v\\quad');
