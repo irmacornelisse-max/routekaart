@@ -3722,6 +3722,441 @@ function genLO1c() {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   M.V – Machtsvergelijkingen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function _mvIsPerfect(val, n) {
+  if (val <= 0) return false;
+  const r = Math.round(Math.pow(val, 1 / n));
+  return r >= 2 && Math.abs(Math.pow(r, n) - val) < 0.5;
+}
+
+/* ── M.V1a – directe machtsvergelijking x^n = c ─────────────────────────── */
+function genMV1a() {
+  const n = pick([2, 3, 4, 5, 6]);
+  const hasNeg = n % 2 === 0;
+  const maxK = n >= 5 ? 3 : n === 4 ? 4 : n === 3 ? 5 : 9;
+  const k = rand(2, maxK);
+  const useNegBase = !hasNeg && Math.random() < 0.4;
+  const inner = useNegBase ? -Math.pow(k, n) : Math.pow(k, n);
+  const solVal = useNegBase ? -k : k;
+
+  const rootTeX = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
+  const solTeX = hasNeg ? `\\pm ${k}` : `${solVal}`;
+
+  const hints = [`Neem de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.`];
+  if (hasNeg) hints.push('Er zijn twee oplossingen bij een even macht. Gebruik de v knop op het toetsenbord en typ de twee oplossingen met een v ertussen: x = [getal] v x = -[getal].');
+
+  return {
+    id: uid(), leerdoel: 'M.V1a',
+    vraag: `Los op: $x^{${n}} = ${inner}$`,
+    antwoordType: 'machtsvergelijking',
+    antwoord: { inner, n, hasNeg, p: 0 },
+    hints,
+    oplossing: `$x^{${n}} = ${inner}$\n$x = ${rootDisp} = ${solTeX}$`,
+  };
+}
+
+/* ── M.V1b – ax^n = c (antwoord vereist wortel) ─────────────────────────── */
+function genMV1b() {
+  const n = pick([2, 3, 4, 5, 6]);
+  const hasNeg = n % 2 === 0;
+  const a = pick([2, 3, 4, 5]);
+  let inner;
+  do { inner = rand(2, 15); } while (_mvIsPerfect(inner, n));
+  if (!hasNeg && Math.random() < 0.3) inner = -inner;
+  const c = a * inner;
+
+  const rootTeX = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
+  const solTeX = hasNeg ? `\\pm ${rootTeX}` : rootDisp;
+
+  return {
+    id: uid(), leerdoel: 'M.V1b',
+    vraag: `Los op: $${a}x^{${n}} = ${c}$`,
+    antwoordType: 'machtsvergelijking',
+    antwoord: { inner, n, hasNeg, p: 0 },
+    hints: [
+      `Deel beide kanten door $${a}$.`,
+      `Neem daarna de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.` +
+      (hasNeg ? ' Er zijn twee oplossingen bij een even macht. Gebruik de v knop op het toetsenbord en typ de twee oplossingen met een v ertussen.' : ''),
+    ],
+    oplossing: [`$${a}x^{${n}} = ${c}$`, `$x^{${n}} = ${inner}$`, `$x = ${solTeX}$`].join('\n'),
+  };
+}
+
+/* ── M.V1c – ax^n + b = c (gemengd: nette en niet-nette antwoorden) ─────── */
+function genMV1c() {
+  const n = pick([2, 3, 4, 5, 6]);
+  const hasNeg = n % 2 === 0;
+  const a = pick([2, 3, 4, 5]);
+  let b; do { b = rand(-10, 10); } while (b === 0);
+
+  const niceAns = Math.random() < 0.5;
+  let inner;
+  if (niceAns) {
+    const maxK = n >= 5 ? 3 : n === 4 ? 4 : n === 3 ? 4 : 6;
+    const k0 = rand(2, maxK);
+    const useNeg = !hasNeg && Math.random() < 0.4;
+    inner = useNeg ? -Math.pow(k0, n) : Math.pow(k0, n);
+  } else {
+    do { inner = rand(2, 12); } while (_mvIsPerfect(inner, n));
+    if (!hasNeg && Math.random() < 0.3) inner = -inner;
+  }
+  if (hasNeg && inner < 0) inner = -inner;
+  const c = a * inner + b;
+
+  const bStr = b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
+  const lhsTeX = `${a}x^{${n}}${bStr}`;
+  const rootTeX = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
+  const k = niceAns ? Math.round(_mvNthRoot(Math.abs(inner), n)) : 0;
+  const solTeX = hasNeg
+    ? (niceAns ? `\\pm ${k}` : `\\pm ${rootTeX}`)
+    : (niceAns ? `${inner < 0 ? -k : k}` : rootDisp);
+
+  return {
+    id: uid(), leerdoel: 'M.V1c',
+    vraag: `Los op: $${lhsTeX} = ${c}$`,
+    antwoordType: 'machtsvergelijking',
+    antwoord: { inner, n, hasNeg, p: 0 },
+    hints: [
+      `Isoleer $x^{${n}}$: breng $${b > 0 ? b : `(${b})`}$ naar de rechterkant.`,
+      `Neem dan de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.` +
+      (hasNeg ? ' Er zijn twee oplossingen bij een even macht. Gebruik de v knop op het toetsenbord en typ de twee oplossingen met een v ertussen.' : ''),
+    ],
+    oplossing: [
+      `$${lhsTeX} = ${c}$`,
+      `$${a}x^{${n}} = ${c - b}$`,
+      `$x^{${n}} = ${inner}$`,
+      `$x = ${solTeX}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── M.V1d – a(x+p)^n + b = c (met haakjes) ────────────────────────────── */
+function genMV1d() {
+  const n = pick([2, 3, 4, 5, 6]);
+  const hasNeg = n % 2 === 0;
+  const a = pick([2, 3, 4, 5]);
+  const b = rand(-8, 8);
+  let p; do { p = rand(-3, 3); } while (p === 0);
+
+  const niceAns = Math.random() < 0.5;
+  let inner;
+  if (niceAns) {
+    const maxK = n >= 5 ? 3 : n === 4 ? 4 : n === 3 ? 4 : 5;
+    const k0 = rand(2, maxK);
+    const useNeg = !hasNeg && Math.random() < 0.4;
+    inner = useNeg ? -Math.pow(k0, n) : Math.pow(k0, n);
+  } else {
+    do { inner = rand(2, 12); } while (_mvIsPerfect(inner, n));
+    if (!hasNeg && Math.random() < 0.3) inner = -inner;
+  }
+  if (hasNeg && inner < 0) inner = -inner;
+  const c = a * inner + b;
+
+  const pStr  = p > 0 ? `+ ${p}` : `- ${-p}`;
+  const bStr  = b > 0 ? ` + ${b}` : b < 0 ? ` - ${-b}` : '';
+  const lhsTeX = `${a}(x ${pStr})^{${n}}${bStr}`;
+  const xpTeX  = p > 0 ? `x + ${p}` : `x - ${-p}`;
+  const offsetStr = p > 0 ? ` - ${p}` : ` + ${-p}`;
+
+  const rootTeX  = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
+  const k = niceAns ? Math.round(_mvNthRoot(Math.abs(inner), n)) : 0;
+
+  let xpStap, solTeX;
+  if (hasNeg) {
+    xpStap = niceAns ? `${xpTeX} = \\pm ${k}` : `${xpTeX} = \\pm ${rootTeX}`;
+    solTeX = niceAns
+      ? `x = ${k - p}$ of $x = ${-k - p}`
+      : `x = ${rootTeX}${offsetStr}$ of $x = -${rootTeX}${offsetStr}`;
+  } else {
+    const niceVal = niceAns ? (inner < 0 ? -k : k) - p : null;
+    xpStap = niceAns ? `${xpTeX} = ${inner < 0 ? -k : k}` : `${xpTeX} = ${rootDisp}`;
+    solTeX = niceAns ? `x = ${niceVal}` : `x = ${rootDisp}${offsetStr}`;
+  }
+
+  const hint1 = b === 0
+    ? `Deel beide kanten door $${a}$.`
+    : b > 0
+      ? `Trek $${b}$ af van beide kanten en deel daarna door $${a}$.`
+      : `Tel $${-b}$ op bij beide kanten en deel daarna door $${a}$.`;
+
+  return {
+    id: uid(), leerdoel: 'M.V1d',
+    vraag: `Los op: $${lhsTeX} = ${c}$`,
+    antwoordType: 'machtsvergelijking',
+    antwoord: { inner, n, hasNeg, p },
+    hints: [
+      hint1,
+      `Neem dan de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten en breng $x$ vrij.` +
+      (hasNeg ? ' Er zijn twee oplossingen bij een even macht. Typ ze met een v ertussen: x = [eerste] v x = [tweede].' : ''),
+    ],
+    oplossing: [
+      `$${lhsTeX} = ${c}$`,
+      b !== 0 ? `$${a}(x ${pStr})^{${n}} = ${c - b}$` : null,
+      `$(x ${pStr})^{${n}} = ${inner}$`,
+      `$${xpStap}$`,
+      `$${solTeX}$`,
+    ].filter(Boolean).join('\n'),
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   K – Kwadratische verbanden
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function _kwIsPerfectSqRatio(c, a) {
+  const r = c / a;
+  if (r <= 0 || !Number.isFinite(r)) return false;
+  const sq = Math.round(Math.sqrt(r));
+  return Math.abs(sq * sq - r) < 1e-9;
+}
+
+function _kwIsPerfectSq(n) {
+  if (n <= 0) return false;
+  const sq = Math.round(Math.sqrt(n));
+  return sq * sq === n;
+}
+
+function _kwSimplifyRadical(n) {
+  for (let k = Math.floor(Math.sqrt(n)); k >= 2; k--) {
+    if (n % (k * k) === 0) return { coeff: k, inner: n / (k * k) };
+  }
+  return { coeff: 1, inner: n };
+}
+
+function _kwPolyTeX(a, b, c, v) {
+  const aTeX = a === 1 ? '' : `${a}`;
+  let s = `${aTeX}${v}^{2}`;
+  if (b !== 0) {
+    const absB = Math.abs(b);
+    const bCoefTeX = absB === 1 ? '' : `${absB}`;
+    s += b > 0 ? ` + ${bCoefTeX}${v}` : ` - ${bCoefTeX}${v}`;
+  }
+  if (c !== 0) s += c > 0 ? ` + ${c}` : ` - ${Math.abs(c)}`;
+  return s;
+}
+
+/* ── K.A1a – ax² = c ─────────────────────────────────────────────────────── */
+function genKWA() {
+  const letters = ['x', 'y', 't', 'n', 'm'];
+  const v = pick(letters);
+  const a = rand(1, 5);
+  const integerAns = Math.random() < 0.55;
+  let c, sol;
+  if (integerAns) {
+    const r = rand(1, 9);
+    c = a * r * r;
+    sol = r;
+  } else {
+    do { c = rand(2, 60); } while (_kwIsPerfectSqRatio(c, a));
+    sol = Math.sqrt(c / a);
+  }
+  const aTeX = a === 1 ? '' : `${a}`;
+  const forms = [
+    `${aTeX}${v}^{2} = ${c}`,
+    `${c} = ${aTeX}${v}^{2}`,
+    `${aTeX}${v}^{2} - ${c} = 0`,
+  ];
+  const eqTeX = pick(forms);
+  const [cn, cd] = simplifyFrac(c, a);
+  const innerStr = cd === 1 ? `${cn}` : `\\frac{${cn}}{${cd}}`;
+  const rootTeX = a === 1 ? `\\sqrt{${c}}` : `\\sqrt{${innerStr}}`;
+  const decApprox = integerAns ? null : Math.round(sol * 100) / 100;
+  const oplSteps = [
+    `$${aTeX}${v}^{2} = ${c}$`,
+    a !== 1 ? `$${v}^{2} = ${innerStr}$` : null,
+    integerAns
+      ? `$${v} = ${sol}$ of $${v} = -${sol}$`
+      : `$${v} = ${rootTeX}$ of $${v} = -${rootTeX}$ ($\\approx ${decApprox}$ of $\\approx -${decApprox}$)`,
+  ].filter(Boolean);
+  return {
+    id: uid(), leerdoel: 'K.A1a',
+    vraag: `Los op: $${eqTeX}$`,
+    antwoordType: 'kwadratisch',
+    antwoord: { sols: [sol, -sol], v, decimaal: true },
+    hints: [
+      `Isoleer $${v}^{2}$ en neem daarna de vierkantswortel van beide kanten.`,
+      `Er zijn twee oplossingen. Gebruik de <strong>v</strong>-knop: ${v} = [waarde] v ${v} = −[waarde].`,
+    ],
+    oplossing: oplSteps.join('\n'),
+  };
+}
+
+/* ── K.B1a – ax² = bx ───────────────────────────────────────────────────── */
+function genKWB() {
+  const letters = ['x', 'y', 't', 'n', 'm'];
+  const v = pick(letters);
+  const a = rand(1, 5);
+  const b = rand(2, 15);
+  const sol2 = b / a;
+  const [sn, sd] = simplifyFrac(b, a);
+  const sol2TeX = sd === 1 ? `${sn}` : `\\frac{${sn}}{${sd}}`;
+  const aTeX = a === 1 ? '' : `${a}`;
+  const bVTeX = b === 1 ? v : `${b}${v}`;
+  const forms = [
+    `${aTeX}${v}^{2} = ${bVTeX}`,
+    `${bVTeX} = ${aTeX}${v}^{2}`,
+    `${aTeX}${v}^{2} - ${bVTeX} = 0`,
+  ];
+  const eqTeX = pick(forms);
+  const factorTeX = `${v}(${aTeX}${v} - ${b})`;
+  const stapsB = [`$${aTeX}${v}^{2} - ${bVTeX} = 0$`, `$${factorTeX} = 0$`];
+  if (a === 1) {
+    stapsB.push(`$${v} = 0$ of $${v} = ${sol2TeX}$`);
+  } else {
+    stapsB.push(`$${v} = 0$ of $${aTeX}${v} = ${b}$`);
+    stapsB.push(`$${v} = 0$ of $${v} = ${sol2TeX}$`);
+  }
+  return {
+    id: uid(), leerdoel: 'K.B1a',
+    vraag: `Los op: $${eqTeX}$`,
+    antwoordType: 'kwadratisch',
+    antwoord: { sols: [0, sol2], v, decimaal: true },
+    hints: [
+      `Breng alles naar één kant zodat de vergelijking gelijk is aan nul.`,
+      `Ontbind in factoren: $${v}$ is een gemeenschappelijke factor. Gebruik daarna de nulpuntsregel.`,
+    ],
+    oplossing: stapsB.join('\n'),
+  };
+}
+
+/* ── K.C1a – ax² + bx + c = 0, product-som methode ─────────────────────── */
+function genKWC() {
+  const letters = ['x', 'y', 't', 'n', 'm'];
+  const v = pick(letters);
+  let r1, r2;
+  do { r1 = rand(-6, 6); r2 = rand(-6, 6); }
+  while (r1 === r2 || r1 === 0 || r2 === 0);
+  const a = pick([1, 1, 2]);
+  const bCoef = -a * (r1 + r2);
+  const cCoef = a * r1 * r2;
+  const lhsTeX = _kwPolyTeX(a, bCoef, cCoef, v);
+  const f1 = r1 > 0 ? `(${v} - ${r1})` : `(${v} + ${-r1})`;
+  const f2 = r2 > 0 ? `(${v} - ${r2})` : `(${v} + ${-r2})`;
+  const monicFactored = `${f1}${f2}`;
+  const stapsC = [`$${lhsTeX} = 0$`];
+  if (a > 1) stapsC.push(`$${_kwPolyTeX(1, bCoef / a, cCoef / a, v)} = 0$`);
+  stapsC.push(`$${monicFactored} = 0$`);
+  stapsC.push(`$${v} = ${r1}$ of $${v} = ${r2}$`);
+  return {
+    id: uid(), leerdoel: 'K.C1a',
+    vraag: `Los op: $${lhsTeX} = 0$`,
+    antwoordType: 'kwadratisch',
+    antwoord: { sols: [r1, r2], v, decimaal: true },
+    hints: [
+      a > 1
+        ? `Deel beide kanten door $${a}$ om een monicse vergelijking te krijgen.`
+        : `Zoek twee getallen waarvan het product gelijk is aan het constante getal en de som gelijk is aan de coëfficiënt van $${v}$.`,
+      `Schrijf de linker kant als een product van twee factoren en gebruik daarna de nulpuntsregel.`,
+    ],
+    oplossing: stapsC.join('\n'),
+  };
+}
+
+/* ── K.D1a – abc-formule, afronden op 2 decimalen ───────────────────────── */
+function genKWD() {
+  const letters = ['x', 'y', 't', 'n', 'm'];
+  const v = pick(letters);
+  let a, b, c, D, tries = 0;
+  do {
+    a = rand(1, 4);
+    b = rand(-8, 8); if (b === 0) b = pick([-3, -2, 2, 3]);
+    c = rand(-6, 6); if (c === 0) c = pick([-2, -1, 1, 2]);
+    D = b * b - 4 * a * c;
+    if (++tries > 500) { a = 1; b = -3; c = 1; D = 5; break; }
+  } while (D <= 0 || _kwIsPerfectSq(D));
+  const sqrtD = Math.sqrt(D);
+  const twoA = 2 * a;
+  const sol1 = (-b + sqrtD) / twoA;
+  const sol2 = (-b - sqrtD) / twoA;
+  const dec1 = Math.round(sol1 * 100) / 100;
+  const dec2 = Math.round(sol2 * 100) / 100;
+  const lhsTeX = _kwPolyTeX(a, b, c, v);
+  const negB = -b;
+  const cDisp = c < 0 ? `(${c})` : `${c}`;
+  return {
+    id: uid(), leerdoel: 'K.D1a',
+    vraag: `Los op: $${lhsTeX} = 0$`,
+    antwoordType: 'kwadratisch',
+    antwoord: { sols: [sol1, sol2], v, decimaal: true },
+    hints: [
+      `Gebruik de abc-formule: $${v} = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.`,
+      `Identificeer $a = ${a}$, $b = ${b}$, $c = ${c}$ en vul in. Rond af op 2 decimalen.`,
+    ],
+    oplossing: [
+      `$a = ${a},\\; b = ${b},\\; c = ${c}$`,
+      `$D = (${b})^2 - 4 \\cdot ${a} \\cdot ${cDisp} = ${D}$`,
+      `$${v} = \\dfrac{${negB} \\pm \\sqrt{${D}}}{${twoA}}$`,
+      `$${v} \\approx ${dec1}$ of $${v} \\approx ${dec2}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── K.E1a – abc-formule, exact antwoord ────────────────────────────────── */
+function genKWE() {
+  const letters = ['x', 'y', 't', 'n', 'm'];
+  const v = pick(letters);
+  let a, b, c, D, tries = 0;
+  do {
+    a = rand(1, 3);
+    b = rand(-6, 6); if (b === 0) b = pick([-2, 2]);
+    c = rand(-5, 5); if (c === 0) c = pick([-1, 1]);
+    D = b * b - 4 * a * c;
+    if (++tries > 500) { a = 1; b = -2; c = -1; D = 8; break; }
+  } while (D <= 0 || _kwIsPerfectSq(D));
+  const sqrtD = Math.sqrt(D);
+  const twoA = 2 * a;
+  const sol1 = (-b + sqrtD) / twoA;
+  const sol2 = (-b - sqrtD) / twoA;
+  const { coeff: sqC, inner: sqIn } = _kwSimplifyRadical(D);
+  const rootTeX = sqC === 1 ? `\\sqrt{${D}}` : `${sqC}\\sqrt{${sqIn}}`;
+  const negB = -b;
+  let sol1TeX, sol2TeX;
+  if (negB === 0) {
+    const g = gcd(sqC, twoA);
+    const cc = sqC / g, ta = twoA / g;
+    const rt = cc === 1 ? `\\sqrt{${sqIn}}` : `${cc}\\sqrt{${sqIn}}`;
+    sol1TeX = ta === 1 ? rt : `\\frac{${rt}}{${ta}}`;
+    sol2TeX = ta === 1 ? `-${rt}` : `\\frac{-${rt}}{${ta}}`;
+  } else {
+    const g = gcd(gcd(Math.abs(negB), sqC), twoA);
+    if (g > 1) {
+      const n = negB / g, cc = sqC / g, ta = twoA / g;
+      const rt = cc === 1 ? `\\sqrt{${sqIn}}` : `${cc}\\sqrt{${sqIn}}`;
+      sol1TeX = ta === 1 ? `${n} + ${rt}` : `\\frac{${n} + ${rt}}{${ta}}`;
+      sol2TeX = ta === 1 ? `${n} - ${rt}` : `\\frac{${n} - ${rt}}{${ta}}`;
+    } else {
+      sol1TeX = `\\frac{${negB} + ${rootTeX}}{${twoA}}`;
+      sol2TeX = `\\frac{${negB} - ${rootTeX}}{${twoA}}`;
+    }
+  }
+  const lhsTeX = _kwPolyTeX(a, b, c, v);
+  const cDisp = c < 0 ? `(${c})` : `${c}`;
+  const stapsE = [
+    `$a = ${a},\\; b = ${b},\\; c = ${c}$`,
+    `$D = (${b})^2 - 4 \\cdot ${a} \\cdot ${cDisp} = ${D}$`,
+  ];
+  if (sqC > 1) stapsE.push(`$\\sqrt{${D}} = ${rootTeX}$`);
+  stapsE.push(`$${v} = ${sol1TeX}$ of $${v} = ${sol2TeX}$`);
+  return {
+    id: uid(), leerdoel: 'K.E1a',
+    vraag: `Los op: $${lhsTeX} = 0$`,
+    antwoordType: 'kwadratisch',
+    antwoord: { sols: [sol1, sol2], v, decimaal: false },
+    hints: [
+      `Gebruik de abc-formule: $${v} = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.`,
+      `Vereenvoudig de wortel en de breuk zo ver mogelijk. Geef het exacte antwoord (geen decimalen).`,
+    ],
+    oplossing: stapsE.join('\n'),
+  };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -3881,6 +4316,19 @@ const LEERDOELEN = [
   { id: 'L.O1a',  titel: 'Lineair – ongelijkheid: 1-stap',            groep: 'Lineair', gen: genLO1a  },
   { id: 'L.O1b',  titel: 'Lineair – ongelijkheid: 2-stap',            groep: 'Lineair', gen: genLO1b  },
   { id: 'L.O1c',  titel: 'Lineair – ongelijkheid: met haakjes',       groep: 'Lineair', gen: genLO1c  },
+
+  /* ── M.V-doelen (Machtsvergelijkingen) ─────────────────────────────── */
+  { id: 'M.V1a', titel: 'Machtsvergelijking: directe wortel (x^n = c)',          groep: 'Machtsverbanden', gen: genMV1a },
+  { id: 'M.V1b', titel: 'Machtsvergelijking: met vermenigvuldiging (ax^n = c)',  groep: 'Machtsverbanden', gen: genMV1b },
+  { id: 'M.V1c', titel: 'Machtsvergelijking: met optellen/aftrekken',            groep: 'Machtsverbanden', gen: genMV1c },
+  { id: 'M.V1d', titel: 'Machtsvergelijking: met haakjes',                       groep: 'Machtsverbanden', gen: genMV1d },
+
+  /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
+  { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },
+  { id: 'K.B1a', titel: 'Kwadratisch – ax² = bx (gemeenschappelijke factor)',       groep: 'Kwadratisch', gen: genKWB },
+  { id: 'K.C1a', titel: 'Kwadratisch – ax² + bx + c = 0 (product-som)',            groep: 'Kwadratisch', gen: genKWC },
+  { id: 'K.D1a', titel: 'Kwadratisch – abc-formule (decimaal afronden)',            groep: 'Kwadratisch', gen: genKWD },
+  { id: 'K.E1a', titel: 'Kwadratisch – abc-formule (exact antwoord)',               groep: 'Kwadratisch', gen: genKWE },
 ];
 
 function generateVraag(leerdoelId) {

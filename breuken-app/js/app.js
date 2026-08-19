@@ -194,6 +194,34 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Lineaire vergelijkingen', knoppen: [{l:'a',id:'L.V1a'},{l:'b',id:'L.V1b'},{l:'c',id:'L.V1c'}] },
         ]
       },
+      {
+        id: 'lin-ongelijkheid', label: 'Lineaire ongelijkheden',
+        items: [
+          { label: 'Lineaire ongelijkheden', knoppen: [{l:'a',id:'L.O1a'},{l:'b',id:'L.O1b'},{l:'c',id:'L.O1c'}] },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'kwadratisch', label: 'Kwadratische verbanden',
+    secties: [
+      {
+        id: 'kw-vergelijking', label: 'Kwadratische vergelijkingen',
+        items: [
+          { label: 'Kwadratische vergelijkingen', knoppen: [{l:'a',id:'K.A1a'},{l:'b',id:'K.B1a'},{l:'c',id:'K.C1a'},{l:'d',id:'K.D1a'},{l:'e',id:'K.E1a'}] },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'machtsverbanden', label: 'Machtsverbanden',
+    secties: [
+      {
+        id: 'machts-vergelijking', label: 'Machtsvergelijkingen',
+        items: [
+          { label: 'Machtsvergelijkingen', knoppen: [{l:'a',id:'M.V1a'},{l:'b',id:'M.V1b'},{l:'c',id:'M.V1c'},{l:'d',id:'M.V1d'}] },
+        ]
+      },
     ]
   },
   {
@@ -596,8 +624,11 @@ function renderOefenen(leerdoelId) {
   } else if (type === 'kruistabel') {
     antwoordInhoud = renderKruistabelUI(vraag);
   } else if (useStepList) {
+    const extraTip = ((type === 'machtsvergelijking' && vraag.antwoord?.hasNeg) || type === 'kwadratisch')
+      ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor twee oplossingen: getal <strong>v</strong> getal'
+      : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
-    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren</div>`;
+    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}</div>`;
   }
 
   const tijdLimiet = getTijdLimiet();
@@ -956,6 +987,47 @@ function checkAntwoord(vraag, gegeven) {
     return onA && onB ? 'goed' : 'fout';
   }
 
+  if (type === 'ongelijkheid') {
+    const { teller, noemer, operator } = correct;
+    const expected = teller / noemer;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    const norm = s => s.replace(/\\leq\b/g, '\\le').replace(/\\geq\b/g, '\\ge');
+    const normalized = norm(raw);
+    const expectedOp = norm(operator);
+    const applyOp = (op, a, b) =>
+      op === '<' ? a < b : op === '>' ? a > b : op === '\\le' ? a <= b : a >= b;
+
+    // Eindvorm: x [op] [waarde]
+    const finalM = normalized.match(/^x\s*(\\le|\\ge|<|>)\s*(.+)$/);
+    if (finalM) {
+      if (finalM[1] !== expectedOp) return 'fout';
+      try {
+        const val = _algEval(finalM[2].trim(), {});
+        if (typeof val === 'number' && isFinite(val) && Math.abs(val - expected) < 1e-9) return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // Tussenstap: lhs [op] rhs die equivalent is aan de verwachte ongelijkheid
+    const ineqM = normalized.match(/^(.+?)(\\le|\\ge|<|>)(.+)$/);
+    if (ineqM) {
+      const above = expected + 0.001, below = expected - 0.001;
+      const expAbove = applyOp(expectedOp, above, expected);
+      const expBelow = applyOp(expectedOp, below, expected);
+      try {
+        const lhsA = _algEval(ineqM[1].trim(), { x: above });
+        const rhsA = _algEval(ineqM[3].trim(), { x: above });
+        const lhsB = _algEval(ineqM[1].trim(), { x: below });
+        const rhsB = _algEval(ineqM[3].trim(), { x: below });
+        if (applyOp(ineqM[2], lhsA, rhsA) === expAbove &&
+            applyOp(ineqM[2], lhsB, rhsB) === expBelow) return 'tussenstap';
+      } catch {}
+    }
+    return 'fout';
+  }
+
   if (type === 'vergelijking') {
     const { teller, noemer } = correct;
     const expected = teller / noemer;
@@ -982,6 +1054,111 @@ function checkAntwoord(vraag, gegeven) {
       } catch {}
     }
 
+    return 'fout';
+  }
+
+  if (type === 'machtsvergelijking') {
+    const { inner, n, hasNeg, p = 0 } = correct;
+    const rootVal = _mvNthRoot(inner, n);
+    const expected_pos = rootVal - p;
+    const expected_neg = hasNeg ? -rootVal - p : null;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    // "x = val1 v x = val2" (beide oplossingen via v-notatie; \; is MathQuill-spatie van v-knop)
+    const rawV = raw.replace(/\\quad/g, '').replace(/\\;/g, '').replace(/\\text\s*\{[^}]*v[^}]*\}/g, 'v');
+    const vMatch = rawV.match(/^x\s*=\s*(.+?)\s*v\s*x\s*=\s*(.+)$/);
+    if (vMatch && hasNeg) {
+      try {
+        const v1 = _algEval(vMatch[1].trim(), {});
+        const v2 = _algEval(vMatch[2].trim(), {});
+        if (isFinite(v1) && isFinite(v2) &&
+            ((Math.abs(v1 - expected_pos) < 1e-6 && Math.abs(v2 - expected_neg) < 1e-6) ||
+             (Math.abs(v1 - expected_neg) < 1e-6 && Math.abs(v2 - expected_pos) < 1e-6)))
+          return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // "x = \pm expr" (beide oplossingen via ±)
+    const pmMatch = raw.match(/^x\s*=\s*\\pm\s*(.+)$/);
+    if (pmMatch && hasNeg) {
+      try {
+        const val = _algEval(pmMatch[1].trim(), {});
+        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // "x = expr" (enkelvoudige waarde)
+    const eqMatch = raw.match(/^x\s*=\s*(.+)$/);
+    if (eqMatch) {
+      // Bij even macht zijn altijd twee oplossingen vereist
+      if (hasNeg) return 'fout';
+      try {
+        const val = _algEval(eqMatch[1].trim(), {});
+        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // Tussenstap: lhs = rhs geldig voor x = oplossing
+    const parts = raw.split('=');
+    if (parts.length === 2) {
+      const testVals = [expected_pos, ...(hasNeg ? [expected_neg] : [])];
+      for (const xv of testVals) {
+        try {
+          const lhs = _algEval(parts[0].trim(), { x: xv });
+          const rhs = _algEval(parts[1].trim(), { x: xv });
+          if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) return 'tussenstap';
+        } catch {}
+      }
+    }
+    return 'fout';
+  }
+
+  if (type === 'kwadratisch') {
+    const { sols, v, decimaal } = correct;
+    const tol = decimaal ? 0.005 : 1e-6;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    // Normaliseer \quad (v-knop) naar spatie
+    const rawV = raw.replace(/\\quad/g, ' ').replace(/\\;/g, ' ').trim();
+    const vEsc = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // "v = val1 v v = val2" (v-notatie met variabelenaam v en separator 'v')
+    const vMatch = rawV.match(new RegExp(`^${vEsc}\\s*=\\s*(.+?)\\s*v\\s*${vEsc}\\s*=\\s*(.+)$`));
+    if (vMatch) {
+      try {
+        const n1 = _algEval(vMatch[1].trim(), {});
+        const n2 = _algEval(vMatch[2].trim(), {});
+        if (isFinite(n1) && isFinite(n2)) {
+          const [s1, s2] = sols;
+          if ((Math.abs(n1 - s1) <= tol && Math.abs(n2 - s2) <= tol) ||
+              (Math.abs(n1 - s2) <= tol && Math.abs(n2 - s1) <= tol))
+            return 'goed';
+        }
+      } catch {}
+      return 'fout';
+    }
+
+    // Enkelvoudig "v = expr" is altijd fout (altijd twee oplossingen vereist)
+    const simpleEq = rawV.match(new RegExp(`^${vEsc}\\s*=\\s*(.+)$`));
+    if (simpleEq) return 'fout';
+
+    // Tussenstap: geldige vergelijking (bijv. x² = 9) die klopt voor een van de oplossingen
+    const parts = rawV.split('=');
+    if (parts.length === 2) {
+      for (const sol of sols) {
+        try {
+          const lhsV = _algEval(parts[0].trim(), { [v]: sol });
+          const rhsV = _algEval(parts[1].trim(), { [v]: sol });
+          if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6)
+            return 'tussenstap';
+        } catch {}
+      }
+    }
     return 'fout';
   }
 
@@ -1058,10 +1235,32 @@ function feedbackBoodschap(vraag, gegeven) {
       ? `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Bij $x = ${puntB.x}$ hoort $y = ${ey}$.`
       : `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Kies een andere $x$-waarde voor B.`;
   }
+  if (vraag.antwoordType === 'ongelijkheid') {
+    const { teller, noemer, operator } = vraag.antwoord;
+    const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
+    return `Niet helemaal. Het antwoord is $x ${operator} ${xStr}$.`;
+  }
   if (vraag.antwoordType === 'vergelijking') {
     const { teller, noemer } = vraag.antwoord;
     const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
     return `Niet helemaal. Het antwoord is $x = ${xStr}$.`;
+  }
+  if (vraag.antwoordType === 'machtsvergelijking') {
+    const { n, hasNeg } = vraag.antwoord;
+    if (hasNeg) {
+      return 'Er zijn twee oplossingen bij een even macht. Gebruik de <strong>v</strong> knop op het toetsenbord en typ de twee waarden met een v ertussen.';
+    }
+    const rootName = n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`;
+    return `Niet helemaal. Neem de ${rootName} van beide kanten en let op het teken.`;
+  }
+  if (vraag.antwoordType === 'kwadratisch') {
+    const ld = vraag.leerdoel;
+    if (ld === 'K.A1a') return 'Vergeet niet de vierkantswortel te nemen. Er zijn <strong>twee</strong> oplossingen — gebruik de <strong>v</strong>-knop.';
+    if (ld === 'K.B1a') return 'Breng alles naar één kant, ontbind in factoren en gebruik de nulpuntsregel. Er zijn <strong>twee</strong> oplossingen.';
+    if (ld === 'K.C1a') return 'Zoek de juiste factoren met de product-som methode. Vergeet niet: er zijn <strong>twee</strong> oplossingen.';
+    if (ld === 'K.D1a') return 'Gebruik de abc-formule en rond af op <strong>2 decimalen</strong>. Geef twee oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'K.E1a') return 'Gebruik de abc-formule en geef het <strong>exacte</strong> antwoord met de wortel. Geen decimalen.';
+    return 'Geef twee oplossingen met de <strong>v</strong>-knop.';
   }
   if (vraag.antwoordType === 'formule-lijn') {
     const { m, b } = vraag.antwoord;
@@ -1190,6 +1389,18 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.V1a': 'Pas één bewerking toe op beide kanten tegelijk, zodat $x$ alleen komt te staan.',
     'L.V1b': 'Zet eerst alle $x$-termen naar links en alle getallen naar rechts. Deel daarna door de coëfficiënt van $x$.',
     'L.V1c': 'Werk eerst de haakjes uit. Dan heb je een vergelijking zonder haakjes en kun je verder oplossen.',
+    'L.O1a': 'Pas dezelfde bewerking toe op beide kanten. Let op: het ongelijkheidsteken draait om bij delen door een negatief getal.',
+    'L.O1b': 'Zet $x$-termen links en getallen rechts. Controleer het teken van de coëfficiënt vóór je deelt.',
+    'L.O1c': 'Werk eerst de haakjes uit. Herschik daarna en let op het teken bij het delen.',
+    'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
+    'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
+    'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',
+    'M.V1d': 'Isoleer de haakjesterm, deel door de coëfficiënt, neem de wortel en breng $x$ vrij. Bij even macht: $\\pm$.',
+    'K.A1a': 'Isoleer de kwadraatterm, neem de vierkantswortel van beide kanten en geef beide oplossingen met de v-knop.',
+    'K.B1a': 'Breng alles naar één kant en ontbind in factoren. Pas de nulpuntsregel toe: elke factor gelijkstellen aan nul.',
+    'K.C1a': 'Product-som methode: zoek twee getallen met het juiste product en de juiste som. Gebruik daarna de nulpuntsregel.',
+    'K.D1a': 'Vul $a$, $b$ en $c$ in de abc-formule in: $v = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$. Rond af op 2 decimalen.',
+    'K.E1a': 'Vul $a$, $b$ en $c$ in de abc-formule in. Vereenvoudig de wortel en de breuk volledig. Geef het exacte antwoord.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
@@ -1396,7 +1607,32 @@ function addNewActiveRow() {
   const ta = el.querySelector('textarea');
   if (ta) {
     ta.addEventListener('focus', () => { APP.activeMQField = mq; });
+    let sqrtPending = false;
     ta.addEventListener('keydown', e => {
+      const _kq = APP.huidigVraag;
+      const _needsV = (_kq?.antwoordType === 'machtsvergelijking' && _kq?.antwoord?.hasNeg)
+                    || _kq?.antwoordType === 'kwadratisch';
+      if (e.key === 'v' && _needsV) {
+        e.preventDefault();
+        mq.write('\\quad v\\quad');
+        return;
+      }
+      if (e.key === '(' && /(?:^|[^a-zA-Z])sqrt$/.test(mq.latex())) {
+        e.preventDefault();
+        mq.keystroke('Backspace'); // t
+        mq.keystroke('Backspace'); // r
+        mq.keystroke('Backspace'); // q
+        mq.keystroke('Backspace'); // s
+        mq.cmd('\\sqrt');
+        sqrtPending = true;
+        return;
+      }
+      if (e.key === ')' && sqrtPending) {
+        e.preventDefault();
+        mq.keystroke('Right');
+        sqrtPending = false;
+        return;
+      }
       if (e.key === 'ArrowUp' && mq.latex() === '') {
         const prev = APP.stappen.length ? APP.stappen[APP.stappen.length - 1].latex : null;
         if (prev) { mq.latex(prev); e.preventDefault(); e.stopPropagation(); }
