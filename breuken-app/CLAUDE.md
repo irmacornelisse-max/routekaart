@@ -119,6 +119,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | Sectie | Leerdoelen |
 |---|---|
 | alg-optellen | A.O1a |
+| alg-wortels | W.R1a, W.R1b, W.R1c |
 | alg-vermenigvuldigen | A.M1a, A.M1b |
 | alg-gemengd | — |
 | alg-delen | A.D1a, A.D1b |

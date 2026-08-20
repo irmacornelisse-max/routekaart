@@ -125,7 +125,7 @@ const TOC_HOOFDSTUKKEN = [
     ]
   },
   {
-    id: 'algebra', label: 'Algebra',
+    id: 'algebra', label: 'Herleiden',
     secties: [
       {
         id: 'alg-optellen', label: 'Optellen en aftrekken',
@@ -167,6 +167,12 @@ const TOC_HOOFDSTUKKEN = [
         id: 'alg-machten', label: 'Machtsverheffen',
         items: [
           { label: 'Machtsverheffen', knoppen: [{l:'a',id:'A.MV1a'},{l:'b',id:'A.MV1b'},{l:'c',id:'A.MV1c'},{l:'d',id:'A.MV1d'}] },
+        ]
+      },
+      {
+        id: 'alg-wortels', label: 'Breuken met wortels',
+        items: [
+          { label: 'Breuken met wortels', knoppen: [{l:'a',id:'W.R1a'},{l:'b',id:'W.R1b'},{l:'c',id:'W.R1c'}] },
         ]
       },
     ]
@@ -956,6 +962,31 @@ function controleerTabel(vraag) {
 }
 window.controleerTabel = controleerTabel;
 
+/* ── Wortel-in-noemer check ──────────────────────────────────────────────── */
+function _hasRootInDenom(latex) {
+  // Returns true if any \frac{...}{denom} has \sqrt in the denominator
+  let s = latex, i = 0;
+  while (i < s.length) {
+    const fi = s.indexOf('\\frac{', i);
+    if (fi < 0) break;
+    let j = fi + 6, depth = 1;
+    while (j < s.length && depth > 0) {
+      if (s[j] === '{') depth++; else if (s[j] === '}') depth--;
+      j++;
+    }
+    if (j >= s.length || s[j] !== '{') { i = fi + 1; continue; }
+    j++;
+    const ds = j; depth = 1;
+    while (j < s.length && depth > 0) {
+      if (s[j] === '{') depth++; else if (s[j] === '}') depth--;
+      j++;
+    }
+    if (s.slice(ds, j - 1).includes('\\sqrt')) return true;
+    i = fi + 1;
+  }
+  return false;
+}
+
 /* ── Read student answer ─────────────────────────────────────────────────── */
 function leesAntwoord(vraag) {
   const type = vraag.antwoordType;
@@ -1279,6 +1310,18 @@ function checkAntwoord(vraag, gegeven) {
     return f1.d === correct.noemer1 ? 'goed' : 'tussenstap';
   }
 
+  if (type === 'wortelbreuk') {
+    const raw = (gegeven.latex || '').replace(/\\left/g, '').replace(/\\right/g, '').trim();
+    if (!raw) return 'fout';
+    try {
+      const given = _algEval(raw, {});
+      if (typeof given === 'number' && isFinite(given) && Math.abs(given - correct.value) < 1e-9) {
+        return _hasRootInDenom(raw) ? 'tussenstap' : 'goed';
+      }
+    } catch {}
+    return 'fout';
+  }
+
   if (type === 'algebra') {
     const raw = (gegeven.latex || '').trim();
     if (!raw) return 'fout';
@@ -1333,6 +1376,13 @@ function feedbackBoodschap(vraag, gegeven) {
     const { teller, noemer, operator } = vraag.antwoord;
     const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
     return `Niet helemaal. Het antwoord is $x ${operator} ${xStr}$.`;
+  }
+  if (vraag.antwoordType === 'wortelbreuk') {
+    const raw = (gegeven.latex || '').replace(/\\left/g, '').replace(/\\right/g, '').trim();
+    if (_hasRootInDenom(raw)) {
+      return 'Er staat nog een wortel in de noemer. Zorg dat het eindantwoord <strong>geen wortel in de noemer</strong> bevat.';
+    }
+    return 'Niet helemaal. Controleer je vereenvoudiging.';
   }
   if (vraag.antwoordType === 'vergelijking') {
     const { teller, noemer } = vraag.antwoord;
@@ -1499,6 +1549,9 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.V1a': 'Pas één bewerking toe op beide kanten tegelijk, zodat $x$ alleen komt te staan.',
     'L.V1b': 'Zet eerst alle $x$-termen naar links en alle getallen naar rechts. Deel daarna door de coëfficiënt van $x$.',
     'L.V1c': 'Werk eerst de haakjes uit. Dan heb je een vergelijking zonder haakjes en kun je verder oplossen.',
+    'W.R1a': 'Schrijf de wortel in de noemer eenvoudiger (haal kwadraten eruit). Vermenigvuldig daarna teller én noemer met die wortel.',
+    'W.R1b': 'Vermenigvuldig teller én noemer met de wortel in de noemer. Gebruik $\\sqrt{A}\\cdot\\sqrt{B} = \\sqrt{AB}$ en vereenvoudig de wortels.',
+    'W.R1c': 'Gebruik het conjugaat: als de noemer $a + \\sqrt{b}$ is, vermenigvuldig met $\\dfrac{a - \\sqrt{b}}{a - \\sqrt{b}}$. Dan gebruik je $(a+\\sqrt{b})(a-\\sqrt{b}) = a^2 - b$.',
     'L.V1d': 'Vermenigvuldig beide kanten met $10$ om de kommagetallen te verwijderen. Dan los je de gewone vergelijking op.',
     'L.V1e': 'Vermenigvuldig beide kanten met de kgv van de noemers om de breuken weg te werken. Schrijf gemengde getallen eerst om naar gewone breuken.',
     'L.O1a': 'Pas dezelfde bewerking toe op beide kanten. Let op: het ongelijkheidsteken draait om bij delen door een negatief getal.',

@@ -5017,6 +5017,123 @@ function genMV3e() {
   return { ...v, id: uid(), leerdoel: 'M.V3e' };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   W.R – Breuken met wortels (herleiden)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── W.R1a – Eenvoudige wortel in de noemer: c/√(a·k²) ─────────────────── */
+function genWR1a() {
+  let a, k, p, tries = 0;
+  do {
+    a = pick([2, 3, 5, 6, 7]);
+    k = pick([2, 3, 4, 5]);
+    p = rand(1, 8);
+    tries++;
+  } while (tries < 30 && a * k * k > 200);
+  const c = p * k, D = a * k * k;
+  const g = gcd(p, a);
+  const nt = p / g, nd = a / g;
+  const value = p * Math.sqrt(a) / a;
+  const sqTex = `\\sqrt{${a}}`;
+  const numTex = nt === 1 ? sqTex : `${nt}${sqTex}`;
+  const ansTeX = nd === 1 ? numTex : `\\dfrac{${numTex}}{${nd}}`;
+  return {
+    id: uid(), leerdoel: 'W.R1a',
+    vraag: `Vereenvoudig: $\\dfrac{${c}}{\\sqrt{${D}}}$`,
+    antwoordType: 'wortelbreuk',
+    antwoord: { value, latex: ansTeX },
+    hints: [
+      `Schrijf $\\sqrt{${D}}$ als een veelvoud van een eenvoudige wortel: $\\sqrt{${a}\\cdot${k*k}} = ${k}${sqTex}$.`,
+      `Vermenigvuldig teller én noemer met $${sqTex}$ zodat de noemer een heel getal wordt.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${c}}{\\sqrt{${D}}} = \\dfrac{${c}}{${k}${sqTex}}$`,
+      `$= \\dfrac{${c}${sqTex}}{${k}\\cdot${a}} = \\dfrac{${c}${sqTex}}{${k*a}}$`,
+      `$= ${ansTeX}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── W.R1b – Twee wortels in teller, één in noemer: (√p ± √q)/√r ─────── */
+function genWR1b() {
+  let r, m, n, tries = 0;
+  do {
+    r = pick([2, 3, 5, 7]);
+    const pool = [2, 3, 5, 6, 7, 10, 11, 13].filter(x => x !== r);
+    m = pick(pool);
+    n = pick(pool.filter(x => x !== m));
+    tries++;
+  } while (tries < 30);
+  const s = Math.random() < 0.5 ? 1 : -1;
+  if (s === -1 && m < n) { const tmp = m; m = n; n = tmp; }
+  const p = r * m, q = r * n;
+  const value = Math.sqrt(m) + s * Math.sqrt(n);
+  const sTeX = s === 1 ? '+' : '-';
+  const qTeX = `\\dfrac{\\sqrt{${p}} ${sTeX} \\sqrt{${q}}}{\\sqrt{${r}}}`;
+  const ansTeX = `\\sqrt{${m}} ${sTeX} \\sqrt{${n}}`;
+  return {
+    id: uid(), leerdoel: 'W.R1b',
+    vraag: `Schrijf zonder wortel in de noemer: $${qTeX}$`,
+    antwoordType: 'wortelbreuk',
+    antwoord: { value, latex: ansTeX },
+    hints: [
+      `Vermenigvuldig teller én noemer met $\\sqrt{${r}}$.`,
+      `Gebruik $\\sqrt{A}\\cdot\\sqrt{B} = \\sqrt{AB}$ en vereenvoudig daarna de wortel (bijv. $\\sqrt{${r}^2\\cdot k} = ${r}\\sqrt{k}$).`,
+    ],
+    oplossing: [
+      `$${qTeX} \\cdot \\dfrac{\\sqrt{${r}}}{\\sqrt{${r}}} = \\dfrac{(\\sqrt{${p}} ${sTeX} \\sqrt{${q}})\\cdot\\sqrt{${r}}}{${r}}$`,
+      `$= \\dfrac{\\sqrt{${p*r}} ${sTeX} \\sqrt{${q*r}}}{${r}} = \\dfrac{${r}\\sqrt{${m}} ${sTeX} ${r}\\sqrt{${n}}}{${r}}$`,
+      `$= ${ansTeX}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── W.R1c – Wortelsom in de noemer: n/(a ± √b), conjugaatmethode ────────── */
+function genWR1c() {
+  let a, b, num, D, tries = 0;
+  do {
+    a = pick([2, 3, 4, 5]);
+    const bPool = [2, 3, 5, 6, 7, 10, 11].filter(x =>
+      x < a * a && !Number.isInteger(Math.sqrt(x))
+    );
+    if (!bPool.length) { tries++; continue; }
+    b = pick(bPool);
+    D = a * a - b;
+    num = rand(1, 5);
+    const g2 = gcd(num, D);
+    if (num * a / g2 > 25) { tries++; continue; }
+    break;
+  } while (++tries < 50);
+  const e = Math.random() < 0.5 ? 1 : -1;
+  const denomSign = e === 1 ? '+' : '-';
+  const conjSign  = e === 1 ? '-' : '+';
+  const g = gcd(num, D);
+  const A = num * a / g, B = num / g, nd = D / g;
+  const ansSqrtSign = e === 1 ? '-' : '+';
+  const sqTex = `\\sqrt{${b}}`;
+  const numAnswTex = B === 1 ? sqTex : `${B}${sqTex}`;
+  const ansNumTex = `${A} ${ansSqrtSign} ${numAnswTex}`;
+  const ansTeX = nd === 1 ? ansNumTex : `\\dfrac{${ansNumTex}}{${nd}}`;
+  const value = num / (a + e * Math.sqrt(b));
+  return {
+    id: uid(), leerdoel: 'W.R1c',
+    vraag: `Schrijf zonder wortel in de noemer: $\\dfrac{${num}}{${a} ${denomSign} ${sqTex}}$`,
+    antwoordType: 'wortelbreuk',
+    antwoord: { value, latex: ansTeX },
+    hints: [
+      `Vermenigvuldig teller én noemer met het conjugaat van de noemer: $(${a} ${conjSign} ${sqTex})$.`,
+      `Gebruik $(A+B)(A-B) = A^2 - B^2$: hier wordt de noemer $(${a})^2 - (${sqTex})^2 = ${a*a} - ${b} = ${D}$.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${num}}{${a} ${denomSign} ${sqTex}} \\cdot \\dfrac{${a} ${conjSign} ${sqTex}}{${a} ${conjSign} ${sqTex}} = \\dfrac{${num}(${a} ${conjSign} ${sqTex})}{${D}}$`,
+      ...(g > 1
+        ? [`$= \\dfrac{${num*a} ${ansSqrtSign} ${num}${sqTex}}{${D}} = ${ansTeX}$`]
+        : [`$= \\dfrac{${num*a} ${ansSqrtSign} ${num}${sqTex}}{${D}}$`,
+           `$= ${ansTeX}$`]),
+    ].join('\n'),
+  };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -5137,27 +5254,30 @@ const LEERDOELEN = [
   { id: 'H.Eenheden', titel: 'Eenheden – afwisselend',                 groep: 'Eenheden', gen: genH_Eenheden },
 
   /* ── Algebra ─────────────────────────────────────────────────────── */
-  { id: 'A.O1a', titel: 'Algebra – optellen/aftrekken (a)',            groep: 'Algebra', gen: genAO1a },
-  { id: 'A.O1b', titel: 'Algebra – optellen/aftrekken (b)',            groep: 'Algebra', gen: genAO1b },
-  { id: 'A.O1c', titel: 'Algebra – optellen/aftrekken (c)',            groep: 'Algebra', gen: genAO1c },
-  { id: 'A.V1a', titel: 'Algebra – vermenigvuldigen (a)',              groep: 'Algebra', gen: genAV1a },
-  { id: 'A.V1b', titel: 'Algebra – vermenigvuldigen (b)',              groep: 'Algebra', gen: genAV1b },
-  { id: 'A.V1c', titel: 'Algebra – vermenigvuldigen (c)',              groep: 'Algebra', gen: genAV1c },
-  { id: 'A.M1a', titel: 'Algebra – gemengd (a)',                       groep: 'Algebra', gen: genAM1a },
-  { id: 'A.M1b', titel: 'Algebra – gemengd (b)',                       groep: 'Algebra', gen: genAM1b },
-  { id: 'A.D1a', titel: 'Algebra – delen (a)',                         groep: 'Algebra', gen: genAD1a },
-  { id: 'A.D1b', titel: 'Algebra – delen (b)',                         groep: 'Algebra', gen: genAD1b },
-  { id: 'A.H1a', titel: 'Algebra – haakjes uitwerken (a)',             groep: 'Algebra', gen: genAH1a },
-  { id: 'A.H1b', titel: 'Algebra – haakjes uitwerken (b)',             groep: 'Algebra', gen: genAH1b },
-  { id: 'A.H1c', titel: 'Algebra – haakjes uitwerken (c)',             groep: 'Algebra', gen: genAH1c },
-  { id: 'A.H1d', titel: 'Algebra – merkwaardige producten uitwerken',  groep: 'Algebra', gen: genAH1d },
-  { id: 'A.F1a', titel: 'Algebra – ontbinden: ggd factoring',          groep: 'Algebra', gen: genAF1a },
-  { id: 'A.F1b', titel: 'Algebra – ontbinden: som-product',            groep: 'Algebra', gen: genAF1b },
-  { id: 'A.F1c', titel: 'Algebra – ontbinden: merkwaardige producten', groep: 'Algebra', gen: genAF1c },
-  { id: 'A.MV1a', titel: 'Algebra – machtsverheffen: productregel',    groep: 'Algebra', gen: genAMV1a },
-  { id: 'A.MV1b', titel: 'Algebra – machtsverheffen: machtsverheffing',groep: 'Algebra', gen: genAMV1b },
-  { id: 'A.MV1c', titel: 'Algebra – machtsverheffen: quotiëntregel',   groep: 'Algebra', gen: genAMV1c },
-  { id: 'A.MV1d', titel: 'Algebra – machtsverheffen: gecombineerd',    groep: 'Algebra', gen: genAMV1d },
+  { id: 'A.O1a', titel: 'Algebra – optellen/aftrekken (a)',            groep: 'Herleiden', gen: genAO1a },
+  { id: 'A.O1b', titel: 'Algebra – optellen/aftrekken (b)',            groep: 'Herleiden', gen: genAO1b },
+  { id: 'A.O1c', titel: 'Algebra – optellen/aftrekken (c)',            groep: 'Herleiden', gen: genAO1c },
+  { id: 'A.V1a', titel: 'Algebra – vermenigvuldigen (a)',              groep: 'Herleiden', gen: genAV1a },
+  { id: 'A.V1b', titel: 'Algebra – vermenigvuldigen (b)',              groep: 'Herleiden', gen: genAV1b },
+  { id: 'A.V1c', titel: 'Algebra – vermenigvuldigen (c)',              groep: 'Herleiden', gen: genAV1c },
+  { id: 'A.M1a', titel: 'Algebra – gemengd (a)',                       groep: 'Herleiden', gen: genAM1a },
+  { id: 'A.M1b', titel: 'Algebra – gemengd (b)',                       groep: 'Herleiden', gen: genAM1b },
+  { id: 'A.D1a', titel: 'Algebra – delen (a)',                         groep: 'Herleiden', gen: genAD1a },
+  { id: 'A.D1b', titel: 'Algebra – delen (b)',                         groep: 'Herleiden', gen: genAD1b },
+  { id: 'A.H1a', titel: 'Algebra – haakjes uitwerken (a)',             groep: 'Herleiden', gen: genAH1a },
+  { id: 'A.H1b', titel: 'Algebra – haakjes uitwerken (b)',             groep: 'Herleiden', gen: genAH1b },
+  { id: 'A.H1c', titel: 'Algebra – haakjes uitwerken (c)',             groep: 'Herleiden', gen: genAH1c },
+  { id: 'A.H1d', titel: 'Algebra – merkwaardige producten uitwerken',  groep: 'Herleiden', gen: genAH1d },
+  { id: 'A.F1a', titel: 'Algebra – ontbinden: ggd factoring',          groep: 'Herleiden', gen: genAF1a },
+  { id: 'A.F1b', titel: 'Algebra – ontbinden: som-product',            groep: 'Herleiden', gen: genAF1b },
+  { id: 'A.F1c', titel: 'Algebra – ontbinden: merkwaardige producten', groep: 'Herleiden', gen: genAF1c },
+  { id: 'A.MV1a', titel: 'Algebra – machtsverheffen: productregel',    groep: 'Herleiden', gen: genAMV1a },
+  { id: 'A.MV1b', titel: 'Algebra – machtsverheffen: machtsverheffing',groep: 'Herleiden', gen: genAMV1b },
+  { id: 'A.MV1c', titel: 'Algebra – machtsverheffen: quotiëntregel',   groep: 'Herleiden', gen: genAMV1c },
+  { id: 'A.MV1d', titel: 'Algebra – machtsverheffen: gecombineerd',    groep: 'Herleiden', gen: genAMV1d },
+  { id: 'W.R1a',  titel: 'Breuken met wortels – eenvoudige wortel in noemer',    groep: 'Herleiden', gen: genWR1a },
+  { id: 'W.R1b',  titel: 'Breuken met wortels – twee wortels in teller',         groep: 'Herleiden', gen: genWR1b },
+  { id: 'W.R1c',  titel: 'Breuken met wortels – wortelsom in noemer (conjugaat)',groep: 'Herleiden', gen: genWR1c },
   { id: 'L.G1a',  titel: 'Lineair – grafiek tekenen: eenvoudig',      groep: 'Lineair', gen: genLG1a  },
   { id: 'L.G1b',  titel: 'Lineair – grafiek tekenen: gevorderd',      groep: 'Lineair', gen: genLG1b  },
   { id: 'L.G2a',  titel: 'Lineair – grafiek bij tabel: eenvoudig',    groep: 'Lineair', gen: genLG2a  },
