@@ -3590,6 +3590,257 @@ function genLV1c() {
   };
 }
 
+/* ── L.V1d – Vergelijkingen met decimale getallen ────────────────────────── */
+function genLV1d() {
+  function decTeX(v10) {
+    // v10 is integer, display as v10/10 multiplied by x
+    const abs10 = Math.abs(v10), v = v10 / 10;
+    if (abs10 === 10) return v < 0 ? '-x' : 'x';
+    return `${v}x`;
+  }
+  function sideTeX(coef10, const10) {
+    const term = decTeX(coef10);
+    if (const10 === 0) return term;
+    const c = const10 / 10;
+    return const10 > 0 ? `${term} + ${c}` : `${term} - ${Math.abs(c)}`;
+  }
+
+  if (Math.random() < 0.5) {
+    // Style A: ax + b = cx + d  (kommagetallen, geen haakjes)
+    let A, C, B, D, x_sol, tries = 0;
+    do {
+      A = pick([8,12,14,15,16,18,20,24,25,30]);
+      C = pick([6,8,10,12,14,15,16,18,20,24]);
+      if (A === C) { tries++; continue; }
+      B = pick([-20,-15,-12,-10,-8,-5,5,8,10,12,15,20]);
+      x_sol = rand(-6,6); if (x_sol === 0) { tries++; continue; }
+      D = (A-C)*x_sol + B;
+      if (Math.abs(D) > 200) { tries++; continue; }
+      break;
+    } while (++tries < 50);
+    const lhsTeX = sideTeX(A,B), rhsTeX = sideTeX(C,D);
+    const lhs10 = _lvSideTeX(A,B), rhs10 = _lvSideTeX(C,D);
+    const midTeX = `${A-C}x = ${D-B}`;
+    return {
+      id: uid(), leerdoel: 'L.V1d',
+      vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: x_sol, noemer: 1 },
+      hints: [
+        'Vermenigvuldig beide kanten met $10$ om de kommagetallen weg te werken.',
+        `Je krijgt dan: $${lhs10} = ${rhs10}$. Herschik en los op.`,
+      ],
+      oplossing: [
+        `$${lhsTeX} = ${rhsTeX} \\quad|{\\times}10$`,
+        `$${lhs10} = ${rhs10}$`,
+        `$${midTeX}$`,
+        `$x = ${x_sol}$`,
+      ].join('\n'),
+    };
+  } else {
+    // Style B: (A/10)(px + q) = (B/10)x + c  (haakjes met decimale factor)
+    let A, p, q, B, c, fr, tries = 0;
+    do {
+      A = pick([8,12,14,15,16,18,20,24,25]);
+      p = pick([2,3]);
+      q = pick([-4,-3,-2,-1,1,2,3,4]);
+      B = pick([6,8,10,12,14,15,16,18,20]);
+      if (A*p === B) { tries++; continue; }
+      c = rand(-10,10); if (c === 0) { tries++; continue; }
+      const num = 10*c - A*q, den = A*p - B;
+      fr = _lvFrac(num, den);
+      if (Math.abs(fr.n) <= 12) break;
+    } while (++tries < 60);
+    const aD = A/10, bD = B/10;
+    const qSign = q > 0 ? `+ ${q}` : `- ${Math.abs(q)}`;
+    const inner = p === 1 ? `x ${qSign}` : `${p}x ${qSign}`;
+    const lhsTeX = `${aD}(${inner})`;
+    const rhsFull = c === 0 ? `${bD}x` : c > 0 ? `${bD}x + ${c}` : `${bD}x - ${Math.abs(c)}`;
+    const rhs10base = B === 10 ? '10x' : `${B}x`;
+    const rhs10 = c === 0 ? rhs10base : c > 0 ? `${rhs10base} + ${10*c}` : `${rhs10base} - ${Math.abs(10*c)}`;
+    const AP = A*p, AQ = A*q, coef = AP-B, rhsVal = 10*c - AQ;
+    const expand10 = _lvSideTeX(AP, AQ);
+    const xTex = _lvXTeX(fr.t, fr.n);
+    return {
+      id: uid(), leerdoel: 'L.V1d',
+      vraag: `Los op: $${lhsTeX} = ${rhsFull}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: fr.t, noemer: fr.n },
+      hints: [
+        'Vermenigvuldig beide kanten met $10$ om de decimalen te verwijderen.',
+        `Je krijgt: $${A}(${inner}) = ${rhs10}$. Werk haakjes uit en herschik.`,
+      ],
+      oplossing: [
+        `$${lhsTeX} = ${rhsFull} \\quad|{\\times}10$`,
+        `$${A}(${inner}) = ${rhs10}$`,
+        `Uitwerken: $${expand10} = ${rhs10}$`,
+        `$${coef}x = ${rhsVal}$`,
+        `$x = ${xTex}$`,
+      ].join('\n'),
+    };
+  }
+}
+
+/* ── L.V1e – Vergelijkingen met breuken en gemengde getallen ─────────────── */
+function genLV1e() {
+  function fracCoeffTeX(p, q) {
+    // Format p/q as LaTeX for use as x-coefficient: "\dfrac{p}{q}x" or "px"
+    const g = gcd(Math.abs(p), q); const rp = p/g, rq = q/g;
+    if (rq === 1) return rp === 1 ? 'x' : rp === -1 ? '-x' : `${rp}x`;
+    const frac = rp < 0 ? `-\\dfrac{${-rp}}{${rq}}` : `\\dfrac{${rp}}{${rq}}`;
+    return `${frac}x`;
+  }
+  function fracTeX(p, q) {
+    // Format p/q as standalone LaTeX fraction
+    const g = gcd(Math.abs(p), q); const rp = p/g, rq = q/g;
+    if (rq === 1) return `${rp}`;
+    return rp < 0 ? `-\\dfrac{${-rp}}{${rq}}` : `\\dfrac{${rp}}{${rq}}`;
+  }
+  function mixedTeX(whole, fNum, fDen) {
+    // Display |whole| + fNum/fDen as mixed number; caller handles leading sign
+    // e.g. mixedTeX(1,1,3) → "1\\dfrac{1}{3}"
+    if (whole === 0) return fracTeX(fNum, fDen);
+    return `${Math.abs(whole)}\\dfrac{${fNum}}{${fDen}}`;
+  }
+  function sideTexFrac(p, q, constNum, constDen) {
+    // Format (p/q)x + constNum/constDen
+    const xPart = fracCoeffTeX(p, q);
+    const g2 = gcd(Math.abs(constNum), constDen);
+    const cn = constNum/g2, cd = constDen/g2;
+    if (cn === 0) return xPart;
+    const cTex = cd === 1 ? `${Math.abs(cn)}` : `\\dfrac{${Math.abs(cn)}}{${cd}}`;
+    return cn > 0 ? `${xPart} + ${cTex}` : `${xPart} - ${cTex}`;
+  }
+
+  const style = pick(['F','F','G','H','H']); // weighted: F=2, G=1, H=2
+
+  if (style === 'F') {
+    // Style F: (p₁/q₁)x + a = (p₂/q₂)x + b  (eenvoudige breuken, gehele constanten)
+    let q1, q2, p1, p2, a, b, fr, L, tries = 0;
+    do {
+      q1 = pick([2,3,4,5,6]); q2 = pick([2,3,4,5,6]);
+      p1 = rand(1, Math.min(q1*2, 8)); p2 = rand(1, Math.min(q2*2, 8));
+      if (p1*q2 === p2*q1) { tries++; continue; } // gelijke coëff
+      a = rand(-5,5); b = rand(-5,5);
+      L = lcm(q1, q2);
+      const A = L*p1/q1, B = L*p2/q2;
+      const num = L*(b-a), den = A-B;
+      if (den === 0) { tries++; continue; }
+      fr = _lvFrac(num, den);
+      if (Math.abs(fr.n) <= 15) break;
+    } while (++tries < 60);
+    const A = L*p1/q1, B = L*p2/q2;
+    const lhsTeX = sideTexFrac(p1, q1, a, 1);
+    const rhsTeX = sideTexFrac(p2, q2, b, 1);
+    const lhs_L = _lvSideTeX(A, L*a), rhs_L = _lvSideTeX(B, L*b);
+    const coef = A-B, rhsVal = L*(b-a);
+    const xTex = _lvXTeX(fr.t, fr.n);
+    return {
+      id: uid(), leerdoel: 'L.V1e',
+      vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: fr.t, noemer: fr.n },
+      hints: [
+        `Vermenigvuldig beide kanten met $${L}$ (de kgv van de noemers) om de breuken weg te werken.`,
+        `Je krijgt: $${lhs_L} = ${rhs_L}$. Herschik en los op.`,
+      ],
+      oplossing: [
+        `$${lhsTeX} = ${rhsTeX} \\quad|{\\times}${L}$`,
+        `$${lhs_L} = ${rhs_L}$`,
+        `$${coef}x = ${rhsVal}$`,
+        `$x = ${xTex}$`,
+      ].join('\n'),
+    };
+  }
+
+  if (style === 'G') {
+    // Style G: (p/q)x + gemengd = (r/q)x + geheel  (gemengde getallen)
+    let q, p, r, f, w, b, fr, tries = 0;
+    do {
+      q = pick([2,3,4]);
+      p = rand(q+1, 3*q);   // improper numerator for lhs coeff
+      r = rand(1, 3*q);     // numerator for rhs coeff
+      if (p === r) { tries++; continue; }
+      f = rand(1, q-1);     // fractional part of mixed constant (f/q)
+      w = rand(1, 4);       // whole part of mixed constant (positive integer)
+      b = rand(-5, 5);      // rhs integer constant
+      // Equation: (p/q)x + (w + f/q) = (r/q)x + b
+      // After ×q: p*x + (w*q+f) = r*x + q*b
+      // (p-r)x = q*b - w*q - f
+      const num = q*b - w*q - f, den = p-r;
+      if (den === 0) { tries++; continue; }
+      fr = _lvFrac(num, den);
+      if (Math.abs(fr.n) <= 15) break;
+    } while (++tries < 60);
+    const lhsConstTex = `${w}\\dfrac{${f}}{${q}}`;
+    const lhsTeX = `${fracCoeffTeX(p,q)} + ${lhsConstTex}`;
+    const rhsTeX = sideTexFrac(r, q, b, 1);
+    const lhs_q = _lvSideTeX(p, w*q+f), rhs_q = _lvSideTeX(r, q*b);
+    const coef = p-r, rhsVal = q*b - w*q - f;
+    const xTex = _lvXTeX(fr.t, fr.n);
+    return {
+      id: uid(), leerdoel: 'L.V1e',
+      vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: fr.t, noemer: fr.n },
+      hints: [
+        `Schrijf het gemengd getal om: $${w}\\dfrac{${f}}{${q}} = \\dfrac{${w*q+f}}{${q}}$.`,
+        `Vermenigvuldig beide kanten met $${q}$: $${lhs_q} = ${rhs_q}$.`,
+      ],
+      oplossing: [
+        `$${lhsTeX} = ${rhsTeX}$`,
+        `Omschrijven: $\\dfrac{${p}}{${q}}x + \\dfrac{${w*q+f}}{${q}} = ${rhsTeX}$`,
+        `$\\quad|{\\times}${q}$: $${lhs_q} = ${rhs_q}$`,
+        `$${coef}x = ${rhsVal}$`,
+        `$x = ${xTex}$`,
+      ].join('\n'),
+    };
+  }
+
+  // Style H: (p/q)(ax + b) = (r/s)(cx + d)  (breuken × haakjes)
+  let q1, q2, p1, p2, a, b, c, d, fr, L, tries = 0;
+  do {
+    q1 = pick([2,3,4,5,7]); q2 = pick([2,3,4,5,7]);
+    p1 = rand(1, q1-1); p2 = rand(1, q2-1); // proper fractions p/q < 1
+    a = rand(2,5); b = pick([-4,-3,-2,-1,1,2,3,4]);
+    c = rand(2,5); d = pick([-4,-3,-2,-1,1,2,3,4]);
+    L = lcm(q1, q2);
+    const P = L*p1/q1, Q = L*p2/q2; // integer multipliers after ×L
+    const coef = P*a - Q*c, rhsVal = Q*d - P*b;
+    if (coef === 0) { tries++; continue; }
+    fr = _lvFrac(rhsVal, coef);
+    if (Math.abs(fr.n) <= 20) break;
+  } while (++tries < 60);
+  const P = L*p1/q1, Q = L*p2/q2;
+  const aSign = b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+  const cSign = d > 0 ? `+ ${d}` : `- ${Math.abs(d)}`;
+  const innerL = a === 1 ? `x ${aSign}` : `${a}x ${aSign}`;
+  const innerR = c === 1 ? `x ${cSign}` : `${c}x ${cSign}`;
+  const lhsTeX = `\\dfrac{${p1}}{${q1}}(${innerL})`;
+  const rhsTeX = `\\dfrac{${p2}}{${q2}}(${innerR})`;
+  const lhs_L = `${P}(${innerL})`, rhs_L = `${Q}(${innerR})`;
+  const expand_L = _lvSideTeX(P*a, P*b), expand_R = _lvSideTeX(Q*c, Q*d);
+  const coef = P*a - Q*c, rhsVal = Q*d - P*b;
+  const xTex = _lvXTeX(fr.t, fr.n);
+  return {
+    id: uid(), leerdoel: 'L.V1e',
+    vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller: fr.t, noemer: fr.n },
+    hints: [
+      `Vermenigvuldig beide kanten met $${L}$ (de kgv van ${q1} en ${q2}) om de breuken weg te werken.`,
+      `Je krijgt: $${lhs_L} = ${rhs_L}$. Werk de haakjes uit en herschik.`,
+    ],
+    oplossing: [
+      `$${lhsTeX} = ${rhsTeX} \\quad|{\\times}${L}$`,
+      `$${lhs_L} = ${rhs_L}$`,
+      `Uitwerken: $${expand_L} = ${expand_R}$`,
+      `$${coef}x = ${rhsVal}$`,
+      `$x = ${xTex}$`,
+    ].join('\n'),
+  };
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    L.O – Lineaire ongelijkheden
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -4555,6 +4806,217 @@ function genStelselC() {
   }
 }
 
+/* ── M.V3 — Algemene vormen helpers ─────────────────────────────────────── */
+
+function _mv3FracTeX(num, den) {
+  const g = gcd(Math.abs(num), Math.abs(den));
+  let n = num / g, d = den / g;
+  if (d < 0) { n = -n; d = -d; }
+  if (d === 1) return `${n}`;
+  return `\\frac{${n}}{${d}}`;
+}
+
+function _mv3LinFacTeX(r) {
+  return r > 0 ? `x - ${r}` : r < 0 ? `x + ${Math.abs(r)}` : 'x';
+}
+
+/* ── M.V3a – AB = 0 (nulpuntsregel, twee kwadratische factoren) ─────────── */
+function genMV3a() {
+  let a, k, sqrtK, tries = 0;
+  do {
+    a = rand(2, 7);
+    k = Math.random() < 0.5 ? pick([4, 9, 16, 25]) : pick([2, 3, 5, 6, 7, 10, 12]);
+    sqrtK = Math.sqrt(k);
+    tries++;
+  } while (Math.abs(a - sqrtK) < 0.01 && tries < 30);
+
+  const isIntSqrt = Number.isInteger(sqrtK);
+  const sqrtTeX = isIntSqrt ? `${Math.round(sqrtK)}` : `\\sqrt{${k}}`;
+  const termA = `x^2 + ${a}x`;
+  const termB = `x^2 - ${k}`;
+
+  return {
+    id: uid(), leerdoel: 'M.V3a',
+    vraag: `Los op: $(${termA})(${termB}) = 0$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [0, -a, sqrtK, -sqrtK] },
+    hints: [
+      'Gebruik de <strong>nulpuntsregel</strong>: als $A \\cdot B = 0$, dan $A = 0$ of $B = 0$.',
+      `Stel $${termA} = 0$ (haal $x$ eruit) en stel $${termB} = 0$ apart op.`,
+    ],
+    oplossing: [
+      `$(${termA})(${termB}) = 0$`,
+      `Nulpuntsregel: $${termA} = 0$ of $${termB} = 0$`,
+      `$${termA} = 0 \\Rightarrow x(x + ${a}) = 0 \\Rightarrow x = 0 \\lor x = -${a}$`,
+      `$${termB} = 0 \\Rightarrow x^2 = ${k} \\Rightarrow x = ${sqrtTeX} \\lor x = -${sqrtTeX}$`,
+      `Oplossingen: $x = 0 \\lor x = -${a} \\lor x = ${sqrtTeX} \\lor x = -${sqrtTeX}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── M.V3b – A² = B² ────────────────────────────────────────────────────── */
+function genMV3b() {
+  let p, q, r, s, x1n = null, x1d, x2n, x2d, tries = 0;
+  do {
+    p = rand(2, 6); q = rand(2, 6);
+    r = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    s = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    const d1 = p - q;
+    if (d1 === 0) { tries++; continue; }
+    x1n = s - r; x1d = d1;
+    x2n = -(r + s); x2d = p + q;
+    tries++;
+  } while ((x1n === null || Math.abs(x1n / x1d - x2n / x2d) < 0.01) && tries < 50);
+
+  const x1Tex = _mv3FracTeX(x1n, x1d);
+  const x2Tex = _mv3FracTeX(x2n, x2d);
+  const rSign = r > 0 ? `+ ${r}` : `- ${Math.abs(r)}`;
+  const sSign = s > 0 ? `+ ${s}` : `- ${Math.abs(s)}`;
+  const Atex = `${p}x ${rSign}`;
+  const Btex = `${q}x ${sSign}`;
+
+  return {
+    id: uid(), leerdoel: 'M.V3b',
+    vraag: `Los op: $(${Atex})^2 = (${Btex})^2$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [x1n / x1d, x2n / x2d] },
+    hints: [
+      'Als $A^2 = B^2$, dan $A = B$ of $A = -B$.',
+      `Stel $(${Atex}) = (${Btex})$ en daarna $(${Atex}) = -(${Btex})$. Los elk geval apart op.`,
+    ],
+    oplossing: [
+      `$(${Atex})^2 = (${Btex})^2 \\Rightarrow ${Atex} = \\pm(${Btex})$`,
+      `Geval 1: $${Atex} = ${Btex} \\Rightarrow x = ${x1Tex}$`,
+      `Geval 2: $${Atex} = -(${Btex}) \\Rightarrow x = ${x2Tex}$`,
+      `Oplossingen: $x = ${x1Tex} \\lor x = ${x2Tex}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── M.V3c – AB = AC (gemeenschappelijke factor, niet wegdelen) ─────────── */
+function genMV3c() {
+  if (Math.random() < 0.5) {
+    // Eenvoudig: x²(x - r) = b²(x - r) → (x-r)(x²-b²) = 0 → 3 integer oplossingen
+    let r, b, tries = 0;
+    do {
+      r = pick([-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]);
+      b = rand(2, 5);
+      tries++;
+    } while (Math.abs(r) === b && tries < 20);
+    const fac = _mv3LinFacTeX(r);
+    return {
+      id: uid(), leerdoel: 'M.V3c',
+      vraag: `Los op: $x^2(${fac}) = ${b * b}(${fac})$`,
+      antwoordType: 'vergelijking-mv',
+      antwoord: { sols: [r, b, -b] },
+      hints: [
+        `Beide kanten hebben de factor $(${fac})$. Breng alles naar links en haal die factor eruit.`,
+        `$(${fac})(x^2 - ${b * b}) = 0$. Ontbind $x^2 - ${b * b} = (x+${b})(x-${b})$ en gebruik de nulpuntsregel.`,
+      ],
+      oplossing: [
+        `$x^2(${fac}) - ${b * b}(${fac}) = 0$`,
+        `$(${fac})(x^2 - ${b * b}) = 0$`,
+        `$(${fac})(x + ${b})(x - ${b}) = 0$`,
+        `Nulpuntsregel: $x = ${r} \\lor x = -${b} \\lor x = ${b}$`,
+      ].join('\n'),
+    };
+  } else {
+    // Complex (opgave f): 2x(x²-a²) = c(x-a), gemeenschappelijke factor (x-a) verscholen in x²-a²
+    // (x-a)[2x(x+a) - c] = 0, met c = 2p(a+p), wortels p en q = -a-p
+    let a, p, tries = 0;
+    do {
+      a = pick([2, 3, 4]);
+      p = rand(1, Math.min(a + 2, 5));
+      tries++;
+    } while (p === a && tries < 20);
+    const q = -a - p;
+    const c = 2 * p * (a + p);
+    const fac = _mv3LinFacTeX(a);
+    return {
+      id: uid(), leerdoel: 'M.V3c',
+      vraag: `Los op: $2x(x^2 - ${a * a}) = ${c}(${fac})$`,
+      antwoordType: 'vergelijking-mv',
+      antwoord: { sols: [a, p, q] },
+      hints: [
+        `Schrijf $x^2 - ${a * a} = (x + ${a})(${fac})$ en haal de gemeenschappelijke factor $(${fac})$ eruit.`,
+        `Na ontbinden staat er $(${fac})[2x(x + ${a}) - ${c}] = 0$. Los elk deel op.`,
+      ],
+      oplossing: [
+        `$2x(x^2 - ${a * a}) - ${c}(${fac}) = 0$`,
+        `$2x(x + ${a})(${fac}) - ${c}(${fac}) = 0$`,
+        `$(${fac})[2x(x + ${a}) - ${c}] = 0$`,
+        `$(${fac}) \\cdot 2(x - ${p})(x + ${a + p}) = 0$`,
+        `Nulpuntsregel: $x = ${a} \\lor x = ${p} \\lor x = ${q}$`,
+      ].join('\n'),
+    };
+  }
+}
+
+/* ── M.V3d – (ax+b)^n = ax+b (hogere macht = lineaire uitdrukking) ──────── */
+function genMV3d() {
+  const n = pick([3, 4]);
+  let a, b, sols, tries = 0;
+  do {
+    a = rand(2, 5);
+    b = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    const s1 = -b / a, s2 = (1 - b) / a, s3 = (-1 - b) / a;
+    if (n === 3) {
+      sols = [s1, s2, s3];
+      if ([Math.abs(s1-s2), Math.abs(s1-s3), Math.abs(s2-s3)].every(d => d > 0.01)) break;
+    } else {
+      sols = [s1, s2];
+      if (Math.abs(s1 - s2) > 0.01) break;
+    }
+    tries++;
+  } while (tries < 30);
+
+  const bSign = b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+  const linear = `${a}x ${bSign}`;
+  const s1Tex = _mv3FracTeX(-b, a);
+  const s2Tex = _mv3FracTeX(1 - b, a);
+  const s3Tex = n === 3 ? _mv3FracTeX(-1 - b, a) : null;
+
+  const uLabel = n === 3
+    ? `$u^3 - u = 0 \\Rightarrow u(u^2 - 1) = 0 \\Rightarrow u = 0,\\; u = 1,\\; u = -1$`
+    : `$u^4 - u = 0 \\Rightarrow u(u^3 - 1) = 0 \\Rightarrow u = 0,\\; u = 1$`;
+
+  const solLines = n === 3
+    ? [
+        `$${linear} = 0 \\Rightarrow x = ${s1Tex}$`,
+        `$${linear} = 1 \\Rightarrow x = ${s2Tex}$`,
+        `$${linear} = -1 \\Rightarrow x = ${s3Tex}$`,
+        `Oplossingen: $x = ${s1Tex} \\lor x = ${s2Tex} \\lor x = ${s3Tex}$`,
+      ]
+    : [
+        `$${linear} = 0 \\Rightarrow x = ${s1Tex}$`,
+        `$${linear} = 1 \\Rightarrow x = ${s2Tex}$`,
+        `Oplossingen: $x = ${s1Tex} \\lor x = ${s2Tex}$`,
+      ];
+
+  return {
+    id: uid(), leerdoel: 'M.V3d',
+    vraag: `Los op: $(${linear})^${n} = ${linear}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols },
+    hints: [
+      `Stel $u = ${linear}$. De vergelijking wordt $u^${n} = u$.`,
+      `Breng $u$ naar links: $u^${n} - u = 0$. Haal $u$ eruit en gebruik de nulpuntsregel.`,
+    ],
+    oplossing: [
+      `Stel $u = ${linear}$: $u^${n} = u$`,
+      `$u^${n} - u = 0$`,
+      uLabel,
+      ...solLines,
+    ].join('\n'),
+  };
+}
+
+/* ── M.V3e – Gemengd (willekeurig één van M.V3a t/m M.V3d) ─────────────── */
+function genMV3e() {
+  const v = pick([genMV3a, genMV3b, genMV3c, genMV3d])();
+  return { ...v, id: uid(), leerdoel: 'M.V3e' };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -4711,6 +5173,8 @@ const LEERDOELEN = [
   { id: 'L.V1a',  titel: 'Lineair – vergelijking: 1-stap',            groep: 'Lineair', gen: genLV1a  },
   { id: 'L.V1b',  titel: 'Lineair – vergelijking: 2-stap',            groep: 'Lineair', gen: genLV1b  },
   { id: 'L.V1c',  titel: 'Lineair – vergelijking: met haakjes',       groep: 'Lineair', gen: genLV1c  },
+  { id: 'L.V1d',  titel: 'Lineair – vergelijking: decimale getallen',  groep: 'Lineair', gen: genLV1d  },
+  { id: 'L.V1e',  titel: 'Lineair – vergelijking: breuken',            groep: 'Lineair', gen: genLV1e  },
   { id: 'L.O1a',  titel: 'Lineair – ongelijkheid: 1-stap',            groep: 'Lineair', gen: genLO1a  },
   { id: 'L.O1b',  titel: 'Lineair – ongelijkheid: 2-stap',            groep: 'Lineair', gen: genLO1b  },
   { id: 'L.O1c',  titel: 'Lineair – ongelijkheid: met haakjes',       groep: 'Lineair', gen: genLO1c  },
@@ -4722,6 +5186,11 @@ const LEERDOELEN = [
   { id: 'M.V1d', titel: 'Machtsvergelijking: met haakjes',                       groep: 'Machtsverbanden', gen: genMV1d },
   { id: 'M.V2a', titel: 'Machtsvergelijking: x³-vorm (factoriseren)',            groep: 'Machtsverbanden', gen: genMV2a },
   { id: 'M.V2b', titel: 'Machtsvergelijking: x⁴-vorm (substitutie u = x²)',     groep: 'Machtsverbanden', gen: genMV2b },
+  { id: 'M.V3a', titel: 'Algemene vorm: AB = 0 (nulpuntsregel)',               groep: 'Machtsverbanden', gen: genMV3a },
+  { id: 'M.V3b', titel: 'Algemene vorm: A² = B²',                              groep: 'Machtsverbanden', gen: genMV3b },
+  { id: 'M.V3c', titel: 'Algemene vorm: AB = AC (gemeenschappelijke factor)',   groep: 'Machtsverbanden', gen: genMV3c },
+  { id: 'M.V3d', titel: 'Algemene vorm: AB = A (hogere macht = lineair)',       groep: 'Machtsverbanden', gen: genMV3d },
+  { id: 'M.V3e', titel: 'Algemene vormen – gemengd',                           groep: 'Machtsverbanden', gen: genMV3e },
 
   /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
   { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },

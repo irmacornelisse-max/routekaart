@@ -127,8 +127,8 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | alg-machten | A.MV1a, A.MV1b, A.MV1c, A.MV1d |
 | lin-grafiek | L.G1a, L.G1b, L.G1c, L.G2a, L.G2b, L.G2c |
 | lin-formule | L.F1a, L.F1b, L.F1c, L.F2a, L.F2b, L.F2c |
-| lin-vergelijking | L.V1a, L.V1b, L.V1c |
+| lin-vergelijking | L.V1a, L.V1b, L.V1c, L.V1d, L.V1e |
 | lin-ongelijkheid | L.O1a, L.O1b, L.O1c |
 | lin-stelsel | S.1a, S.1b, S.1c |
 | kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
-| machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b |
+| machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b, M.V3a, M.V3b, M.V3c, M.V3d, M.V3e |

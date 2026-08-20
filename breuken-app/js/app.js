@@ -191,7 +191,7 @@ const TOC_HOOFDSTUKKEN = [
       {
         id: 'lin-vergelijking', label: 'Lineaire vergelijkingen',
         items: [
-          { label: 'Lineaire vergelijkingen', knoppen: [{l:'a',id:'L.V1a'},{l:'b',id:'L.V1b'},{l:'c',id:'L.V1c'}] },
+          { label: 'Lineaire vergelijkingen', knoppen: [{l:'a',id:'L.V1a'},{l:'b',id:'L.V1b'},{l:'c',id:'L.V1c'},{l:'d',id:'L.V1d'},{l:'e',id:'L.V1e'}] },
         ]
       },
       {
@@ -227,6 +227,7 @@ const TOC_HOOFDSTUKKEN = [
         items: [
           { label: 'Machtsvergelijkingen', knoppen: [{l:'a',id:'M.V1a'},{l:'b',id:'M.V1b'},{l:'c',id:'M.V1c'},{l:'d',id:'M.V1d'}] },
           { label: 'Specifieke vormen',   knoppen: [{l:'a',id:'M.V2a'},{l:'b',id:'M.V2b'}] },
+          { label: 'Algemene vormen',    knoppen: [{l:'a',id:'M.V3a'},{l:'b',id:'M.V3b'},{l:'c',id:'M.V3c'},{l:'d',id:'M.V3d'},{l:'e',id:'M.V3e'}] },
         ]
       },
     ]
@@ -1153,20 +1154,22 @@ function checkAntwoord(vraag, gegeven) {
       }
     }
 
-    // Tussenstap: elk v-segment apart controleren (bijv. "x=0 v x²+7x+12=0")
+    // Tussenstap: alle oplossingen moeten door minstens één v-segment gedekt worden
     const segments = rawV.split(/\s*v\s*/);
+    const covered = sols.map(() => false);
     for (const seg of segments) {
       const eqParts = seg.split('=');
       if (eqParts.length === 2) {
-        for (const xv of sols) {
+        for (let si = 0; si < sols.length; si++) {
           try {
-            const lhs = _algEval(eqParts[0].trim(), { x: xv });
-            const rhs = _algEval(eqParts[1].trim(), { x: xv });
-            if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) return 'tussenstap';
+            const lhs = _algEval(eqParts[0].trim(), { x: sols[si] });
+            const rhs = _algEval(eqParts[1].trim(), { x: sols[si] });
+            if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) covered[si] = true;
           } catch {}
         }
       }
     }
+    if (covered.every(c => c)) return 'tussenstap';
     return 'fout';
   }
 
@@ -1363,6 +1366,10 @@ function feedbackBoodschap(vraag, gegeven) {
     const ld = vraag.leerdoel;
     if (ld === 'M.V2a') return 'Breng alles naar één kant, haal $x$ eruit en ontbind de kwadratische factor. Geef alle oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'M.V2b') return 'Substitueer $u = x^2$, los de kwadratische vergelijking in $u$ op en neem dan de vierkantswortel. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'M.V3a') return 'Nulpuntsregel: stel elke factor gelijk aan nul. Haal bij de eerste factor $x$ eruit; bij de tweede neem je de wortel. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'M.V3b') return 'Als $A^2 = B^2$, dan $A = B$ of $A = -B$. Werk beide gevallen uit en geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'M.V3c') return 'Haal de gemeenschappelijke factor eruit (niet wegdelen!) en gebruik de nulpuntsregel. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'M.V3d') return 'Stel $u$ gelijk aan de herhaalde uitdrukking, breng naar links, haal $u$ eruit en gebruik de nulpuntsregel. Geef alle oplossingen met de <strong>v</strong>-knop.';
     return 'Geef alle oplossingen met de <strong>v</strong>-knop.';
   }
   if (vraag.antwoordType === 'formule-lijn') {
@@ -1492,11 +1499,18 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.V1a': 'Pas één bewerking toe op beide kanten tegelijk, zodat $x$ alleen komt te staan.',
     'L.V1b': 'Zet eerst alle $x$-termen naar links en alle getallen naar rechts. Deel daarna door de coëfficiënt van $x$.',
     'L.V1c': 'Werk eerst de haakjes uit. Dan heb je een vergelijking zonder haakjes en kun je verder oplossen.',
+    'L.V1d': 'Vermenigvuldig beide kanten met $10$ om de kommagetallen te verwijderen. Dan los je de gewone vergelijking op.',
+    'L.V1e': 'Vermenigvuldig beide kanten met de kgv van de noemers om de breuken weg te werken. Schrijf gemengde getallen eerst om naar gewone breuken.',
     'L.O1a': 'Pas dezelfde bewerking toe op beide kanten. Let op: het ongelijkheidsteken draait om bij delen door een negatief getal.',
     'L.O1b': 'Zet $x$-termen links en getallen rechts. Controleer het teken van de coëfficiënt vóór je deelt.',
     'L.O1c': 'Werk eerst de haakjes uit. Herschik daarna en let op het teken bij het delen.',
     'M.V2a': 'Breng alles naar één kant zodat de vergelijking $= 0$ is. Haal $x$ eruit → kwadratische vergelijking. Nulpuntsregel: elke factor $= 0$. Geef alle oplossingen met de v-knop.',
     'M.V2b': 'Stel $u = x^2$: dan wordt $x^4 = u^2$. Los de kwadratische in $u$ op, neem dan de vierkantswortel voor $x$ ($\\pm$). Geef alle oplossingen met de v-knop.',
+    'M.V3a': 'Nulpuntsregel: $A \\cdot B = 0 \\Rightarrow A = 0$ of $B = 0$. Stel elke factor apart gelijk aan nul en los op. Geef alle oplossingen met de v-knop.',
+    'M.V3b': 'Als $A^2 = B^2$, dan $A = B$ of $A = -B$. Werk beide gevallen uit en geef alle oplossingen met de v-knop.',
+    'M.V3c': 'Zoek de gemeenschappelijke factor in beide termen. Breng alles naar één kant en haal de factor eruit. Niet wegdelen — gebruik de nulpuntsregel. Geef alle oplossingen met de v-knop.',
+    'M.V3d': 'Stel $u$ gelijk aan de herhaalde uitdrukking. Dan wordt het $u^n = u$. Breng naar links, haal $u$ eruit en gebruik de nulpuntsregel. Geef alle oplossingen met de v-knop.',
+    'M.V3e': 'Herken de vorm: is het $AB = 0$, $A^2 = B^2$, $AB = AC$ of $AB = A$? Gebruik dan de bijbehorende aanpak en geef alle oplossingen met de v-knop.',
     'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
     'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
     'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',
