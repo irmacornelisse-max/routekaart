@@ -987,6 +987,37 @@ function _hasRootInDenom(latex) {
   return false;
 }
 
+function _hasParens(latex) {
+  return latex.includes('(') || latex.includes(')');
+}
+
+function _hasArithInDenom(latex) {
+  let s = latex, i = 0;
+  while (i < s.length) {
+    const fi = s.indexOf('\\frac{', i);
+    if (fi < 0) break;
+    let j = fi + 6, depth = 1;
+    while (j < s.length && depth > 0) {
+      if (s[j] === '{') depth++; else if (s[j] === '}') depth--;
+      j++;
+    }
+    if (j >= s.length || s[j] !== '{') { i = fi + 1; continue; }
+    j++;
+    depth = 1;
+    let hasOp = false;
+    while (j < s.length && depth > 0) {
+      const c = s[j];
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+      else if (depth === 1 && (c === '+' || c === '-')) hasOp = true;
+      j++;
+    }
+    if (hasOp) return true;
+    i = fi + 1;
+  }
+  return false;
+}
+
 /* ── Read student answer ─────────────────────────────────────────────────── */
 function leesAntwoord(vraag) {
   const type = vraag.antwoordType;
@@ -1316,7 +1347,10 @@ function checkAntwoord(vraag, gegeven) {
     try {
       const given = _algEval(raw, {});
       if (typeof given === 'number' && isFinite(given) && Math.abs(given - correct.value) < 1e-9) {
-        return _hasRootInDenom(raw) ? 'tussenstap' : 'goed';
+        if (_hasRootInDenom(raw)) return 'tussenstap';
+        if (_hasParens(raw)) return 'tussenstap';
+        if (_hasArithInDenom(raw)) return 'tussenstap';
+        return 'goed';
       }
     } catch {}
     return 'fout';
