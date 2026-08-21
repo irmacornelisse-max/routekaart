@@ -1,4 +1,4 @@
-/* ── Math Keyboard ───────────────────────────────────────────────────── */
+﻿/* ── Math Keyboard ───────────────────────────────────────────────────── */
 
 function getKeyboardHTML() {
   return `<div id="math-keyboard" class="math-keyboard">
@@ -8,6 +8,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn" data-val="9">9</button>
       <button class="kbd-btn kbd-btn-op" data-val="+">+</button>
       <button class="kbd-btn kbd-btn-del" data-val="DEL">⌫</button>
+      <button class="kbd-btn kbd-btn-op" data-val="SQRT">√</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="4">4</button>
@@ -15,6 +16,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn" data-val="6">6</button>
       <button class="kbd-btn kbd-btn-op" data-val="-">−</button>
       <button class="kbd-btn kbd-btn-op" data-val="NEXT">→</button>
+      <button class="kbd-btn kbd-btn-op" data-val="NTHROOT">ⁿ√</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="1">1</button>
@@ -22,6 +24,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn" data-val="3">3</button>
       <button class="kbd-btn kbd-btn-op" data-val="TIMES">×</button>
       <button class="kbd-btn kbd-btn-op" data-val=":">:</button>
+      <button class="kbd-btn kbd-btn-op" data-val="v">v</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="0">0</button>
@@ -29,6 +32,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-frac" data-val="FRAC">a/b</button>
       <button class="kbd-btn kbd-btn-mixed" data-val="MIXED">1 a/b</button>
       <button class="kbd-btn kbd-btn-clear" data-val="CLR">C</button>
+      <button class="kbd-btn kbd-btn-op" data-val="(">(</button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn kbd-btn-op" data-val="=">=</button>
@@ -36,6 +40,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val=">">&gt;</button>
       <button class="kbd-btn kbd-btn-op" data-val="LE">≤</button>
       <button class="kbd-btn kbd-btn-op" data-val="GE">≥</button>
+      <button class="kbd-btn kbd-btn-op" data-val=")">)</button>
     </div>
   </div>`;
 }
@@ -70,8 +75,14 @@ function handleKbdKey(val) {
     case '+':     mq.typedText('+'); break;
     case '-':     mq.typedText('-'); break;
     case 'TIMES': mq.cmd('\\times'); break;
-    case 'LE':    mq.cmd('\\le'); break;
-    case 'GE':    mq.cmd('\\ge'); break;
+    case 'LE':     mq.cmd('\\le'); break;
+    case 'GE':     mq.cmd('\\ge'); break;
+    case 'SQRT':   mq.cmd('\\sqrt'); break;
+    case 'NTHROOT': mq.cmd('\\nthroot'); break;
+
+    case '(':      mq.typedText('('); break;
+    case ')':      mq.typedText(')'); break;
+    case 'v':     mq.write('\\quad v\\quad'); break;
     default:      mq.typedText(val); break;
   }
 }

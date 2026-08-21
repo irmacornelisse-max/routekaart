@@ -1210,24 +1210,27 @@ function checkAntwoord(vraag, gegeven) {
       return std;
     };
 
-    // "x = val1 v x = val2" — beide x-waarden; beide moeten kloppen (valid + extraneous)
+    // "x = val1 v x = val2" — W.V1a (extraneous=null): nooit twee oplossingen
+    //                         W.V1b: valid + extraneous, beide moeten kloppen
     const vMatch = rawV.match(/^x\s*=\s*(.+?)\s*v\s*x\s*=\s*(.+)$/);
     if (vMatch) {
+      if (extraneous === null) return 'fout';
       try {
         const v1 = _parseNum(vMatch[1].trim());
         const v2 = _parseNum(vMatch[2].trim());
         if (isFinite(v1) && isFinite(v2)) {
-          const v1ok = Math.abs(v1 - valid) < 1e-6 || (extraneous !== null && Math.abs(v1 - extraneous) < 1e-6);
-          const v2ok = Math.abs(v2 - valid) < 1e-6 || (extraneous !== null && Math.abs(v2 - extraneous) < 1e-6);
+          const v1ok = Math.abs(v1 - valid) < 1e-6 || Math.abs(v1 - extraneous) < 1e-6;
+          const v2ok = Math.abs(v2 - valid) < 1e-6 || Math.abs(v2 - extraneous) < 1e-6;
           if (v1ok && v2ok) return 'tussenstap';
         }
       } catch {}
       return 'fout';
     }
 
-    // "x = ±val" — beide via ± notatie, tussenstap
+    // "x = ±val" — W.V1a: nooit; W.V1b: tussenstap
     const pmMatch = raw.match(/^x\s*=\s*\\pm\s*(.+)$/);
     if (pmMatch) {
+      if (extraneous === null) return 'fout';
       try {
         const val = _algEval(pmMatch[1].trim(), {});
         if (isFinite(val) && Math.abs(val - Math.abs(valid)) < 1e-6) return 'tussenstap';
@@ -1250,28 +1253,26 @@ function checkAntwoord(vraag, gegeven) {
     const hasSqrt = raw.includes('\\sqrt');
 
     if (segs.length === 1) {
-      // Eén segment: OK als het \sqrt bevat (stap vóór kwadrateren, check bij x=valid),
-      // of als het voor BEIDE oplossingen geldt (symmetrische polynoomvergelijking, W.V1b).
       const eqParts = segs[0].split('=');
       if (eqParts.length === 2) {
         try {
           const lhsV = _algEval(eqParts[0].trim(), { x: valid });
           const rhsV = _algEval(eqParts[1].trim(), { x: valid });
           if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6) {
-            if (hasSqrt) return 'tussenstap';
-            if (extraneous !== null) {
-              const lhsE = _algEval(eqParts[0].trim(), { x: extraneous });
-              const rhsE = _algEval(eqParts[1].trim(), { x: extraneous });
-              if (isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) return 'tussenstap';
-            }
+            if (hasSqrt) return 'tussenstap';       // stap vóór kwadrateren (beide varianten)
+            if (extraneous === null) return 'tussenstap'; // W.V1a: één stap altijd OK
+            // W.V1b: alleen als vergelijking ook geldt voor de schijnoplossing (symmetrisch)
+            const lhsE = _algEval(eqParts[0].trim(), { x: extraneous });
+            const rhsE = _algEval(eqParts[1].trim(), { x: extraneous });
+            if (isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) return 'tussenstap';
           }
         } catch {}
       }
       return 'fout';
     }
 
-    // Twee segmenten (na kwadrateren): beide branches verplicht, elk gecheckt
-    if (segs.length !== 2) return 'fout';
+    // Twee segmenten: alleen W.V1b (extraneous !== null), beide branches verplicht, elk gecheckt
+    if (extraneous === null || segs.length !== 2) return 'fout';
     let validMatched = false, extraneousMatched = false;
     for (const seg of segs) {
       const eqParts = seg.split('=');
@@ -1283,7 +1284,7 @@ function checkAntwoord(vraag, gegeven) {
         const rhsE = _algEval(eqParts[1].trim(), { x: extraneous });
         if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6) {
           validMatched = true;
-        } else if (extraneous !== null && isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) {
+        } else if (isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) {
           extraneousMatched = true;
         } else {
           return 'fout';
@@ -1935,6 +1936,7 @@ function addNewActiveRow() {
   const MQ = MathQuill.getInterface(2);
   const mq = MQ.MathField(el, {
     spaceBehavesLikeTab: true,
+    autoCommands: 'sqrt',
     handlers: { enter: () => document.getElementById('btn-controleer')?.click() }
   });
 
@@ -1946,7 +1948,8 @@ function addNewActiveRow() {
       const _kq = APP.huidigVraag;
       const _needsV = (_kq?.antwoordType === 'machtsvergelijking' && _kq?.antwoord?.hasNeg)
                     || _kq?.antwoordType === 'kwadratisch'
-                    || _kq?.antwoordType === 'vergelijking-mv';
+                    || _kq?.antwoordType === 'vergelijking-mv'
+                    || (_kq?.antwoordType === 'wortelverg' && _kq?.antwoord?.extraneous !== null);
       if (e.key === 'v' && _needsV) {
         e.preventDefault();
         mq.write('\\quad v\\quad');

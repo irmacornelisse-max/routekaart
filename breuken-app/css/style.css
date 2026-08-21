@@ -405,7 +405,7 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   border-top: 2px solid rgba(255,255,255,.12);
 }
 .kbd-row {
-  display: flex; gap: 5px; margin-bottom: 5px; justify-content: center; max-width: 340px; margin-inline: auto;
+  display: flex; gap: 5px; margin-bottom: 5px; justify-content: center; max-width: 420px; margin-inline: auto;
 }
 .kbd-btn {
   flex: 1; height: 40px; min-width: 0; background: #2E5B8C; color: #fff;
@@ -936,4 +936,19 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
   font-weight: 600;
   color: var(--text-soft);
   margin-bottom: 6px;
+}
+
+/* ── Lineaire grafiek – tabel in vraag ──────────────────────────────── */
+.lg-tabel {
+  border-collapse: collapse;
+  margin: 8px auto 4px;
+}
+.lg-tabel th, .lg-tabel td {
+  border: 1px solid var(--border);
+  padding: 4px 20px;
+  text-align: center;
+}
+.lg-tabel th {
+  background: var(--bg-soft, #f0f4ff);
+  font-weight: 600;
 }

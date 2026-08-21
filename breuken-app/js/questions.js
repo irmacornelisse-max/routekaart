@@ -5017,6 +5017,102 @@ function genMV3e() {
   return { ...v, id: uid(), leerdoel: 'M.V3e' };
 }
 
+/* ── W.V1a – a√(±bx+c) + d = e (isoleren, kwadrateren) ─────────────────── */
+// negX-variant: a√(c - bx) + d = e  (x-coëfficiënt negatief in de wortel)
+function genWV1a() {
+  let a, b, c, d, e, u, x, tries = 0;
+  const negX = Math.random() < 0.5;
+  do {
+    a = pick([2, 3, 4]);
+    b = pick([2, 3, 5, 6, 7]);
+    u = rand(3, 10);
+    x = rand(2, 8);
+    // standaard: bx + c = u²  →  c = u² - bx
+    // negX:      c - bx = u²  →  c = u² + bx  (altijd positief)
+    c = negX ? u * u + b * x : u * u - b * x;
+    d = pick([-80, -60, -40, 40, 60, 80]);
+    e = a * u + d;
+    tries++;
+  } while (tries < 200 && (e <= 0 || (!negX && Math.abs(c) > 80) || (negX && c > 250)));
+
+  const radTex = negX
+    ? `${c} - ${b}x`
+    : c === 0 ? `${b}x`
+    : c > 0   ? `${b}x + ${c}`
+    :            `${b}x - ${Math.abs(c)}`;
+  const dTex = d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`;
+  const rhs1 = e - d;    // a*u
+  const u2   = u * u;
+  const bxVal = b * x;   // numerieke waarde van bx
+
+  const steps = [
+    `$${a}\\sqrt{${radTex}}${dTex} = ${e}$`,
+    `$${a}\\sqrt{${radTex}} = ${rhs1}$`,
+    `$\\sqrt{${radTex}} = ${u}$`,
+    `$${radTex} = ${u2}$`,
+  ];
+  // voor negX is c altijd ≠ 0; voor standaard: toon stap alleen als c ≠ 0
+  if (c !== 0) steps.push(`$${b}x = ${bxVal}$`);
+  steps.push(`$x = ${x}$`);
+
+  return {
+    id: uid(), leerdoel: 'W.V1a',
+    vraag: `Los de vergelijking op.\n$${a}\\sqrt{${radTex}}${dTex} = ${e}$`,
+    antwoordType: 'wortelverg',
+    antwoord: { valid: x, extraneous: null },
+    hints: [
+      'Isoleer het wortelteken: breng het losse getal naar de rechterkant.',
+      `Deel door ${a} zodat de wortel alleen staat. Kwadreer dan beide kanten.`,
+      `Los op naar $x$.`,
+    ],
+    oplossing: steps.join('\n'),
+  };
+}
+
+/* ── W.V1b – √(ax²+b) = cx (schijnoplossing na kwadrateren) ─────────────── */
+function genWV1b() {
+  let a, c, k, b, D, tries = 0;
+  do {
+    a = pick([2, 3, 5, 6]);
+    c = pick([3, 4, 5, 6, 7]);
+    k = rand(1, 4);
+    D = c * c - a;
+    b = k * k * D;
+    tries++;
+  } while (tries < 200 && (D <= 0 || b < 1 || b > 300));
+
+  const c2     = c * c;
+  const c2aTex = D === 1 ? '' : `${D}`;
+  const lhsChk = a * k * k + b;
+  const sqChk  = c * k;
+
+  const steps = [
+    `$\\sqrt{${a}x^{2}+${b}} = ${c}x$`,
+    `$${a}x^{2}+${b} = ${c2}x^{2}$`,
+    `$${c2aTex}x^{2} = ${b}$`,
+  ];
+  if (D !== 1) steps.push(`$x^{2} = ${k * k}$`);
+  steps.push(
+    `$x = ${k}\\quad\\text{of}\\quad x = -${k}$`,
+    `Controleer $x = ${k}$: $\\sqrt{${lhsChk}} = ${sqChk}$ en $${c}\\cdot${k} = ${sqChk}$ ✓`,
+    `Controleer $x = -${k}$: linkerkant $= ${sqChk}$ maar $${c}\\cdot(-${k}) = -${sqChk}$ ✗ — schijnoplossing`,
+    `$x = ${k}$`,
+  );
+
+  return {
+    id: uid(), leerdoel: 'W.V1b',
+    vraag: `Los de vergelijking op.\n$\\sqrt{${a}x^{2}+${b}} = ${c}x$`,
+    antwoordType: 'wortelverg',
+    antwoord: { valid: k, extraneous: -k },
+    hints: [
+      'Kwadreer beide kanten om de wortel weg te werken — dit kan schijnoplossingen opleveren!',
+      'Na kwadrateren heb je een vergelijking in $x^{2}$. Los op naar $x^{2}$ en neem de vierkantswortel.',
+      'Je vindt twee mogelijke waarden voor $x$. Vul ze allebei terug in de <strong>originele</strong> vergelijking. Welke geeft een negatieve rechterkant?',
+    ],
+    oplossing: steps.join('\n'),
+  };
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    W.R – Breuken met wortels (herleiden)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -5311,6 +5407,8 @@ const LEERDOELEN = [
   { id: 'M.V3c', titel: 'Algemene vorm: AB = AC (gemeenschappelijke factor)',   groep: 'Machtsverbanden', gen: genMV3c },
   { id: 'M.V3d', titel: 'Algemene vorm: AB = A (hogere macht = lineair)',       groep: 'Machtsverbanden', gen: genMV3d },
   { id: 'M.V3e', titel: 'Algemene vormen – gemengd',                           groep: 'Machtsverbanden', gen: genMV3e },
+  { id: 'W.V1a', titel: 'Wortelvergelijking: isoleren en kwadrateren',         groep: 'Machtsverbanden', gen: genWV1a },
+  { id: 'W.V1b', titel: 'Wortelvergelijking: kwadrateren met schijnoplossing', groep: 'Machtsverbanden', gen: genWV1b },
 
   /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
   { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },
