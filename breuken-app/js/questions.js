@@ -5114,6 +5114,532 @@ function genWV1b() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   G.V – Gebroken vergelijkingen
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── G.V1a – k/(ax+b) = c (noemer wegwerken, lineair oplossen) ─────────── */
+function genGV1a() {
+  let a, b, c, k, xNum, xDen, axVal, d, tries = 0;
+  const solPool = [
+    {n:1,d:1},{n:2,d:1},{n:3,d:1},{n:4,d:1},{n:5,d:1},{n:6,d:1},
+    {n:1,d:2},{n:3,d:2},{n:5,d:2},
+    {n:1,d:3},{n:2,d:3},{n:4,d:3},{n:5,d:3},
+  ];
+  do {
+    const sol = pick(solPool);
+    xNum = sol.n; xDen = sol.d;
+    a = xDen * rand(1, 3);   // a deelbaar door xDen → a*x is geheel
+    b = pick([-6,-4,-3,-2,2,3,4,6]);
+    c = rand(2, 12);
+    axVal = a * xNum / xDen;
+    d = axVal + b;
+    if (d <= 0 || d > 60) { tries++; continue; }
+    k = c * d;
+    if (k <= 0 || k > 200) { tries++; continue; }
+    tries++;
+    break;
+  } while (tries < 500);
+
+  const bTex  = b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
+  const aTex  = a === 1 ? '' : `${a}`;
+  const noem  = `${aTex}x${bTex}`;
+  const xTex  = xDen === 1 ? `${xNum}` : `\\dfrac{${xNum}}{${xDen}}`;
+  const axTex = a === 1 ? `x` : `${a}x`;
+
+  const steps = [
+    `$\\dfrac{${k}}{${noem}} = ${c}$`,
+    `$${k} = ${c}(${noem})$`,
+    `$${noem} = ${d}$`,
+  ];
+  if (b !== 0) steps.push(`$${axTex} = ${d - b}$`);
+  steps.push(`$x = ${xTex}$`);
+
+  return {
+    id: uid(), leerdoel: 'G.V1a',
+    vraag: `Los de vergelijking op.\n$\\dfrac{${k}}{${noem}} = ${c}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller: xNum, noemer: xDen },
+    hints: [
+      `Vermenigvuldig beide kanten met $(${noem})$ zodat de noemer verdwijnt.`,
+      `Je krijgt $${k} = ${c}(${noem})$. Deel daarna beide kanten door $${c}$ en los op naar $x$.`,
+    ],
+    oplossing: steps.join('\n'),
+  };
+}
+
+/* ── G.V1b – k/x^n = c of k/x² = px (noemer wegwerken, machtsvergelijking) */
+function genGV1b() {
+  const sub = pick(['div_sq_const', 'div_sq_linear', 'div_cu_const']);
+
+  if (sub === 'div_sq_const') {
+    // k/x² = c  →  x² = m²  →  x = ±m
+    const m = rand(2, 6);
+    const c = rand(2, 8);
+    const k = c * m * m;
+    return {
+      id: uid(), leerdoel: 'G.V1b',
+      vraag: `Los de vergelijking op.\n$\\dfrac{${k}}{x^{2}} = ${c}$`,
+      antwoordType: 'machtsvergelijking',
+      antwoord: { inner: m * m, n: 2, hasNeg: true, p: 0 },
+      hints: [
+        `Vermenigvuldig beide kanten met $x^{2}$ zodat de noemer verdwijnt.`,
+        `Je krijgt $x^{2} = \\ldots$ — neem de vierkantswortel van beide kanten. Vergeet $\\pm$ niet.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${k}}{x^{2}} = ${c}$`,
+        `$${k} = ${c}x^{2}$`,
+        `$x^{2} = ${m * m}$`,
+        `$x = \\pm${m}$`,
+      ].join('\n'),
+    };
+  }
+
+  if (sub === 'div_sq_linear') {
+    // k/x² = (p/q)x  →  k = (p/q)x³  →  x³ = kq/p  →  x = ∛(kq/p)
+    const neg = Math.random() < 0.4;
+    const absX = pick([2, 3, 4]);
+    const xVal = neg ? -absX : absX;
+    const fracs = [[1,2],[2,3],[1,3],[2,1],[3,1],[3,2]];
+    let p, q, k, found = false;
+    for (let t = 0; t < 60; t++) {
+      [p, q] = pick(fracs);
+      const kRaw = (p / q) * xVal ** 3;
+      if (Number.isInteger(kRaw) && Math.abs(kRaw) >= 2 && Math.abs(kRaw) <= 100) {
+        k = kRaw; found = true; break;
+      }
+    }
+    if (!found) return genGV1b();
+
+    const kAbs = Math.abs(k), kSign = k < 0 ? '-' : '';
+    const pqTex = q === 1 ? `${p}` : `\\dfrac{${p}}{${q}}`;
+    const xCu = xVal ** 3;
+
+    return {
+      id: uid(), leerdoel: 'G.V1b',
+      vraag: `Los de vergelijking op.\n$\\dfrac{${kSign}${kAbs}}{x^{2}} = ${pqTex}x$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: xVal, noemer: 1 },
+      hints: [
+        `Vermenigvuldig beide kanten met $x^{2}$ zodat de noemer verdwijnt.`,
+        `Je krijgt $x^{3} = \\ldots$ — neem daarna de derde machtswortel.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${kSign}${kAbs}}{x^{2}} = ${pqTex}x$`,
+        `$${kSign}${kAbs} = ${pqTex}x^{3}$`,
+        `$x^{3} = ${xCu}$`,
+        `$x = ${xVal}$`,
+      ].join('\n'),
+    };
+  }
+
+  // sub === 'div_cu_const': k/x³ = c  →  x³ = k/c  →  x = ∛(k/c)
+  const neg = Math.random() < 0.4;
+  const absX = pick([2, 3, 4]);
+  const xVal = neg ? -absX : absX;
+  const c = rand(2, 8);
+  const k = c * xVal ** 3;
+  const cubeVal = xVal ** 3;
+  const kAbs = Math.abs(k), kSign = k < 0 ? '-' : '';
+
+  return {
+    id: uid(), leerdoel: 'G.V1b',
+    vraag: `Los de vergelijking op.\n$\\dfrac{${kSign}${kAbs}}{x^{3}} = ${c}$`,
+    antwoordType: 'vergelijking',
+    antwoord: { teller: xVal, noemer: 1 },
+    hints: [
+      `Vermenigvuldig beide kanten met $x^{3}$ zodat de noemer verdwijnt.`,
+      `Je krijgt $x^{3} = \\ldots$ — neem daarna de derde machtswortel.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${kSign}${kAbs}}{x^{3}} = ${c}$`,
+      `$${kSign}${kAbs} = ${c}x^{3}$`,
+      `$x^{3} = ${cubeVal}$`,
+      `$x = ${xVal}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2 helpers ─────────────────────────────────────────────────────────── */
+// Formatteert ax + b als LaTeX (a=1 → 'x', a=-1 → '-x', b=0 → weggelaten)
+function _lt(a, b) {
+  const ap = a === 1 ? '' : a === -1 ? '-' : `${a}`;
+  const bp = b > 0 ? ` + ${b}` : b < 0 ? ` - ${Math.abs(b)}` : '';
+  return `${ap}x${bp}`;
+}
+
+/* ── G.V2a – A/B = 0: teller gelijkstellen aan nul ──────────────────────── */
+function genGV2a() {
+  if (Math.random() < 0.5) {
+    // Lineair: (a(x-r)) / (cx+d) = 0 → x = r
+    let a, r, c, d, tries = 0;
+    do {
+      r = rand(1, 6) * pick([-1, 1]);
+      a = rand(1, 4);
+      c = rand(1, 5) * pick([-1, 1]);
+      d = rand(1, 8) * pick([-1, 1]);
+      tries++;
+    } while (tries < 200 && (c * r + d === 0 || Math.abs(a * r) > 24));
+    const b = -a * r;
+    const noeVal = c * r + d;
+    return {
+      id: uid(), leerdoel: 'G.V2a',
+      vraag: `Los op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = 0$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: r, noemer: 1 },
+      hints: [
+        'Een breuk is nul als de teller nul is — mits de noemer niet nul is.',
+        `Stel de teller nul: $${_lt(a, b)} = 0$.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = 0$`,
+        `$${_lt(a, b)} = 0$`,
+        `$x = ${r}$`,
+        `Controle noemer: $${noeVal} \\neq 0$ ✓`,
+      ].join('\n'),
+    };
+  }
+  // Kwadratisch: (a·x² - a·m²) / (b·x² + c) = 0 → x = ±m
+  const m = rand(2, 5), a = rand(1, 4), bq = rand(1, 3), cq = rand(2, 10);
+  const nv = a * m * m;
+  const aT = a === 1 ? '' : `${a}`;
+  const bT = bq === 1 ? '' : `${bq}`;
+  return {
+    id: uid(), leerdoel: 'G.V2a',
+    vraag: `Los op.\n$\\dfrac{${aT}x^{2} - ${nv}}{${bT}x^{2} + ${cq}} = 0$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [m, -m] },
+    hints: [
+      'De breuk is nul als de teller nul is. Controleer ook of de noemer dan nul wordt.',
+      `Stel $${aT}x^{2} - ${nv} = 0$ en los op.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${aT}x^{2} - ${nv}}{${bT}x^{2} + ${cq}} = 0$`,
+      `$${aT}x^{2} - ${nv} = 0$`,
+      `$x^{2} = ${m * m}$`,
+      `$x = ${m} \\quad v \\quad x = -${m}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2b – A/B = C: noemer wegvermenigvuldigen ─────────────────────────── */
+function genGV2b() {
+  if (Math.random() < 0.5) {
+    // Lineair: (ax+b)/(cx+d) = e → x = xVal
+    let a, b, c, d, e, xVal, tries = 0;
+    do {
+      xVal = rand(1, 8) * pick([-1, 1]);
+      e = rand(2, 6) * pick([-1, 1]);
+      c = rand(1, 4);
+      d = rand(1, 6) * pick([-1, 1]);
+      a = rand(1, 5);
+      if (c * xVal + d === 0 || a === e * c) { tries++; continue; }
+      b = e * (c * xVal + d) - a * xVal;
+      if (Math.abs(b) > 40) { tries++; continue; }
+      tries++;
+      break;
+    } while (tries < 300);
+    return {
+      id: uid(), leerdoel: 'G.V2b',
+      vraag: `Los op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: xVal, noemer: 1 },
+      hints: [
+        `Vermenigvuldig beide kanten met $(${_lt(c, d)})$ zodat de breuk verdwijnt.`,
+        `Je krijgt $${_lt(a, b)} = ${e}(${_lt(c, d)})$. Werk uit en los op naar $x$.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
+        `$${_lt(a, b)} = ${e}(${_lt(c, d)})$`,
+        `$x = ${xVal}$`,
+      ].join('\n'),
+    };
+  }
+  // Kwadratisch: (ax²+b)/(cx²+d) = e → x² = m² → x = ±m
+  let a, b, c, d, e, m, tries = 0;
+  do {
+    m = rand(2, 5);
+    e = rand(2, 6);
+    c = rand(1, 3);
+    d = rand(2, 10);
+    a = e * c + rand(1, 4);
+    b = (e * c - a) * m * m + e * d;
+    if (Math.abs(b) > 80) { tries++; continue; }
+    tries++;
+    break;
+  } while (tries < 200);
+  const aT = a === 1 ? '' : `${a}`, cT = c === 1 ? '' : `${c}`;
+  const bTex = b > 0 ? ` + ${b}` : b < 0 ? ` - ${Math.abs(b)}` : '';
+  const dTex = d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`;
+  return {
+    id: uid(), leerdoel: 'G.V2b',
+    vraag: `Los op.\n$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [m, -m] },
+    hints: [
+      `Vermenigvuldig beide kanten met $(${cT}x^{2}${dTex})$.`,
+      `Je krijgt $${aT}x^{2}${bTex} = ${e}(${cT}x^{2}${dTex})$. Isoleer $x^{2}$.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
+      `$${aT}x^{2}${bTex} = ${e}(${cT}x^{2}${dTex})$`,
+      `$x^{2} = ${m * m}$`,
+      `$x = ${m} \\quad v \\quad x = -${m}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2c – A/B = C/D: kruislings vermenigvuldigen ─────────────────────── */
+function genGV2c() {
+  let r1, r2, a, b, pqVal, p, q, tries = 0;
+  do {
+    r1 = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    r2 = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    if (r1 === r2) { tries++; continue; }
+    b = rand(1, 5) * pick([-1, 1]);
+    a = -(r1 + r2) - b;
+    pqVal = a * b - r1 * r2;
+    if (pqVal <= 0 || pqVal > 60) { tries++; continue; }
+    if (r1 + b === 0 || r2 + b === 0) { tries++; continue; }
+    const fps = [];
+    for (let pp = 1; pp <= pqVal; pp++) {
+      if (pqVal % pp === 0 && pp <= 12 && pqVal / pp <= 12) fps.push([pp, pqVal / pp]);
+    }
+    if (!fps.length) { tries++; continue; }
+    [p, q] = pick(fps);
+    tries++;
+    break;
+  } while (tries < 500);
+
+  const aTex = a > 0 ? `x + ${a}` : a < 0 ? `x - ${Math.abs(a)}` : `x`;
+  const bTex = b > 0 ? `x + ${b}` : b < 0 ? `x - ${Math.abs(b)}` : `x`;
+  const coefX = a + b, coefC = a * b - pqVal;
+  let quadTex = 'x^{2}';
+  if (coefX > 0) quadTex += ` + ${coefX}x`;
+  else if (coefX < 0) quadTex += ` - ${Math.abs(coefX)}x`;
+  if (coefC > 0) quadTex += ` + ${coefC}`;
+  else if (coefC < 0) quadTex += ` - ${Math.abs(coefC)}`;
+  const f1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
+  const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
+
+  return {
+    id: uid(), leerdoel: 'G.V2c',
+    vraag: `Los op.\n$\\dfrac{${aTex}}{${p}} = \\dfrac{${q}}{${bTex}}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [r1, r2] },
+    hints: [
+      `Vermenigvuldig kruislings: $(${aTex}) \\cdot (${bTex}) = ${p} \\cdot ${q} = ${pqVal}$.`,
+      `Werk de haakjes uit, breng alles naar één kant en ontbind in factoren.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${aTex}}{${p}} = \\dfrac{${q}}{${bTex}}$`,
+      `$(${aTex})(${bTex}) = ${pqVal}$`,
+      `$${quadTex} = 0$`,
+      `$(${f1})(${f2}) = 0$`,
+      `$x = ${r1} \\quad v \\quad x = ${r2}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2d – A/C = B/C: gelijke noemers (soms schijnoplossing) ──────────── */
+function genGV2d() {
+  const hasSchijn = Math.random() < 0.45;
+
+  if (hasSchijn) {
+    // A/(x-s) = B/(x-s) → A=B → (x-r)(x-s)=0, maar x=s is schijnoplossing
+    let r, s, b1, b2, tries = 0;
+    do {
+      r = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+      s = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+      if (r === s) { tries++; continue; }
+      b1 = rand(1, 4) * pick([-1, 1]);
+      b2 = rand(1, 6) * pick([-1, 1]);
+      if (b1 * s + b2 === 0) { tries++; continue; }
+      const a1 = b1 - r - s, a2 = b2 + r * s;
+      if (Math.abs(a1) > 9 || Math.abs(a2) > 30) { tries++; continue; }
+      tries++;
+      break;
+    } while (tries < 300);
+    const a1 = b1 - r - s, a2 = b2 + r * s;
+    const noeTex = s > 0 ? `x - ${s}` : `x + ${Math.abs(s)}`;
+    const aTex = `x^{2}${a1 > 0 ? ` + ${a1}x` : a1 < 0 ? ` - ${Math.abs(a1)}x` : ''}${a2 > 0 ? ` + ${a2}` : a2 < 0 ? ` - ${Math.abs(a2)}` : ''}`;
+    const f1 = r >= 0 ? `x - ${r}` : `x + ${Math.abs(r)}`;
+    const f2 = noeTex;
+    return {
+      id: uid(), leerdoel: 'G.V2d',
+      vraag: `Los op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+      antwoordType: 'vergelijking',
+      antwoord: { teller: r, noemer: 1 },
+      hints: [
+        'De noemers zijn gelijk — stel de tellers gelijk aan elkaar.',
+        'Controleer daarna of de noemer nul wordt bij de gevonden $x$-waarden (schijnoplossing!).',
+      ],
+      oplossing: [
+        `$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+        `$${aTex} = ${_lt(b1, b2)}$`,
+        `$(${f1})(${f2}) = 0$`,
+        `$x = ${r} \\quad v \\quad x = ${s}$`,
+        `$x = ${s}$: noemer $= 0$ → schijnoplossing ✗`,
+        `Oplossing: $x = ${r}$`,
+      ].join('\n'),
+    };
+  }
+
+  // Geen schijnoplossing: twee geldige oplossingen r1, r2
+  let r1, r2, s, b1, b2, tries = 0;
+  do {
+    r1 = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    r2 = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+    if (r1 === r2) { tries++; continue; }
+    s = pick([-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]);
+    if (s === r1 || s === r2) { tries++; continue; }
+    b1 = rand(1, 4) * pick([-1, 1]);
+    b2 = rand(1, 6) * pick([-1, 1]);
+    if (b1 * s + b2 === 0) { tries++; continue; }
+    const a1 = b1 - r1 - r2, a2 = b2 + r1 * r2;
+    if (Math.abs(a1) > 9 || Math.abs(a2) > 30) { tries++; continue; }
+    tries++;
+    break;
+  } while (tries < 300);
+  const a1 = b1 - r1 - r2, a2 = b2 + r1 * r2;
+  const noeTex = s > 0 ? `x - ${s}` : `x + ${Math.abs(s)}`;
+  const aTex = `x^{2}${a1 > 0 ? ` + ${a1}x` : a1 < 0 ? ` - ${Math.abs(a1)}x` : ''}${a2 > 0 ? ` + ${a2}` : a2 < 0 ? ` - ${Math.abs(a2)}` : ''}`;
+  const g1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
+  const g2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
+  return {
+    id: uid(), leerdoel: 'G.V2d',
+    vraag: `Los op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [r1, r2] },
+    hints: [
+      'De noemers zijn gelijk — stel de tellers gelijk aan elkaar.',
+      'Ontbind de kwadratische vergelijking in factoren en controleer de noemer bij elke oplossing.',
+    ],
+    oplossing: [
+      `$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+      `$${aTex} = ${_lt(b1, b2)}$`,
+      `$(${g1})(${g2}) = 0$`,
+      `$x = ${r1} \\quad v \\quad x = ${r2}$`,
+      `Noemer bij beide $x$-waarden ≠ 0 ✓`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2e – A/B = A/C: gelijke tellers (A = 0 of B = C) ───────────────── */
+function genGV2e() {
+  // Sub-typen voor teller A: lineair, symmetrisch kwadratisch, asymmetrisch kwadratisch
+  const sub = pick(['linear', 'sym_quad', 'asym_quad']);
+
+  // Kies B en C lineair zodat B=C → x=r3; verboden = x-waarden die denom nul maken
+  function _kiesBC(verboden) {
+    let b1, b2, c1, c2, r3, t = 0;
+    const pool = [-5,-4,-3,-2,-1,1,2,3,4,5].filter(v => !verboden.includes(v));
+    do {
+      b1 = rand(1, 4) * pick([-1, 1]);
+      b2 = rand(1, 8) * pick([-1, 1]);
+      c1 = rand(1, 4) * pick([-1, 1]);
+      if (c1 === b1 || !pool.length) { t++; continue; }
+      r3 = pick(pool);
+      c2 = b2 + (b1 - c1) * r3;
+      if (verboden.some(v => b1 * v + b2 === 0 || c1 * v + c2 === 0)) { t++; continue; }
+      if (b1 * r3 + b2 === 0 || c1 * r3 + c2 === 0) { t++; continue; }
+      if (Math.abs(c2) > 30) { t++; continue; }
+      t++;
+      break;
+    } while (t < 500);
+    return { b1, b2, c1, c2, r3 };
+  }
+
+  if (sub === 'linear') {
+    // A = a(x − r1): één wortel → 2 oplossingen totaal
+    const r1 = rand(1, 6) * pick([-1, 1]);
+    const a  = rand(1, 3);
+    const bc = _kiesBC([r1]);
+    const aTex = _lt(a, -a * r1);
+    return {
+      id: uid(), leerdoel: 'G.V2e',
+      vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+      antwoordType: 'vergelijking-mv',
+      antwoord: { sols: [r1, bc.r3] },
+      hints: [
+        'De tellers zijn gelijk. Geval 1: teller = 0. Geval 2: noemers zijn gelijk.',
+        `Geval 1: $${aTex} = 0$. &nbsp; Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+        `Geval 1: $${aTex} = 0 \\Rightarrow x = ${r1}$`,
+        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+        `Controleer: noemers ≠ 0 ✓`,
+        `$x = ${[r1, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
+      ].join('\n'),
+    };
+  }
+
+  if (sub === 'sym_quad') {
+    // A = x² − m²: symmetrische wortels ±m → 3 oplossingen
+    const m = rand(2, 4);
+    const bc = _kiesBC([m, -m]);
+    const aTex = `x^{2} - ${m * m}`;
+    return {
+      id: uid(), leerdoel: 'G.V2e',
+      vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+      antwoordType: 'vergelijking-mv',
+      antwoord: { sols: [m, -m, bc.r3] },
+      hints: [
+        'De tellers zijn gelijk. Geval 1: teller = 0. Geval 2: noemers zijn gelijk.',
+        `Geval 1: $${aTex} = 0$. &nbsp; Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$.`,
+      ],
+      oplossing: [
+        `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+        `Geval 1: $${aTex} = 0 \\Rightarrow x = ${m} \\quad v \\quad x = -${m}$`,
+        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+        `Controleer: noemers ≠ 0 ✓`,
+        `$x = ${[-m, m, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
+      ].join('\n'),
+    };
+  }
+
+  // asym_quad: A = (x−r1)(x−r2) met r1 ≠ ±r2 → niet-symmetrisch → 3 oplossingen
+  let r1, r2, bc, tries = 0;
+  do {
+    r1 = rand(1, 5) * pick([-1, 1]);
+    r2 = rand(1, 5) * pick([-1, 1]);
+    if (r1 === r2 || r1 === -r2) { tries++; continue; }
+    bc = _kiesBC([r1, r2]);
+    tries++;
+    break;
+  } while (tries < 200);
+  const sumR = r1 + r2, prodR = r1 * r2;
+  let aTex = 'x^{2}';
+  if (sumR > 0) aTex += ` - ${sumR}x`; else if (sumR < 0) aTex += ` + ${Math.abs(sumR)}x`;
+  if (prodR > 0) aTex += ` + ${prodR}`; else if (prodR < 0) aTex += ` - ${Math.abs(prodR)}`;
+  const f1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
+  const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
+  return {
+    id: uid(), leerdoel: 'G.V2e',
+    vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [r1, r2, bc.r3] },
+    hints: [
+      'De tellers zijn gelijk. Geval 1: teller = 0 → ontbinden. Geval 2: noemers zijn gelijk.',
+      `Geval 1: $${aTex} = 0$. &nbsp; Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$.`,
+    ],
+    oplossing: [
+      `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+      `Geval 1: $${aTex} = 0 \\Rightarrow (${f1})(${f2}) = 0 \\Rightarrow x = ${r1} \\quad v \\quad x = ${r2}$`,
+      `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+      `Controleer: noemers ≠ 0 ✓`,
+      `$x = ${[r1, r2, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
+    ].join('\n'),
+  };
+}
+
+/* ── G.V2f – Gemengd: alle specifieke vormen door elkaar ─────────────────── */
+function genGV2f() {
+  const q = pick([genGV2a, genGV2b, genGV2c, genGV2d, genGV2e])();
+  return { ...q, id: uid(), leerdoel: 'G.V2f' };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    W.R – Breuken met wortels (herleiden)
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -5409,6 +5935,14 @@ const LEERDOELEN = [
   { id: 'M.V3e', titel: 'Algemene vormen – gemengd',                           groep: 'Machtsverbanden', gen: genMV3e },
   { id: 'W.V1a', titel: 'Wortelvergelijking: isoleren en kwadrateren',         groep: 'Machtsverbanden', gen: genWV1a },
   { id: 'W.V1b', titel: 'Wortelvergelijking: kwadrateren met schijnoplossing', groep: 'Machtsverbanden', gen: genWV1b },
+  { id: 'G.V1a', titel: 'Gebroken vergelijking: lineair',                      groep: 'Machtsverbanden', gen: genGV1a },
+  { id: 'G.V1b', titel: 'Gebroken vergelijking: machtsvorm',                   groep: 'Machtsverbanden', gen: genGV1b },
+  { id: 'G.V2a', titel: 'Gebroken verg.: A/B = 0',                            groep: 'Machtsverbanden', gen: genGV2a },
+  { id: 'G.V2b', titel: 'Gebroken verg.: A/B = C',                            groep: 'Machtsverbanden', gen: genGV2b },
+  { id: 'G.V2c', titel: 'Gebroken verg.: A/B = C/D',                          groep: 'Machtsverbanden', gen: genGV2c },
+  { id: 'G.V2d', titel: 'Gebroken verg.: A/C = B/C',                          groep: 'Machtsverbanden', gen: genGV2d },
+  { id: 'G.V2e', titel: 'Gebroken verg.: A/B = A/C',                          groep: 'Machtsverbanden', gen: genGV2e },
+  { id: 'G.V2f', titel: 'Gebroken verg.: gemengd',                            groep: 'Machtsverbanden', gen: genGV2f },
 
   /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
   { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },
