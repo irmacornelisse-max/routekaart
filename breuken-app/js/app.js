@@ -236,6 +236,12 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Algemene vormen',    knoppen: [{l:'a',id:'M.V3a'},{l:'b',id:'M.V3b'},{l:'c',id:'M.V3c'},{l:'d',id:'M.V3d'},{l:'e',id:'M.V3e'}] },
         ]
       },
+      {
+        id: 'wortel-vergelijking', label: 'Wortelvergelijkingen',
+        items: [
+          { label: 'Wortelvergelijkingen', knoppen: [{l:'a',id:'W.V1a'},{l:'b',id:'W.V1b'}] },
+        ]
+      },
     ]
   },
   {
@@ -678,10 +684,10 @@ function renderOefenen(leerdoelId) {
             <button class="btn btn-primary" id="btn-controleer" aria-label="Controleer antwoord"${type === 'kruistabel' ? ' style="display:none"' : ''}>✓ Controleer</button>
           </div>
         </div>
+        <div id="oplossing-zone"></div>
       </div>
       <aside class="oefenen-zij">
         <div id="hint-zone"></div>
-        <div id="oplossing-zone"></div>
       </aside>
     </div>
   </div></div></div>`;
@@ -1189,6 +1195,97 @@ function checkAntwoord(vraag, gegeven) {
     return 'fout';
   }
 
+  if (type === 'wortelverg') {
+    const { valid, extraneous } = correct;
+    const raw = (gegeven.latex || '').trim();
+    if (!raw) return 'fout';
+
+    const rawV = raw.replace(/\\quad/g, '').replace(/\\;/g, '').replace(/\\text\s*\{[^}]*v[^}]*\}/g, 'v');
+
+    // "x = val1 v x = val2" — beide x-waarden; beide moeten kloppen (valid + extraneous)
+    const vMatch = rawV.match(/^x\s*=\s*(.+?)\s*v\s*x\s*=\s*(.+)$/);
+    if (vMatch) {
+      try {
+        const v1 = _algEval(vMatch[1].trim(), {});
+        const v2 = _algEval(vMatch[2].trim(), {});
+        if (isFinite(v1) && isFinite(v2)) {
+          const v1ok = Math.abs(v1 - valid) < 1e-6 || (extraneous !== null && Math.abs(v1 - extraneous) < 1e-6);
+          const v2ok = Math.abs(v2 - valid) < 1e-6 || (extraneous !== null && Math.abs(v2 - extraneous) < 1e-6);
+          if (v1ok && v2ok) return 'tussenstap';
+        }
+      } catch {}
+      return 'fout';
+    }
+
+    // "x = ±val" — beide via ± notatie, tussenstap
+    const pmMatch = raw.match(/^x\s*=\s*\\pm\s*(.+)$/);
+    if (pmMatch) {
+      try {
+        const val = _algEval(pmMatch[1].trim(), {});
+        if (isFinite(val) && Math.abs(val - Math.abs(valid)) < 1e-6) return 'tussenstap';
+      } catch {}
+      return 'fout';
+    }
+
+    // "x = val" — eindantwoord (enkelvoudig)
+    const eqMatch = raw.match(/^x\s*=\s*(.+)$/);
+    if (eqMatch) {
+      try {
+        const val = _algEval(eqMatch[1].trim(), {});
+        if (isFinite(val) && Math.abs(val - valid) < 1e-6) return 'goed';
+      } catch {}
+      return 'fout';
+    }
+
+    // Tussenstap: vergelijkingsvorm
+    const segs = rawV.split('v').map(s => s.trim()).filter(s => s.includes('='));
+    const hasSqrt = raw.includes('\\sqrt');
+
+    if (segs.length === 1) {
+      // Eén segment: OK als het \sqrt bevat (stap vóór kwadrateren, check bij x=valid),
+      // of als het voor BEIDE oplossingen geldt (symmetrische polynoomvergelijking, W.V1b).
+      const eqParts = segs[0].split('=');
+      if (eqParts.length === 2) {
+        try {
+          const lhsV = _algEval(eqParts[0].trim(), { x: valid });
+          const rhsV = _algEval(eqParts[1].trim(), { x: valid });
+          if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6) {
+            if (hasSqrt) return 'tussenstap';
+            if (extraneous !== null) {
+              const lhsE = _algEval(eqParts[0].trim(), { x: extraneous });
+              const rhsE = _algEval(eqParts[1].trim(), { x: extraneous });
+              if (isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) return 'tussenstap';
+            }
+          }
+        } catch {}
+      }
+      return 'fout';
+    }
+
+    // Twee segmenten (na kwadrateren): beide branches verplicht, elk gecheckt
+    if (segs.length !== 2) return 'fout';
+    let validMatched = false, extraneousMatched = false;
+    for (const seg of segs) {
+      const eqParts = seg.split('=');
+      if (eqParts.length !== 2) return 'fout';
+      try {
+        const lhsV = _algEval(eqParts[0].trim(), { x: valid });
+        const rhsV = _algEval(eqParts[1].trim(), { x: valid });
+        const lhsE = _algEval(eqParts[0].trim(), { x: extraneous });
+        const rhsE = _algEval(eqParts[1].trim(), { x: extraneous });
+        if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6) {
+          validMatched = true;
+        } else if (extraneous !== null && isFinite(lhsE) && isFinite(rhsE) && Math.abs(lhsE - rhsE) < 1e-6) {
+          extraneousMatched = true;
+        } else {
+          return 'fout';
+        }
+      } catch { return 'fout'; }
+    }
+    if (validMatched && extraneousMatched) return 'tussenstap';
+    return 'fout';
+  }
+
   if (type === 'vergelijking-mv') {
     const { sols } = correct;
     const raw = (gegeven.latex || '').trim();
@@ -1431,6 +1528,20 @@ function feedbackBoodschap(vraag, gegeven) {
     const rootName = n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`;
     return `Niet helemaal. Neem de ${rootName} van beide kanten en let op het teken.`;
   }
+  if (vraag.antwoordType === 'wortelverg') {
+    const { extraneous } = vraag.antwoord;
+    const raw = (gegeven.latex || '').trim();
+    const eqMatch = raw.match(/^x\s*=\s*(.+)$/);
+    if (extraneous !== null && eqMatch) {
+      try {
+        const val = _algEval(eqMatch[1].trim(), {});
+        if (isFinite(val) && Math.abs(val - extraneous) < 1e-6) {
+          return 'Dit is een schijnoplossing. Vul deze $x$-waarde in de <strong>originele</strong> vergelijking in: klopt de linkerkant met de rechterkant?';
+        }
+      } catch {}
+    }
+    return 'Niet helemaal. Typ het antwoord als $x = ...$ en controleer of het klopt in de originele vergelijking.';
+  }
   if (vraag.antwoordType === 'kwadratisch') {
     const ld = vraag.leerdoel;
     if (ld === 'K.A1a') return 'Vergeet niet de vierkantswortel te nemen. Er zijn <strong>twee</strong> oplossingen — gebruik de <strong>v</strong>-knop.';
@@ -1598,6 +1709,8 @@ function feedbackBoodschap(vraag, gegeven) {
     'M.V3c': 'Zoek de gemeenschappelijke factor in beide termen. Breng alles naar één kant en haal de factor eruit. Niet wegdelen — gebruik de nulpuntsregel. Geef alle oplossingen met de v-knop.',
     'M.V3d': 'Stel $u$ gelijk aan de herhaalde uitdrukking. Dan wordt het $u^n = u$. Breng naar links, haal $u$ eruit en gebruik de nulpuntsregel. Geef alle oplossingen met de v-knop.',
     'M.V3e': 'Herken de vorm: is het $AB = 0$, $A^2 = B^2$, $AB = AC$ of $AB = A$? Gebruik dan de bijbehorende aanpak en geef alle oplossingen met de v-knop.',
+    'W.V1a': 'Isoleer de wortel (alles zonder wortel naar rechts), deel door de coëfficiënt, kwadreer beide kanten en los op naar $x$. Vergeet niet te controleren!',
+    'W.V1b': 'Kwadreer beide kanten om de wortel weg te werken. Los op naar $x$ — je vindt twee waarden. Vul ze allebei in de <strong>originele</strong> vergelijking in om te controleren welke voldoet.',
     'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
     'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
     'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',
@@ -1905,12 +2018,20 @@ function controleer(vraag) {
     if (type === 'mc') kleurMcKnoppen(vraag);
     toonNieuweVraagKnop();
   } else if (staat === 'tussenstap') {
+    let tussenMsg;
+    if (type === 'wortelverg') {
+      const rawForMsg = (gegeven.latex || '').replace(/\\quad/g, '').replace(/\\;/g, '');
+      const isBeideOpl = /^x\s*=\s*.+\s*v\s*x\s*=/.test(rawForMsg) || /^x\s*=\s*\\pm/.test(rawForMsg);
+      tussenMsg = isBeideOpl
+        ? 'Je hebt beide mogelijkheden gevonden! Controleer nu welke voldoet in de originele vergelijking en typ het eindantwoord als $x = ...$'
+        : 'Juist! Schrijf nu het eindantwoord als $x = ...$';
+    }
     if (useStepList) {
       freezeActiveRow('tussenstap');
-      toonFeedback('tussenstap', 'Juist! Schrijf nu het eindantwoord in de meest vereenvoudigde vorm.');
+      toonFeedback('tussenstap', tussenMsg || 'Juist! Schrijf nu het eindantwoord in de meest vereenvoudigde vorm.');
       addNewActiveRow();
     } else {
-      toonFeedback('tussenstap', 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
+      toonFeedback('tussenstap', tussenMsg || 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
     }
   } else {
     APP.pogingen++;
