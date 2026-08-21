@@ -1202,12 +1202,20 @@ function checkAntwoord(vraag, gegeven) {
 
     const rawV = raw.replace(/\\quad/g, '').replace(/\\;/g, '').replace(/\\text\s*\{[^}]*v[^}]*\}/g, 'v');
 
+    // Gemengd getal: (-?)integer\frac{n}{d} → ±(integer + n/d)
+    const _parseNum = (s) => {
+      const std = _algEval(s, {});
+      const mx = s.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+      if (mx) return (mx[1] === '-' ? -1 : 1) * (parseInt(mx[2]) + parseInt(mx[3]) / parseInt(mx[4]));
+      return std;
+    };
+
     // "x = val1 v x = val2" — beide x-waarden; beide moeten kloppen (valid + extraneous)
     const vMatch = rawV.match(/^x\s*=\s*(.+?)\s*v\s*x\s*=\s*(.+)$/);
     if (vMatch) {
       try {
-        const v1 = _algEval(vMatch[1].trim(), {});
-        const v2 = _algEval(vMatch[2].trim(), {});
+        const v1 = _parseNum(vMatch[1].trim());
+        const v2 = _parseNum(vMatch[2].trim());
         if (isFinite(v1) && isFinite(v2)) {
           const v1ok = Math.abs(v1 - valid) < 1e-6 || (extraneous !== null && Math.abs(v1 - extraneous) < 1e-6);
           const v2ok = Math.abs(v2 - valid) < 1e-6 || (extraneous !== null && Math.abs(v2 - extraneous) < 1e-6);
@@ -1534,7 +1542,11 @@ function feedbackBoodschap(vraag, gegeven) {
     const eqMatch = raw.match(/^x\s*=\s*(.+)$/);
     if (extraneous !== null && eqMatch) {
       try {
-        const val = _algEval(eqMatch[1].trim(), {});
+        const s = eqMatch[1].trim();
+        const mx = s.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+        const val = mx
+          ? (mx[1] === '-' ? -1 : 1) * (parseInt(mx[2]) + parseInt(mx[3]) / parseInt(mx[4]))
+          : _algEval(s, {});
         if (isFinite(val) && Math.abs(val - extraneous) < 1e-6) {
           return 'Dit is een schijnoplossing. Vul deze $x$-waarde in de <strong>originele</strong> vergelijking in: klopt de linkerkant met de rechterkant?';
         }
