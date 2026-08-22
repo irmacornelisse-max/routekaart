@@ -175,6 +175,12 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Breuken met wortels', knoppen: [{l:'a',id:'W.R1a'},{l:'b',id:'W.R1b'},{l:'c',id:'W.R1c'}] },
         ]
       },
+      {
+        id: 'alg-ontbinden-herleiden', label: 'Herleiden door ontbinden',
+        items: [
+          { label: 'Herleiden door ontbinden', knoppen: [{l:'a',id:'B.H1a'},{l:'b',id:'B.H1b'},{l:'c',id:'B.H1c'}] },
+        ]
+      },
     ]
   },
   {
@@ -240,6 +246,13 @@ const TOC_HOOFDSTUKKEN = [
         id: 'wortel-vergelijking', label: 'Wortelvergelijkingen',
         items: [
           { label: 'Wortelvergelijkingen', knoppen: [{l:'a',id:'W.V1a'},{l:'b',id:'W.V1b'}] },
+        ]
+      },
+      {
+        id: 'gebroken-vergelijking', label: 'Gebroken vergelijkingen',
+        items: [
+          { label: 'Gebroken vergelijkingen', knoppen: [{l:'a',id:'G.V1a'},{l:'b',id:'G.V1b'}] },
+          { label: 'Specifieke vormen', knoppen: [{l:'a',id:'G.V2a'},{l:'b',id:'G.V2b'},{l:'c',id:'G.V2c'},{l:'d',id:'G.V2d'},{l:'e',id:'G.V2e'},{l:'f',id:'G.V2f'}] },
         ]
       },
     ]
@@ -1116,8 +1129,14 @@ function checkAntwoord(vraag, gegeven) {
     const stripped = raw.replace(/^x\s*=\s*/, '');
     if (stripped !== raw) {
       try {
-        const val = _algEval(stripped, {});
-        if (typeof val === 'number' && isFinite(val) && Math.abs(val - expected) < 1e-9) return 'goed';
+        const mxMixed = stripped.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+        const val = mxMixed
+          ? (mxMixed[1] === '-' ? -1 : 1) * (parseInt(mxMixed[2]) + parseInt(mxMixed[3]) / parseInt(mxMixed[4]))
+          : _algEval(stripped, {});
+        if (typeof val === 'number' && isFinite(val) && Math.abs(val - expected) < 1e-9) {
+          if (!_fracVereenvoudigd(stripped)) return 'fout';
+          return 'goed';
+        }
       } catch {}
       return 'fout';
     }
@@ -1471,6 +1490,12 @@ function checkAntwoord(vraag, gegeven) {
     if (correct.vorm === 'factored') {
       return checkAlgebraAntwoordGefactoriseerd(raw, correct.expr, correct.vars);
     }
+    if (correct.vorm === 'herleid') {
+      return checkAlgebraHerleid(raw, correct.expr, correct.vars);
+    }
+    if (correct.vorm === 'constant') {
+      return checkAlgebraConstant(raw, correct.expr, correct.vars);
+    }
     return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
   }
 
@@ -1490,6 +1515,16 @@ function checkAntwoord(vraag, gegeven) {
 
   if (Math.abs(sv - cv) > 1e-9) return 'fout';
   return isEindvorm(gegeven.latex) ? 'goed' : 'tussenstap';
+}
+
+/* ── Breuk-vereenvoudiging helpers ─────────────────────────────────────── */
+function _gcd(a, b) { a = Math.abs(a); b = Math.abs(b); return b === 0 ? a : _gcd(b, a % b); }
+function _fracVereenvoudigd(s) {
+  const frac = s.match(/^-?\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  if (frac) return _gcd(parseInt(frac[1]), parseInt(frac[2])) === 1;
+  const mxd = s.match(/^-?\d+\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  if (mxd) return _gcd(parseInt(mxd[1]), parseInt(mxd[2])) === 1;
+  return true;
 }
 
 /* ── Specific feedback ───────────────────────────────────────────────────── */
@@ -1513,9 +1548,7 @@ function feedbackBoodschap(vraag, gegeven) {
       : `Punt B (${puntB.x}, ${puntB.y}) ligt niet op de lijn. Kies een andere $x$-waarde voor B.`;
   }
   if (vraag.antwoordType === 'ongelijkheid') {
-    const { teller, noemer, operator } = vraag.antwoord;
-    const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
-    return `Niet helemaal. Het antwoord is $x ${operator} ${xStr}$.`;
+    return 'Niet helemaal. Controleer de richting van het ongelijkheidsteken en de waarde.';
   }
   if (vraag.antwoordType === 'wortelbreuk') {
     const raw = (gegeven.latex || '').replace(/\\left/g, '').replace(/\\right/g, '').trim();
@@ -1526,8 +1559,22 @@ function feedbackBoodschap(vraag, gegeven) {
   }
   if (vraag.antwoordType === 'vergelijking') {
     const { teller, noemer } = vraag.antwoord;
-    const xStr = noemer === 1 ? `${teller}` : (teller < 0 ? `-\\dfrac{${-teller}}{${noemer}}` : `\\dfrac{${teller}}{${noemer}}`);
-    return `Niet helemaal. Het antwoord is $x = ${xStr}$.`;
+    const expected = teller / noemer;
+    const raw = (gegeven.latex || '').trim();
+    const eqMatch = raw.match(/^x\s*=\s*(.+)$/);
+    if (eqMatch) {
+      try {
+        const s = eqMatch[1].trim();
+        const mxMixed = s.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+        const val = mxMixed
+          ? (mxMixed[1] === '-' ? -1 : 1) * (parseInt(mxMixed[2]) + parseInt(mxMixed[3]) / parseInt(mxMixed[4]))
+          : _algEval(s, {});
+        if (isFinite(val) && Math.abs(val - expected) < 1e-9) {
+          return 'Klopt! Maar schrijf de breuk in de meest vereenvoudigde vorm.';
+        }
+      } catch {}
+    }
+    return 'Niet helemaal. Typ het antwoord als $x = ...$';
   }
   if (vraag.antwoordType === 'machtsvergelijking') {
     const { n, hasNeg } = vraag.antwoord;
@@ -1578,12 +1625,16 @@ function feedbackBoodschap(vraag, gegeven) {
     if (ld === 'M.V3b') return 'Als $A^2 = B^2$, dan $A = B$ of $A = -B$. Werk beide gevallen uit en geef alle oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'M.V3c') return 'Haal de gemeenschappelijke factor eruit (niet wegdelen!) en gebruik de nulpuntsregel. Geef alle oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'M.V3d') return 'Stel $u$ gelijk aan de herhaalde uitdrukking, breng naar links, haal $u$ eruit en gebruik de nulpuntsregel. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2a') return 'Stel de teller gelijk aan nul en controleer of de noemer dan ook nul wordt. Geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2b') return 'Vermenigvuldig beide kanten met de noemer en isoleer $x^{2}$. Geef beide oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2c') return 'Vermenigvuldig kruislings en los de kwadratische vergelijking op door te ontbinden in factoren. Geef beide oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2d') return 'Stel de tellers gelijk aan elkaar, ontbind in factoren en check de noemer bij elke gevonden $x$. Geef geldige oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2e') return 'Werk twee gevallen uit: teller = 0 én noemers gelijk. Controleer de noemers en geef alle oplossingen met de <strong>v</strong>-knop.';
+    if (ld === 'G.V2f') return 'Herken de vorm en pas de juiste aanpak toe. Geef alle oplossingen met de <strong>v</strong>-knop.';
     return 'Geef alle oplossingen met de <strong>v</strong>-knop.';
   }
   if (vraag.antwoordType === 'formule-lijn') {
-    const { m, b } = vraag.antwoord;
-    const formule = _lgFormule(m, b, vraag.data?.mDisplay);
-    return `Niet helemaal. De formule is $${formule}$.`;
+    return 'Niet helemaal. Bepaal $a$ via twee punten op de lijn en bereken daarna $b$.';
   }
   if (vraag.antwoordType === 'two-fracs') {
     const f1 = parseSingleFracFromLatex(gegeven.latex1 || '');
@@ -1707,6 +1758,9 @@ function feedbackBoodschap(vraag, gegeven) {
     'L.V1a': 'Pas één bewerking toe op beide kanten tegelijk, zodat $x$ alleen komt te staan.',
     'L.V1b': 'Zet eerst alle $x$-termen naar links en alle getallen naar rechts. Deel daarna door de coëfficiënt van $x$.',
     'L.V1c': 'Werk eerst de haakjes uit. Dan heb je een vergelijking zonder haakjes en kun je verder oplossen.',
+    'B.H1a': 'Zoek de gemeenschappelijke factor in teller of noemer en haal die buiten haakjes. Streep daarna de gemeenschappelijke factor in teller én noemer weg.',
+    'B.H1b': 'Ontbind zowel de teller als de noemer in factoren. Zoek daarna de factor die in beide staat en streep hem weg.',
+    'B.H1c': 'Voer eerst de bewerking (deling of aftrekking) uit. Ontbind daarna in factoren om verder te vereenvoudigen.',
     'W.R1a': 'Schrijf de wortel in de noemer eenvoudiger (haal kwadraten eruit). Vermenigvuldig daarna teller én noemer met die wortel.',
     'W.R1b': 'Vermenigvuldig teller én noemer met de wortel in de noemer. Gebruik $\\sqrt{A}\\cdot\\sqrt{B} = \\sqrt{AB}$ en vereenvoudig de wortels.',
     'W.R1c': 'Gebruik het conjugaat: als de noemer $a + \\sqrt{b}$ is, vermenigvuldig met $\\dfrac{a - \\sqrt{b}}{a - \\sqrt{b}}$. Dan gebruik je $(a+\\sqrt{b})(a-\\sqrt{b}) = a^2 - b$.',
@@ -1724,6 +1778,14 @@ function feedbackBoodschap(vraag, gegeven) {
     'M.V3e': 'Herken de vorm: is het $AB = 0$, $A^2 = B^2$, $AB = AC$ of $AB = A$? Gebruik dan de bijbehorende aanpak en geef alle oplossingen met de v-knop.',
     'W.V1a': 'Isoleer de wortel (alles zonder wortel naar rechts), deel door de coëfficiënt, kwadreer beide kanten en los op naar $x$. Vergeet niet te controleren!',
     'W.V1b': 'Kwadreer beide kanten om de wortel weg te werken. Los op naar $x$ — je vindt twee waarden. Vul ze allebei in de <strong>originele</strong> vergelijking in om te controleren welke voldoet.',
+    'G.V1a': 'Vermenigvuldig beide kanten met de noemer zodat de breuk verdwijnt. Je houdt een lineaire vergelijking over — los gewoon op naar $x$.',
+    'G.V1b': 'Vermenigvuldig beide kanten met de noemer ($x^n$) zodat de breuk verdwijnt. Je houdt een machtsvergelijking over — los op naar $x$ en vergeet $\\pm$ niet bij een even macht.',
+    'G.V2a': '$\\frac{A}{B} = 0$ betekent $A = 0$ én $B \\neq 0$. Stel de teller gelijk aan nul en controleer daarna altijd of de noemer ook nul wordt.',
+    'G.V2b': 'Vermenigvuldig beide kanten met de noemer. Bij een kwadratische noemer: controleer of de gevonden $x$ de noemer nul maakt (schijnoplossing).',
+    'G.V2c': 'Vermenigvuldig kruislings: $A \\cdot D = B \\cdot C$. Werk uit en los de kwadratische vergelijking op — er zijn twee oplossingen.',
+    'G.V2d': 'Gelijke noemers? Dan zijn ook de tellers gelijk. Los de vergelijking op — maar controleer bij elke oplossing of de noemer dan nul wordt (schijnoplossing).',
+    'G.V2e': 'Gelijke tellers? Ofwel de teller is nul (geval 1), ofwel de noemers zijn gelijk (geval 2). Werk beide gevallen uit en controleer de noemers.',
+    'G.V2f': 'Herken eerst de vorm: $\\frac{A}{B}=0$, $\\frac{A}{B}=C$, $\\frac{A}{B}=\\frac{C}{D}$, $\\frac{A}{C}=\\frac{B}{C}$ of $\\frac{A}{B}=\\frac{A}{C}$.',
     'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
     'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
     'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',
@@ -2033,20 +2095,12 @@ function controleer(vraag) {
     if (type === 'mc') kleurMcKnoppen(vraag);
     toonNieuweVraagKnop();
   } else if (staat === 'tussenstap') {
-    let tussenMsg;
-    if (type === 'wortelverg') {
-      const rawForMsg = (gegeven.latex || '').replace(/\\quad/g, '').replace(/\\;/g, '');
-      const isBeideOpl = /^x\s*=\s*.+\s*v\s*x\s*=/.test(rawForMsg) || /^x\s*=\s*\\pm/.test(rawForMsg);
-      tussenMsg = isBeideOpl
-        ? 'Je hebt beide mogelijkheden gevonden! Controleer nu welke voldoet in de originele vergelijking en typ het eindantwoord als $x = ...$'
-        : 'Juist! Schrijf nu het eindantwoord als $x = ...$';
-    }
     if (useStepList) {
       freezeActiveRow('tussenstap');
-      toonFeedback('tussenstap', tussenMsg || 'Juist! Schrijf nu het eindantwoord in de meest vereenvoudigde vorm.');
+      toonFeedback('tussenstap', 'Goed, ga door!');
       addNewActiveRow();
     } else {
-      toonFeedback('tussenstap', tussenMsg || 'Juist! Dit is een correcte tussenstap. Schrijf het eindantwoord in de meest vereenvoudigde vorm.');
+      toonFeedback('tussenstap', 'Goed, ga door!');
     }
   } else {
     APP.pogingen++;

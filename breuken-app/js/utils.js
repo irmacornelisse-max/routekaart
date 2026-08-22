@@ -313,10 +313,19 @@ function _algTokenize(s, varVals) {
       } else if (cmd === 'div')   { tokens.push({ t: 'op', v: '/' }); }
       else if (cmd === 'left')   { if (i < s.length) { i++; if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({t:'lp'}); } }
       else if (cmd === 'right')  { if (i < s.length) { i++; tokens.push({t:'rp'}); } }
-      else if (cmd === 'sqrt')   {
+      else if (cmd === 'sqrt') {
         if (needsMul) tokens.push({t:'op',v:'*'});
+        let rootIdx = 2;
+        if (i < s.length && s[i] === '[') {
+          i++; let nb = '';
+          while (i < s.length && s[i] !== ']') nb += s[i++];
+          if (i < s.length && s[i] === ']') i++;
+          const ni = parseFloat(nb);
+          if (isFinite(ni) && ni >= 2) rootIdx = ni;
+        }
         const ab = readBlock();
-        tokens.push({ t: 'v', v: Math.sqrt(Math.max(0, _algEval(ab, varVals))) });
+        const iv = _algEval(ab, varVals);
+        tokens.push({ t: 'v', v: (iv < 0 && rootIdx % 2 === 1) ? -Math.pow(-iv, 1 / rootIdx) : Math.pow(Math.max(0, iv), 1 / rootIdx) });
       }
       continue;
     }
@@ -439,6 +448,64 @@ function isAlgebraVereenvoudigd(latex) {
   return true;
 }
 
+/* Geeft true als de LaTeX-expressie nog een variabelenaam bevat (buiten LaTeX-commandonamen). */
+function _bevatVariabele(latex, vars) {
+  if (!vars || !vars.length) return false;
+  const clean = (latex || '').replace(/\\[a-zA-Z]+/g, '');
+  return vars.some(v => clean.includes(v));
+}
+
+/* Validatie voor B.H1c deling: verwacht antwoord is een constante (geen variabele),
+   maar de leerling typt vaak eerst de omgekeerde-vermenigvuldiging tussenstap
+   die nog de variabele bevat. */
+function checkAlgebraConstant(gegeven, verwacht, vars) {
+  const allSets = [[2,3,5],[3,5,7],[5,7,11],[4,6,8],[6,8,9],[4,7,9]];
+  let finiteMatches = 0;
+  for (const vals of allSets) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(e)) continue;
+    if (!isFinite(g)) continue;
+    if (Math.abs(g - e) > 1e-6) return 'fout';
+    finiteMatches++;
+  }
+  if (finiteMatches < 3) return 'fout';
+  return _bevatVariabele(gegeven, vars) ? 'tussenstap' : 'goed';
+}
+
+function _heeftMeerdereParen(latex) {
+  const s = (latex || '').trim()
+    .replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  let count = 0, depth = 0;
+  for (const ch of s) {
+    if (ch === '(') { if (++depth === 1) count++; }
+    else if (ch === ')') depth--;
+  }
+  return count > 1;
+}
+
+/* Validatie voor breuken herleiden door ontbinden (B.H1b).
+   Verschil met checkAlgebraAntwoord:
+   - Gebruikt meer testpuntensets om te voorkomen dat een verwijderbare
+     discontinuïteit (wegstreepbare factor, bijv. (x-2) in teller én noemer)
+     onterecht als 'fout' telt — zo'n NaN-evaluatie wordt overgeslagen.
+   - Tussenstap-detectie op basis van haakjesstructuur in plaats van
+     isAlgebraVereenvoudigd (die ten onrechte breuk-antwoorden afwijst). */
+function checkAlgebraHerleid(gegeven, verwacht, vars) {
+  const allSets = [[2,3,5],[3,5,7],[5,7,11],[4,6,8],[6,8,9],[4,7,9]];
+  let finiteMatches = 0;
+  for (const vals of allSets) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(e)) continue;
+    if (!isFinite(g)) continue; // verwijderbare discontinuïteit — sla over
+    if (Math.abs(g - e) > 1e-6) return 'fout';
+    finiteMatches++;
+  }
+  if (finiteMatches < 3) return 'fout';
+  return _heeftMeerdereParen(gegeven) ? 'tussenstap' : 'goed';
+}
+
 function checkAlgebraAntwoord(gegeven, verwacht, vars) {
   const sets = [[2,3,5],[3,5,7],[5,7,11]];
   for (const vals of sets) {
@@ -483,6 +550,11 @@ function checkAlgebraAntwoordGefactoriseerd(gegeven, verwacht, vars) {
     if (!isFinite(g) || !isFinite(e) || Math.abs(g - e) > 1e-6) return 'fout';
   }
   return isAlgebraGefactoriseerd(gegeven) ? 'goed' : 'tussenstap';
+}
+
+function _mvNthRoot(inner, n) {
+  if (inner < 0 && n % 2 === 1) return -Math.pow(-inner, 1 / n);
+  return Math.pow(Math.max(0, inner), 1 / n);
 }
 
 function correcteWaarde(vraag) {

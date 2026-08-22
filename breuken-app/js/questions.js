@@ -5756,6 +5756,235 @@ function genWR1c() {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   B.H1 – Breuken herleiden door ontbinden in factoren
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B.H1a – Enkele ontbinding (één zijde factoriseren, wegstrepen) ────── */
+function genBH1a() {
+  const letters = ['x', 'y', 'a', 'b', 'n'];
+  const v = pick(letters);
+
+  if (Math.random() < 0.5) {
+    /* Sub-type A: kv / (kav² + kbv)  =  kv / [kv(av+b)]  →  1/(av+b) */
+    const k = pick([2, 3, 5]);
+    const a = pick([2, 3, 4, 5]);
+    const b = rand(1, 6);
+    const ka = k * a, kb = k * b;
+    const numTeX  = `${k}${v}`;
+    const denTeX  = `${ka}${v}^{2} + ${kb}${v}`;
+    const factTeX = `${k}${v}(${a}${v} + ${b})`;
+    const ansTeX  = `\\dfrac{1}{${a}${v} + ${b}}`;
+    const ansExpr = `\\frac{1}{${a}${v}+${b}}`;
+    return _aQ('B.H1a',
+      `Vereenvoudig: $\\dfrac{${numTeX}}{${denTeX}}$`,
+      ansExpr, [v],
+      [
+        `Ontbind de noemer in factoren door $${k}${v}$ buiten haakjes te zetten.`,
+        `De gemeenschappelijke factor $${k}${v}$ staat ook in de teller — streep hem weg.`,
+      ],
+      `$\\dfrac{${numTeX}}{${denTeX}} = \\dfrac{${k}${v}}{${factTeX}} = ${ansTeX}$`
+    );
+  } else {
+    /* Sub-type B: (av² + bv) / (cv)  =  v(av+b) / (cv)  →  (av+b)/c */
+    let a, b, c;
+    do {
+      a = rand(1, 3);
+      b = rand(1, 6);
+      c = pick([2, 3, 4, 5, 6, 8, 10]);
+    } while (gcd(a, c) !== 1 || gcd(b, c) !== 1);
+    const aCoeff = a === 1 ? '' : String(a);
+    const numTeX  = `${aCoeff}${v}^{2} + ${b}${v}`;
+    const denTeX  = `${c}${v}`;
+    const factTeX = `${v}(${aCoeff}${v} + ${b})`;
+    const ansNum  = `${aCoeff}${v} + ${b}`;
+    const ansTeX  = `\\dfrac{${ansNum}}{${c}}`;
+    const ansExpr = `\\frac{${ansNum}}{${c}}`;
+    return _aQ('B.H1a',
+      `Vereenvoudig: $\\dfrac{${numTeX}}{${denTeX}}$`,
+      ansExpr, [v],
+      [
+        `Ontbind de teller in factoren door $${v}$ buiten haakjes te zetten.`,
+        `De gemeenschappelijke factor $${v}$ staat ook in de noemer — streep hem weg.`,
+      ],
+      `$\\dfrac{${numTeX}}{${denTeX}} = \\dfrac{${factTeX}}{${denTeX}} = ${ansTeX}$`
+    );
+  }
+}
+
+/* ── B.H1b – Dubbele ontbinding (beide zijden factoriseren, wegstrepen) ── */
+const BH1b_POOL = [
+  /* num = (v+r)(v+s), den = k(v+r) → (v+s)/k */
+  { q:'\\dfrac{x^{2}+5x-6}{2x-2}',      num:'(x+6)(x-1)', den:'2(x-1)',      ans:'\\frac{x+6}{2}',   vars:['x'],
+    h1:'som-product', h2:'ggd' },
+  { q:'\\dfrac{q^{2}+6q-7}{2q-2}',       num:'(q+7)(q-1)', den:'2(q-1)',      ans:'\\frac{q+7}{2}',   vars:['q'],
+    h1:'som-product', h2:'ggd' },
+  { q:'\\dfrac{x^{2}+2x-3}{3x-3}',       num:'(x+3)(x-1)', den:'3(x-1)',      ans:'\\frac{x+3}{3}',   vars:['x'],
+    h1:'som-product', h2:'ggd' },
+  { q:'\\dfrac{a^{2}+a-2}{a+2}',          num:'(a+2)(a-1)', den:'a+2',         ans:'a-1',              vars:['a'],
+    h1:'som-product', h2:'factor' },
+  { q:'\\dfrac{x^{2}-x-6}{x-3}',          num:'(x-3)(x+2)', den:'x-3',         ans:'x+2',              vars:['x'],
+    h1:'som-product', h2:'factor' },
+  /* num = (v+r)(v+s), den = (v+r)(v+t) – gedeelde factor wegstrepen */
+  { q:'\\dfrac{x^{2}+2x-3}{x^{2}+3x-4}', num:'(x+3)(x-1)', den:'(x+4)(x-1)', ans:'\\frac{x+3}{x+4}', vars:['x'],
+    h1:'som-product', h2:'som-product' },
+  { q:'\\dfrac{x^{2}+x-6}{x^{2}-4}',      num:'(x+3)(x-2)', den:'(x+2)(x-2)', ans:'\\frac{x+3}{x+2}', vars:['x'],
+    h1:'som-product', h2:'kwadraatverschil' },
+  { q:'\\dfrac{a^{2}+4a+3}{a^{2}+5a+6}',  num:'(a+1)(a+3)', den:'(a+2)(a+3)', ans:'\\frac{a+1}{a+2}', vars:['a'],
+    h1:'som-product', h2:'som-product' },
+  /* num = kwadraatverschil of volkomen kwadraat */
+  { q:'\\dfrac{q^{2}-4}{q^{2}+4q+4}',     num:'(q+2)(q-2)', den:'(q+2)^{2}',  ans:'\\frac{q-2}{q+2}', vars:['q'],
+    h1:'kwadraatverschil', h2:'kwadraat' },
+  { q:'\\dfrac{x^{2}-9}{x^{2}+6x+9}',     num:'(x+3)(x-3)', den:'(x+3)^{2}',  ans:'\\frac{x-3}{x+3}', vars:['x'],
+    h1:'kwadraatverschil', h2:'kwadraat' },
+  { q:'\\dfrac{a^{2}-a-2}{a^{2}-4}',       num:'(a-2)(a+1)', den:'(a+2)(a-2)', ans:'\\frac{a+1}{a+2}', vars:['a'],
+    h1:'som-product', h2:'kwadraatverschil' },
+];
+
+const _BH1b_H1 = {
+  'som-product':       'Ontbind de teller in factoren met de som-productmethode: zoek twee getallen waarvan de som gelijk is aan de middelste coëfficiënt en het product aan de constante term.',
+  'kwadraatverschil':  'Ontbind de teller in factoren: herken het patroon $a^2 - b^2 = (a+b)(a-b)$.',
+};
+const _BH1b_H2 = {
+  'ggd':               'Ontbind ook de noemer: haal een getal buiten haakjes (ggd-methode). Welke factor staat daarna ook in de teller? Streep die weg.',
+  'factor':            'De noemer is al een enkelvoudige uitdrukking — ontbind de teller en kijk of de noemer erin voorkomt. Streep de gedeelde factor weg.',
+  'som-product':       'Ontbind ook de noemer met de som-productmethode. Zoek daarna de factor die in teller én noemer staat en streep hem weg.',
+  'kwadraatverschil':  'Ontbind ook de noemer: herken het kwadraatverschil $a^2 - b^2 = (a+b)(a-b)$. Streep daarna de gedeelde factor weg.',
+  'kwadraat':          'Ontbind ook de noemer: herken het volkomen kwadraat $(a+b)^2 = a^2+2ab+b^2$. Streep daarna de gedeelde factor weg.',
+};
+
+function genBH1b() {
+  const e = pick(BH1b_POOL);
+  return {
+    id: uid(), leerdoel: 'B.H1b',
+    vraag: `Vereenvoudig: $${e.q}$`,
+    antwoordType: 'algebra',
+    antwoord: { expr: e.ans, vars: e.vars, vorm: 'herleid' },
+    data: {},
+    hints: [_BH1b_H1[e.h1], _BH1b_H2[e.h2]],
+    oplossing: `$${e.q} = \\dfrac{${e.num}}{${e.den}} = ${e.ans.replace(/\\frac/g, '\\dfrac')}$`,
+  };
+}
+
+/* ── B.H1c – Meerstaps: eerst aftrekken of delen, dan ontbinden ─────────── */
+const BH1c_POOL = [
+  /* Deling: a/(v+p) ÷ b/(k(v+p))  →  a·k/b  (constante uitkomst) */
+  {
+    type: 'fraction', vars: ['x'], ans: '\\frac{4}{3}',
+    q: '\\dfrac{2}{x+3} \\div \\dfrac{3}{2x+6}',
+    hints: [
+      'Keer de tweede breuk om (neem het omgekeerde) en vermenigvuldig.',
+      'Ontbind de noemer van de omgekeerde breuk in factoren (haal een getal buiten haakjes). Zoek daarna de gemeenschappelijke factor in teller en noemer en streep hem weg.',
+    ],
+    opl: '$\\dfrac{2}{x+3} \\div \\dfrac{3}{2x+6} = \\dfrac{2}{x+3} \\cdot \\dfrac{2x+6}{3} = \\dfrac{2 \\cdot 2(x+3)}{3(x+3)} = \\dfrac{4}{3}$',
+  },
+  {
+    type: 'fraction', vars: ['a'], ans: '2',
+    q: '\\dfrac{4}{a-2} \\div \\dfrac{6}{3a-6}',
+    hints: [
+      'Keer de tweede breuk om (neem het omgekeerde) en vermenigvuldig.',
+      'Ontbind de noemer van de omgekeerde breuk in factoren (haal een getal buiten haakjes). Zoek daarna de gemeenschappelijke factor in teller en noemer en streep hem weg.',
+    ],
+    opl: '$\\dfrac{4}{a-2} \\div \\dfrac{6}{3a-6} = \\dfrac{4}{a-2} \\cdot \\dfrac{3a-6}{6} = \\dfrac{4 \\cdot 3(a-2)}{6(a-2)} = \\dfrac{12}{6} = 2$',
+  },
+  {
+    type: 'fraction', vars: ['x'], ans: '6',
+    q: '\\dfrac{3}{x+4} \\div \\dfrac{2}{4x+16}',
+    hints: [
+      'Keer de tweede breuk om (neem het omgekeerde) en vermenigvuldig.',
+      'Ontbind de noemer van de omgekeerde breuk in factoren (haal een getal buiten haakjes). Zoek daarna de gemeenschappelijke factor in teller en noemer en streep hem weg.',
+    ],
+    opl: '$\\dfrac{3}{x+4} \\div \\dfrac{2}{4x+16} = \\dfrac{3}{x+4} \\cdot \\dfrac{4x+16}{2} = \\dfrac{3 \\cdot 4(x+4)}{2(x+4)} = \\dfrac{12}{2} = 6$',
+  },
+  {
+    type: 'fraction', vars: ['n'], ans: '\\frac{3}{2}',
+    q: '\\dfrac{5}{n+2} \\div \\dfrac{10}{3n+6}',
+    hints: [
+      'Keer de tweede breuk om (neem het omgekeerde) en vermenigvuldig.',
+      'Ontbind de noemer van de omgekeerde breuk in factoren (haal een getal buiten haakjes). Zoek daarna de gemeenschappelijke factor in teller en noemer en streep hem weg.',
+    ],
+    opl: '$\\dfrac{5}{n+2} \\div \\dfrac{10}{3n+6} = \\dfrac{5}{n+2} \\cdot \\dfrac{3n+6}{10} = \\dfrac{5 \\cdot 3(n+2)}{10(n+2)} = \\dfrac{15}{10} = \\dfrac{3}{2}$',
+  },
+  {
+    type: 'fraction', vars: ['y'], ans: '3',
+    q: '\\dfrac{6}{y-3} \\div \\dfrac{4}{2y-6}',
+    hints: [
+      'Keer de tweede breuk om (neem het omgekeerde) en vermenigvuldig.',
+      'Ontbind de noemer van de omgekeerde breuk in factoren (haal een getal buiten haakjes). Zoek daarna de gemeenschappelijke factor in teller en noemer en streep hem weg.',
+    ],
+    opl: '$\\dfrac{6}{y-3} \\div \\dfrac{4}{2y-6} = \\dfrac{6}{y-3} \\cdot \\dfrac{2y-6}{4} = \\dfrac{6 \\cdot 2(y-3)}{4(y-3)} = \\dfrac{12}{4} = 3$',
+  },
+  /* Aftrekking: a/(v+p) − a(q−p)/[(v+p)(v+q)]  →  a/(v+q) */
+  {
+    type: 'algebra', ans: '\\frac{2}{x+3}', vars: ['x'],
+    q: '\\dfrac{2}{x+1} - \\dfrac{4}{x^{2}+4x+3}',
+    hints: [
+      'Ontbind de noemer van de tweede breuk in factoren.',
+      'Breng beide breuken op dezelfde noemer en vereenvoudig de teller.',
+    ],
+    opl: '$\\dfrac{2}{x+1} - \\dfrac{4}{(x+1)(x+3)} = \\dfrac{2(x+3) - 4}{(x+1)(x+3)} = \\dfrac{2x+2}{(x+1)(x+3)} = \\dfrac{2(x+1)}{(x+1)(x+3)} = \\dfrac{2}{x+3}$',
+  },
+  {
+    type: 'algebra', ans: '\\frac{3}{x+4}', vars: ['x'],
+    q: '\\dfrac{3}{x+2} - \\dfrac{6}{x^{2}+6x+8}',
+    hints: [
+      'Ontbind de noemer van de tweede breuk in factoren.',
+      'Breng beide breuken op dezelfde noemer en vereenvoudig de teller.',
+    ],
+    opl: '$\\dfrac{3}{x+2} - \\dfrac{6}{(x+2)(x+4)} = \\dfrac{3(x+4) - 6}{(x+2)(x+4)} = \\dfrac{3x+6}{(x+2)(x+4)} = \\dfrac{3(x+2)}{(x+2)(x+4)} = \\dfrac{3}{x+4}$',
+  },
+  {
+    type: 'algebra', ans: '\\frac{2}{x+5}', vars: ['x'],
+    q: '\\dfrac{2}{x+1} - \\dfrac{8}{x^{2}+6x+5}',
+    hints: [
+      'Ontbind de noemer van de tweede breuk in factoren.',
+      'Breng beide breuken op dezelfde noemer en vereenvoudig de teller.',
+    ],
+    opl: '$\\dfrac{2}{x+1} - \\dfrac{8}{(x+1)(x+5)} = \\dfrac{2(x+5) - 8}{(x+1)(x+5)} = \\dfrac{2x+2}{(x+1)(x+5)} = \\dfrac{2(x+1)}{(x+1)(x+5)} = \\dfrac{2}{x+5}$',
+  },
+  {
+    type: 'algebra', ans: '\\frac{3}{n+4}', vars: ['n'],
+    q: '\\dfrac{3}{n+1} - \\dfrac{9}{n^{2}+5n+4}',
+    hints: [
+      'Ontbind de noemer van de tweede breuk in factoren.',
+      'Breng beide breuken op dezelfde noemer en vereenvoudig de teller.',
+    ],
+    opl: '$\\dfrac{3}{n+1} - \\dfrac{9}{(n+1)(n+4)} = \\dfrac{3(n+4) - 9}{(n+1)(n+4)} = \\dfrac{3n+3}{(n+1)(n+4)} = \\dfrac{3(n+1)}{(n+1)(n+4)} = \\dfrac{3}{n+4}$',
+  },
+  {
+    type: 'algebra', ans: '\\frac{4}{t+5}', vars: ['t'],
+    q: '\\dfrac{4}{t+2} - \\dfrac{12}{t^{2}+7t+10}',
+    hints: [
+      'Ontbind de noemer van de tweede breuk in factoren.',
+      'Breng beide breuken op dezelfde noemer en vereenvoudig de teller.',
+    ],
+    opl: '$\\dfrac{4}{t+2} - \\dfrac{12}{(t+2)(t+5)} = \\dfrac{4(t+5) - 12}{(t+2)(t+5)} = \\dfrac{4t+8}{(t+2)(t+5)} = \\dfrac{4(t+2)}{(t+2)(t+5)} = \\dfrac{4}{t+5}$',
+  },
+];
+
+function genBH1c() {
+  const e = pick(BH1c_POOL);
+  if (e.type === 'fraction') {
+    return {
+      id: uid(), leerdoel: 'B.H1c',
+      vraag: `Vereenvoudig: $${e.q}$`,
+      antwoordType: 'algebra',
+      antwoord: { expr: e.ans, vars: e.vars, vorm: 'constant' },
+      data: {},
+      hints: e.hints,
+      oplossing: e.opl,
+    };
+  }
+  return {
+    id: uid(), leerdoel: 'B.H1c',
+    vraag: `Vereenvoudig: $${e.q}$`,
+    antwoordType: 'algebra',
+    antwoord: { expr: e.ans, vars: e.vars },
+    hints: e.hints,
+    oplossing: e.opl,
+  };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -5900,6 +6129,9 @@ const LEERDOELEN = [
   { id: 'W.R1a',  titel: 'Breuken met wortels – eenvoudige wortel in noemer',    groep: 'Herleiden', gen: genWR1a },
   { id: 'W.R1b',  titel: 'Breuken met wortels – twee wortels in teller',         groep: 'Herleiden', gen: genWR1b },
   { id: 'W.R1c',  titel: 'Breuken met wortels – wortelsom in noemer (conjugaat)',groep: 'Herleiden', gen: genWR1c },
+  { id: 'B.H1a', titel: 'Herleiden door ontbinden – enkele ontbinding',         groep: 'Herleiden', gen: genBH1a },
+  { id: 'B.H1b', titel: 'Herleiden door ontbinden – dubbele ontbinding',        groep: 'Herleiden', gen: genBH1b },
+  { id: 'B.H1c', titel: 'Herleiden door ontbinden – meerstaps',                 groep: 'Herleiden', gen: genBH1c },
   { id: 'L.G1a',  titel: 'Lineair – grafiek tekenen: eenvoudig',      groep: 'Lineair', gen: genLG1a  },
   { id: 'L.G1b',  titel: 'Lineair – grafiek tekenen: gevorderd',      groep: 'Lineair', gen: genLG1b  },
   { id: 'L.G2a',  titel: 'Lineair – grafiek bij tabel: eenvoudig',    groep: 'Lineair', gen: genLG2a  },
