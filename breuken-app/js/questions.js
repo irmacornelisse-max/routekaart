@@ -6316,6 +6316,25 @@ function _vraagSleutel(v) {
   return JSON.stringify([v.vraag, v.data ?? null, v.antwoord ?? null]);
 }
 
+/* ── Nederlandse decimale komma ───────────────────────────────────────────
+   In wiskundenotatie hoort een komma: 1,5 en niet 1.5. De opgeslagen
+   antwoorden blijven gewone JavaScript-getallen; alleen wat de leerling te
+   zien krijgt wordt omgezet. Het invoerveld accepteert allebei.
+
+   De omzetting gebeurt alleen binnen $...$, zodat HTML in een hint — zoals
+   de maatladder met zijn "font-size:.8em" — ongemoeid blijft. */
+function _kommaInMath(tekst) {
+  if (typeof tekst !== 'string') return tekst;
+  return tekst.replace(/\$[^$]*\$/g, (m) => m.replace(/(\d)\.(\d)/g, '$1{,}$2'));
+}
+
+function _kommaNotatie(v) {
+  v.vraag = _kommaInMath(v.vraag);
+  v.oplossing = _kommaInMath(v.oplossing);
+  if (Array.isArray(v.hints)) v.hints = v.hints.map(_kommaInMath);
+  return v;
+}
+
 function generateVraag(leerdoelId) {
   const ld = LEERDOELEN.find(l => l.id === leerdoelId);
   if (!ld) throw new Error('Onbekend leerdoel: ' + leerdoelId);
@@ -6329,5 +6348,5 @@ function generateVraag(leerdoelId) {
   recent.push(_vraagSleutel(vraag));
   while (recent.length > RECENT_ONTHOUDEN) recent.shift();
   _recenteVragen.set(leerdoelId, recent);
-  return vraag;
+  return _kommaNotatie(vraag);
 }

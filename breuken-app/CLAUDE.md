@@ -6,6 +6,7 @@
 2. **Getallen altijd random genereren.** Gebruik `rand()`, `pick()`, `Math.random()`. Sinds augustus 2026 geldt dit ook voor dubbele haakjes en ontbinden: die kiezen nu $p$ en $q$ random en bouwen de opgave daaruit op. Alleen `B.H1b` en `B.H1c` (herleiden door ontbinden) hebben nog een vaste pool.
    - `generateVraag()` in `questions.js` onthoudt per leerdoel de laatste vijf opgaven en trekt opnieuw bij een herhaling. Nieuwe generators hoeven daar niets voor te doen.
    - Let bij het opbouwen van een opgavetekst op de coëfficiënt 1: gebruik `_alM` / `_plusTerm` in plaats van `${c}${v}`, anders komt er `1x` te staan.
+   - Decimalen hoeven niet met de hand omgezet: `generateVraag()` zet elke `1.5` binnen `$...$` om naar `1{,}5` (Nederlandse notatie). Buiten `$...$` gebeurt dat bewust niet, zodat HTML in een hint intact blijft. Het invoerveld accepteert zowel een punt als een komma.
 3. **Code moet altijd veilig en kwalitatief goed zijn** — geen magic numbers zonder reden, geen kwetsbaarheden, geen onnodige complexiteit.
 4. **Git write commands voert alleen de gebruiker uit.** Claude voert nooit `git add`, `git commit`, `git push` of andere schrijfcommando's uit.
 

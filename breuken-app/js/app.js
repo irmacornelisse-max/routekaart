@@ -921,13 +921,17 @@ function renderGrafiekLijn(vraag) {
 function renderKruistabelUI(vraag) {
   const { tl, tr, bl, br } = vraag.tabel.cellen;
 
+  /* Nederlandse notatie: 1,8 in plaats van 1.8. Het invoerveld hieronder
+     accepteert beide (zie de parseFloat met replace bij het controleren). */
+  const kommaGetal = (n) => String(n).replace('.', ',');
+
   function celHtml(key, cel, isBottom) {
     const pct = isBottom ? ' <span class="kt-pct">%</span>' : '';
     if (cel.type === 'vraag') {
       return `<div class="kt-cel kt-cel-vraag"><span class="kt-vraagteken">?</span>${pct}</div>`;
     }
     if (cel.type === 'prefilled') {
-      return `<div class="kt-cel kt-cel-prefilled">${cel.val}${pct}</div>`;
+      return `<div class="kt-cel kt-cel-prefilled">${kommaGetal(cel.val)}${pct}</div>`;
     }
     const ph = cel.hint ? ` placeholder="${cel.hint}"` : '';
     return `<div class="kt-cel kt-cel-input"><input type="text" class="kt-input" id="kt-input-${key}" inputmode="decimal" autocomplete="off"${ph}>${pct}</div>`;
