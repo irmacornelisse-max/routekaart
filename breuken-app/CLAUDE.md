@@ -3,7 +3,9 @@
 ## Afspraken met Irma
 
 1. **Stel altijd vragen voordat je begint met bouwen.** Wat voor soort opgaven? Welke niveaus? Welke regels/variabelen? Wacht op antwoord.
-2. **Getallen altijd random genereren** — geen vaste pools voor eenvoudige opgaven. Gebruik `rand()`, `pick()`, `Math.random()`. Vaste pools zijn alleen acceptabel voor structureel complexe opgaven (bijv. FOIL, factoriseren merkwaardige producten).
+2. **Getallen altijd random genereren.** Gebruik `rand()`, `pick()`, `Math.random()`. Sinds augustus 2026 geldt dit ook voor dubbele haakjes en ontbinden: die kiezen nu $p$ en $q$ random en bouwen de opgave daaruit op. Alleen `B.H1b` en `B.H1c` (herleiden door ontbinden) hebben nog een vaste pool.
+   - `generateVraag()` in `questions.js` onthoudt per leerdoel de laatste vijf opgaven en trekt opnieuw bij een herhaling. Nieuwe generators hoeven daar niets voor te doen.
+   - Let bij het opbouwen van een opgavetekst op de coëfficiënt 1: gebruik `_alM` / `_plusTerm` in plaats van `${c}${v}`, anders komt er `1x` te staan.
 3. **Code moet altijd veilig en kwalitatief goed zijn** — geen magic numbers zonder reden, geen kwetsbaarheden, geen onnodige complexiteit.
 4. **Git write commands voert alleen de gebruiker uit.** Claude voert nooit `git add`, `git commit`, `git push` of andere schrijfcommando's uit.
 
@@ -11,8 +13,9 @@
 
 - Git root: `C:\Users\iace\OneDrive\Xplore\IOL\routekaart`
 - Remote: `https://github.com/irmacornelisse-max/routekaart.git`
-- Na wijzigingen voert de gebruiker zelf uit:
+- Na wijzigingen voert de gebruiker zelf uit — **altijd eerst naar de juiste map navigeren**:
   ```
+  cd C:\Users\iace\OneDrive\Xplore\IOL\routekaart
   git add breuken-app/js/app.js breuken-app/js/questions.js  [etc.]
   git commit -m "Omschrijving"
   git push
@@ -126,6 +129,8 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | alg-haakjes | A.H1a, A.H1b, A.H1c, A.H1d |
 | alg-factoren | A.F1a, A.F1b, A.F1c |
 | alg-machten | A.MV1a, A.MV1b, A.MV1c, A.MV1d |
+| alg-wortels | W.R1a, W.R1b, W.R1c |
+| alg-ontbinden-herleiden | B.H1a, B.H1b, B.H1c |
 | lin-grafiek | L.G1a, L.G1b, L.G1c, L.G2a, L.G2b, L.G2c |
 | lin-formule | L.F1a, L.F1b, L.F1c, L.F2a, L.F2b, L.F2c |
 | lin-vergelijking | L.V1a, L.V1b, L.V1c, L.V1d, L.V1e |
@@ -133,3 +138,4 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | lin-stelsel | S.1a, S.1b, S.1c |
 | kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
 | machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b, M.V3a, M.V3b, M.V3c, M.V3d, M.V3e |
+| wortel-vergelijking | W.V1a, W.V1b |

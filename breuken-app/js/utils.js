@@ -434,8 +434,12 @@ function isAlgebraVereenvoudigd(latex) {
   }
   const seen = new Set();
   for (const t of terms) {
-    // Reject repeated variable letters within one term (e.g. 'mm' instead of 'm^{2}')
-    const ts = t.replace(/^[+\-]/, '').replace(/^\d+\.?\d*\*?/, '');
+    // Reject repeated variable letters within one term (e.g. 'mm' instead of 'm^{2}').
+    // Eerst de LaTeX-commando's eruit: \frac telt anders mee als de letters
+    // f, r, a en c, waardoor \frac{1}{2a+5} twee keer een 'a' lijkt te hebben
+    // en een goed antwoord onterecht als tussenstap werd afgekeurd.
+    const ts = t.replace(/\\[a-zA-Z]+/g, ' ')
+                .replace(/^\s*[+\-]/, '').replace(/^\s*\d+\.?\d*\*?/, '');
     const lc = {}; const re2 = /([a-zA-Z])(?:\^\{?\d+\}?)?/g; let m2;
     while ((m2 = re2.exec(ts)) !== null) {
       lc[m2[1]] = (lc[m2[1]] || 0) + 1;

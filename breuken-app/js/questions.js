@@ -401,8 +401,7 @@ function genBP1() {
 
 /* ── BP.2 – Percentage naar breuk ───────────────────────────────────── */
 function genBP2() {
-  const pcts = [10,20,25,30,40,50,60,70,75,80,90];
-  const pct = pick(pcts);
+  const pct = pick(NETTE_PERCENTAGES);   // gedefinieerd bij genPV2
   const [sn, sd] = simplifyFrac(pct, 100);
   return {
     id: uid(), leerdoel: 'BP.2',
@@ -579,7 +578,7 @@ function genG4() {
 
 /* ── G.5 – Positieve getallen kwadrateren ───────────────────────────── */
 function genG5() {
-  const n = rand(2, 12);
+  const n = rand(2, 25);
   return {
     id: uid(), leerdoel: 'G.5',
     vraag: `Bereken: $${n}^2$`,
@@ -594,7 +593,7 @@ function genG5() {
 
 /* ── G.6 – Worteltrekken van positieve getallen ─────────────────────── */
 function genG6() {
-  const n = rand(1, 12);
+  const n = rand(2, 25);
   return {
     id: uid(), leerdoel: 'G.6',
     vraag: `Bereken: $\\sqrt{${n * n}}$`,
@@ -739,10 +738,14 @@ function genG12() {
 
 
 /* ── G.14 – Machtsverheffen van positieve getallen ─────────────────── */
+/* Grondtal met de hoogste macht die nog een hanteerbare uitkomst geeft
+   (alles blijft onder de 1100, en de uitgeschreven vermenigvuldiging blijft
+   kort genoeg om in een hint te tonen). */
+const G_MACHTEN = [[2,7],[3,5],[4,4],[5,4],[6,3],[7,3],[8,3],[9,3],[10,3]];
+
 function genG14() {
-  const bases = [2, 3, 4, 5];
-  const base = pick(bases);
-  const exp = rand(2, base <= 3 ? 5 : 3);
+  const [base, maxExp] = pick(G_MACHTEN);
+  const exp = rand(2, maxExp);
   const res = Math.pow(base, exp);
   return {
     id: uid(), leerdoel: 'G.14',
@@ -758,8 +761,9 @@ function genG14() {
 
 /* ── G.15 – Machtsverheffen van gehele getallen ─────────────────────── */
 function genG15() {
-  const base = -rand(2, 5);
-  const exp = rand(2, 4);
+  const [grondtal, maxExp] = pick(G_MACHTEN);
+  const base = -grondtal;
+  const exp = rand(2, maxExp);
   const res = Math.pow(base, exp);
   const baseStr = `(${base})`;
   return {
@@ -1708,10 +1712,17 @@ function genDP2() {
   };
 }
 
+/* Noemers waarbij deel/geheel altijd op hoogstens één decimaal uitkomt.
+   16 valt af: 1/16 = 6,25% en dat zijn twee decimalen. */
+const PV_NOEMERS = [2, 4, 5, 8, 10, 20, 25, 40, 50];
+
 function genPV1() {
-  const vs = [[1,2],[1,4],[3,4],[1,5],[2,5],[3,5],[4,5],[1,8],[3,8],[7,8],[1,10],[3,10],[7,10]];
-  const [n, d] = pick(vs);
-  const pct = Math.round(n/d*100*10)/10;
+  let n, d, pct;
+  do {
+    d = pick(PV_NOEMERS);
+    n = rand(1, d - 1);
+    pct = Math.round(n / d * 1000) / 10;
+  } while (gcd(n, d) !== 1 || pct !== n / d * 100);
   return {
     id:uid(), leerdoel:'PV.1',
     vraag:`Schrijf de verhouding $${n}:${d}$ als percentage.`,
@@ -1722,9 +1733,15 @@ function genPV1() {
   };
 }
 
+/* Percentages die op een nette breuk uitkomen: veelvouden van 4 of 5. */
+const NETTE_PERCENTAGES = (() => {
+  const uit = [];
+  for (let p = 4; p <= 96; p++) if (p % 4 === 0 || p % 5 === 0) uit.push(p);
+  return uit;
+})();
+
 function genPV2() {
-  const pcts = [10,20,25,40,50,60,75,80,90];
-  const pct  = pick(pcts);
+  const pct  = pick(NETTE_PERCENTAGES);
   const g    = gcd(pct,100);
   const n    = pct/g, d = 100/g;
   return {
@@ -1961,17 +1978,18 @@ function genEO1b() { return _eQ('E.O1b', ...pick(EO1b_POOL)); }
 
 const EO1c_POOL = [
   // m² ↔ are (1 are = 100 m²)
-  [1,'m²','are',100], [2,'m²','are',200], [5,'m²','are',500],
-  [0.5,'m²','are',50], [1.5,'m²','are',150], [3,'m²','are',300],
-  [100,'are','m²',1], [200,'are','m²',2], [50,'are','m²',0.5], [150,'are','m²',1.5],
+  [100,'m²','are',1], [200,'m²','are',2], [500,'m²','are',5],
+  [50,'m²','are',0.5], [150,'m²','are',1.5], [300,'m²','are',3],
+  [1,'are','m²',100], [2,'are','m²',200], [0.5,'are','m²',50], [1.5,'are','m²',150],
   // m² ↔ ha (1 ha = 10 000 m²)
   [10000,'m²','ha',1], [20000,'m²','ha',2], [5000,'m²','ha',0.5], [25000,'m²','ha',2.5],
   [1,'ha','m²',10000], [2,'ha','m²',20000], [0.5,'ha','m²',5000],
   // cm² ↔ m² (1 m² = 10 000 cm²)
   [10000,'cm²','m²',1], [1,'m²','cm²',10000],
   [5000,'cm²','m²',0.5], [20000,'cm²','m²',2], [2,'m²','cm²',20000],
-  // mm² ↔ m² (1 m² = 1 000 000 mm², kleine getallen)
-  [10000,'mm²','m²',1], [5000,'mm²','m²',0.5], [1,'m²','mm²',10000],
+  // mm² ↔ m² (1 m² = 1 000 000 mm²)
+  [1000000,'mm²','m²',1], [500000,'mm²','m²',0.5], [2000000,'mm²','m²',2],
+  [1,'m²','mm²',1000000], [0.5,'m²','mm²',500000],
 ];
 function genEO1c() { return _eQ('E.O1c', ...pick(EO1c_POOL)); }
 
@@ -2091,54 +2109,111 @@ function genAO1a() {
 }
 
 /* ── A.O1b – 3-4 termen, verschillende letters ──────────────────── */
-const AO1b_POOL = [
-  { q:'3x - 6y + 2y', a:'3x - 4y', vars:['x','y'], h:'Combineer de $y$-termen: $-6y + 2y = -4y$' },
-  { q:'-2n + 6 - 5n - 7', a:'-7n - 1', vars:['n'], h:'$n$-termen: $-2n-5n=-7n$; constanten: $6-7=-1$' },
-  { q:'5a + 3b - 2a + b', a:'3a + 4b', vars:['a','b'], h:'$5a-2a=3a$ en $3b+b=4b$' },
-  { q:'4x + 3y - x - 5y', a:'3x - 2y', vars:['x','y'], h:'$4x-x=3x$ en $3y-5y=-2y$' },
-  { q:'-3m + 8 + 7m - 5', a:'4m + 3', vars:['m'], h:'$-3m+7m=4m$ en $8-5=3$' },
-  { q:'2a - 4b + 3a + 2b', a:'5a - 2b', vars:['a','b'], h:'$2a+3a=5a$ en $-4b+2b=-2b$' },
-  { q:'6x - 3 - 2x + 7', a:'4x + 4', vars:['x'], h:'$6x-2x=4x$ en $-3+7=4$' },
-  { q:'-5y + 4x - 3y + x', a:'5x - 8y', vars:['x','y'], h:'$4x+x=5x$ en $-5y-3y=-8y$' },
-  { q:'8n - 3 - n + 5', a:'7n + 2', vars:['n'], h:'$8n-n=7n$ en $-3+5=2$' },
-  { q:'3p - 2q + 5p + 4q', a:'8p + 2q', vars:['p','q'], h:'$3p+5p=8p$ en $-2q+4q=2q$' },
-  { q:'7x - 4 + 3y - 2x + 6 - y', a:'5x + 2y + 2', vars:['x','y'], h:'$x$-termen: $7x-2x=5x$; $y$-termen: $3y-y=2y$; constanten: $-4+6=2$' },
-  { q:'-4a + 2b - 3 + a - 5b + 7', a:'-3a - 3b + 4', vars:['a','b'], h:'$-4a+a=-3a$; $2b-5b=-3b$; $-3+7=4$' },
-];
-function genAO1b() {
-  const e = pick(AO1b_POOL);
-  return _aQ('A.O1b', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
-    ['Zoek gelijksoortige termen bij elkaar (zelfde letter).', e.h],
-    `$${e.q}$\n$= ${e.a}$`);
+/* ── Hulpjes voor willekeurige algebra-opgaven ─────────────────────────── */
+
+const ALG_LETTERS = ['x','y','a','b','m','n','p','q','t'];
+/* Bij merkwaardige producten gebruiken de formules zelf al a en b; die twee
+   letters vermijden we daar, anders leest de hint als "met a = a, b = 3". */
+const ALG_LETTERS_MP = ['x','y','n','m','t','p','q'];
+
+function _randNietNul(min, max) {
+  let n;
+  do { n = rand(min, max); } while (n === 0);
+  return n;
 }
 
-/* ── A.O1c – 4-5 termen met machten ─────────────────────────────── */
-const AO1c_POOL = [
-  { q:'t^{3} + 2t^{2} - 3t^{3} + t^{2}', a:'-2t^{3} + 3t^{2}', vars:['t'],
-    h:'$t^3$-termen: $1-3=-2$; $t^2$-termen: $2+1=3$' },
-  { q:'2x^{2} - 5x + 3x^{2} + 2x', a:'5x^{2} - 3x', vars:['x'],
-    h:'$2x^2+3x^2=5x^2$ en $-5x+2x=-3x$' },
-  { q:'-4a^{3} + 2a - a^{3} - 5a', a:'-5a^{3} - 3a', vars:['a'],
-    h:'$-4a^3-a^3=-5a^3$ en $2a-5a=-3a$' },
-  { q:'3n^{2} + 4n - n^{2} - 7n + 2', a:'2n^{2} - 3n + 2', vars:['n'],
-    h:'$3n^2-n^2=2n^2$; $4n-7n=-3n$; constante: $2$' },
-  { q:'x^{3} - 2x^{2} + 4x^{3} - 3x^{2} + x', a:'5x^{3} - 5x^{2} + x', vars:['x'],
-    h:'$x^3+4x^3=5x^3$; $-2x^2-3x^2=-5x^2$; $+x$' },
-  { q:'-3m^{2} + 5 + 2m^{2} - m - 8 + 3m', a:'-m^{2} + 2m - 3', vars:['m'],
-    h:'$-3m^2+2m^2=-m^2$; $-m+3m=2m$; $5-8=-3$' },
-  { q:'4b^{2} - 2b^{3} + b^{2} - b^{3}', a:'-3b^{3} + 5b^{2}', vars:['b'],
-    h:'$-2b^3-b^3=-3b^3$ en $4b^2+b^2=5b^2$' },
-  { q:'2y^{4} - 3y^{2} + y^{4} + 5y^{2} - y^{4}', a:'2y^{4} + 2y^{2}', vars:['y'],
-    h:'$2y^4+y^4-y^4=2y^4$ en $-3y^2+5y^2=2y^2$' },
-  { q:'5x^{2} - 3x + 2x^{3} - x^{2} + 4x - x^{3}', a:'x^{3} + 4x^{2} + x', vars:['x'],
-    h:'$2x^3-x^3=x^3$; $5x^2-x^2=4x^2$; $-3x+4x=x$' },
-];
-function genAO1c() {
-  const e = pick(AO1c_POOL);
-  return _aQ('A.O1c', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
-    ['Let op de macht: alleen termen met dezelfde letter én dezelfde macht zijn gelijksoortig.', e.h],
-    `$${e.q}$\n$= ${e.a}$`);
+/* Monoom met twee letters: c·v1^p1·v2^p2 */
+function _alM2(c, v1, p1, v2, p2) {
+  if (c === 0) return '0';
+  const neg = c < 0, a = Math.abs(c);
+  const deel = (v, p) => (p <= 0 ? '' : p === 1 ? v : `${v}^{${p}}`);
+  const letters = deel(v1, p1) + deel(v2, p2);
+  const cs = (a === 1 && letters) ? '' : String(a);
+  return (neg ? '-' : '') + cs + letters;
 }
+
+/* Haakjes om een negatieve factor die niet vooraan het product staat. */
+function _factor(tex, eerste) {
+  return (!eerste && tex.startsWith('-')) ? `(${tex})` : tex;
+}
+
+/* "+ 3" of "- 3", voor in een hint. */
+function _erbij(n) { return n < 0 ? `- ${-n}` : `+ ${n}`; }
+
+/* v^1 schrijven we gewoon als v. */
+function _macht(v, p) { return p === 1 ? v : `${v}^{${p}}`; }
+
+/* " + 3x^{2}" of " - x^{2}": een losse term om achter een uitdrukking te
+   plakken. Via _alM, zodat een coëfficiënt 1 niet wordt uitgeschreven. */
+function _plusTerm(c, v, p) {
+  if (c === 0) return '';
+  return (c < 0 ? ' - ' : ' + ') + _alM(Math.abs(c), v, p);
+}
+
+/* (x + p) met het juiste teken. */
+function _haakje(v, n) { return n < 0 ? `${v} - ${-n}` : `${v} + ${n}`; }
+
+function genAO1b() {
+  const v1 = pick(ALG_LETTERS);
+  const metTweedeLetter = Math.random() < 0.55;
+  const v2 = metTweedeLetter ? pick(ALG_LETTERS.filter(l => l !== v1)) : '';
+  const p2 = metTweedeLetter ? 1 : 0;
+
+  let a1, a2, b1, b2;
+  do {
+    a1 = _randNietNul(-8, 8); a2 = _randNietNul(-8, 8);
+    b1 = _randNietNul(-8, 8); b2 = _randNietNul(-8, 8);
+  } while (a1 + a2 === 0 || b1 + b2 === 0);
+
+  const vraag = _alS([
+    { c: a1, v: v1, p: 1 }, { c: b1, v: v2, p: p2 },
+    { c: a2, v: v1, p: 1 }, { c: b2, v: v2, p: p2 },
+  ]);
+
+  const soorten = [{ c: a1 + a2, v: v1, p: 1 }, { c: b1 + b2, v: v2, p: p2 }];
+  if (v2 && v2 < v1) soorten.reverse();
+  const ans = _alS(soorten);
+
+  const tweede = v2 ? `$${v2}$-termen` : 'constanten';
+  return _aQ('A.O1b', `Vereenvoudig: $${vraag}$`, ans, v2 ? [v1, v2] : [v1],
+    ['Zoek gelijksoortige termen bij elkaar (zelfde letter).',
+     `$${v1}$-termen: $${a1} ${_erbij(a2)} = ${a1 + a2}$; ` +
+     `${tweede}: $${b1} ${_erbij(b2)} = ${b1 + b2}$`],
+    `$${vraag}$\n$= ${ans}$`);
+}
+
+
+/* ── A.O1c – 4-5 termen met machten ─────────────────────────────── */
+function genAO1c() {
+  const v = pick(ALG_LETTERS);
+  const [p1, p2] = pick([[3,2],[2,1],[4,2],[3,1],[4,3]]);
+  const metConstante = Math.random() < 0.3;
+
+  let a1, a2, b1, b2;
+  do {
+    a1 = _randNietNul(-5, 5); a2 = _randNietNul(-5, 5);
+    b1 = _randNietNul(-5, 5); b2 = _randNietNul(-5, 5);
+  } while (a1 + a2 === 0 || b1 + b2 === 0);
+  const c = metConstante ? _randNietNul(-9, 9) : 0;
+
+  const vraagTermen = [
+    { c: a1, v, p: p1 }, { c: b1, v, p: p2 },
+    { c: a2, v, p: p1 }, { c: b2, v, p: p2 },
+  ];
+  if (metConstante) vraagTermen.splice(rand(1, 3), 0, { c, v: '', p: 0 });
+  const vraag = _alS(vraagTermen);
+
+  const antwTermen = [{ c: a1 + a2, v, p: p1 }, { c: b1 + b2, v, p: p2 }];
+  if (metConstante) antwTermen.push({ c, v: '', p: 0 });
+  const ans = _alS(antwTermen);
+
+  return _aQ('A.O1c', `Vereenvoudig: $${vraag}$`, ans, [v],
+    ['Let op de macht: alleen termen met dezelfde letter én dezelfde macht zijn gelijksoortig.',
+     `$${v}^{${p1}}$-termen: $${a1} ${_erbij(a2)} = ${a1 + a2}$; ` +
+     `$${v}^{${p2}}$-termen: $${b1} ${_erbij(b2)} = ${b1 + b2}$`],
+    `$${vraag}$\n$= ${ans}$`);
+}
+
 
 /* ── A.V1a – getal × letterterm ─────────────────────────────────── */
 function genAV1a() {
@@ -2185,118 +2260,149 @@ function genAV1b() {
 }
 
 /* ── A.V1c – vermenigvuldigen van 3 monomials ───────────────────── */
-const AV1c_POOL = [
-  { q:'2x \\cdot 3x \\cdot 4x', a:'24x^{3}', vars:['x'], h:'$2\\times3\\times4=24$; $x\\cdot x\\cdot x=x^3$' },
-  { q:'(-2x) \\cdot 3x \\cdot (-x)', a:'6x^{3}', vars:['x'], h:'$(-2)\\times3\\times(-1)=6$; $x^3$' },
-  { q:'2x \\cdot (-3y) \\cdot 4x', a:'-24x^{2}y', vars:['x','y'], h:'$2\\times(-3)\\times4=-24$; $x^2y$' },
-  { q:'(-3a) \\cdot 2b \\cdot a', a:'-6a^{2}b', vars:['a','b'], h:'$(-3)\\times2=-6$; $a\\cdot a=a^2$' },
-  { q:'5x \\cdot (-2x) \\cdot 3y', a:'-30x^{2}y', vars:['x','y'], h:'$5\\times(-2)\\times3=-30$; $x^2y$' },
-  { q:'(-2n) \\cdot (-3n) \\cdot 4', a:'24n^{2}', vars:['n'], h:'$(-2)\\times(-3)\\times4=24$; $n^2$' },
-  { q:'4a \\cdot (-b) \\cdot 2a', a:'-8a^{2}b', vars:['a','b'], h:'$4\\times(-1)\\times2=-8$; $a^2b$' },
-  { q:'(-x) \\cdot (-2x) \\cdot (-3x)', a:'-6x^{3}', vars:['x'], h:'Drie factoren, drie minnetjes: negatief. $1\\times2\\times3=6$' },
-  { q:'(-2m) \\cdot 4m \\cdot (-m)', a:'8m^{3}', vars:['m'], h:'$(-2)\\times4\\times(-1)=8$; $m^3$' },
-  { q:'3x \\cdot 2y \\cdot (-5x)', a:'-30x^{2}y', vars:['x','y'], h:'$3\\times2\\times(-5)=-30$; $x^2y$' },
-];
 function genAV1c() {
-  const e = pick(AV1c_POOL);
-  return _aQ('A.V1c', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
-    ['Vermenigvuldig alle getallen; tel de machten per letter op.', e.h],
-    `$${e.q}$\n$= ${e.a}$`);
+  const v1 = pick(ALG_LETTERS);
+  const v2 = pick(ALG_LETTERS.filter(l => l !== v1));
+  const patroon = pick([
+    [v1, v1, v1], [v1, v2, v1], [v1, v1, ''], [v1, v2, v2],
+    [v1, v1, v2], ['', v1, v1], [v1, '', v2],
+  ]);
+
+  // Een factor zonder letter mag geen 1 of -1 zijn: "3x · 3x · (-1)" leest slecht.
+  const losseFactorOk = (c, letter) => letter !== '' || Math.abs(c) > 1;
+  let c1, c2, c3, prod;
+  do {
+    c1 = _randNietNul(-4, 4); c2 = _randNietNul(-4, 4); c3 = _randNietNul(-4, 4);
+    prod = c1 * c2 * c3;
+  } while (Math.abs(prod) < 2 || Math.abs(prod) > 60
+           || !losseFactorOk(c1, patroon[0])
+           || !losseFactorOk(c2, patroon[1])
+           || !losseFactorOk(c3, patroon[2]));
+
+  const cs = [c1, c2, c3];
+  const vraag = cs.map((c, i) => _factor(_alM(c, patroon[i], 1), i === 0))
+                  .join(' \\cdot ');
+
+  const machten = {};
+  for (const l of patroon) if (l) machten[l] = (machten[l] || 0) + 1;
+  const letters = Object.keys(machten).sort();
+  const ans = letters.length === 2
+    ? _alM2(prod, letters[0], machten[letters[0]], letters[1], machten[letters[1]])
+    : _alM(prod, letters[0], machten[letters[0]]);
+
+  const lettersTekst = letters
+    .map(l => machten[l] === 1 ? `$${l}$` : `$${l}^{${machten[l]}}$`).join(' en ');
+  return _aQ('A.V1c', `Vereenvoudig: $${vraag}$`, ans, letters,
+    ['Vermenigvuldig alle getallen; tel de machten per letter op.',
+     `Getallen: $${c1} \\times ${c2} \\times ${c3} = ${prod}$. Letters: ${lettersTekst}`],
+    `$${vraag}$\n$= ${ans}$`);
 }
+
 
 /* ── A.M1a – gemengd, 3 factoren/termen ────────────────────────── */
-const AM1a_POOL = [
-  { q:'3 \\cdot 2x + 4x', a:'10x', vars:['x'], h:'Eerst: $3\\cdot2x=6x$; dan: $6x+4x=10x$' },
-  { q:'5x - 2 \\cdot 3x', a:'-x', vars:['x'], h:'Eerst: $2\\cdot3x=6x$; dan: $5x-6x=-x$' },
-  { q:'4 \\cdot 3y + 2y', a:'14y', vars:['y'], h:'Eerst: $4\\cdot3y=12y$; dan: $12y+2y=14y$' },
-  { q:'-2 \\cdot 5n - 3n', a:'-13n', vars:['n'], h:'Eerst: $-2\\cdot5n=-10n$; dan: $-10n-3n=-13n$' },
-  { q:'6x + 3 \\cdot (-4x)', a:'-6x', vars:['x'], h:'Eerst: $3\\cdot(-4x)=-12x$; dan: $6x-12x=-6x$' },
-  { q:'2a \\cdot 4 - 3a', a:'5a', vars:['a'], h:'Eerst: $2a\\cdot4=8a$; dan: $8a-3a=5a$' },
-  { q:'7b - 3b \\cdot 2', a:'b', vars:['b'], h:'Eerst: $3b\\cdot2=6b$; dan: $7b-6b=b$' },
-  { q:'-4x \\cdot 3 + 20x', a:'8x', vars:['x'], h:'Eerst: $-4x\\cdot3=-12x$; dan: $-12x+20x=8x$' },
-  { q:'3m + (-2) \\cdot 4m', a:'-5m', vars:['m'], h:'Eerst: $(-2)\\cdot4m=-8m$; dan: $3m-8m=-5m$' },
-  { q:'(-3) \\cdot 2a + 10a', a:'4a', vars:['a'], h:'Eerst: $(-3)\\cdot2a=-6a$; dan: $-6a+10a=4a$' },
-];
 function genAM1a() {
-  const e = pick(AM1a_POOL);
-  return _aQ('A.M1a', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
-    ['Bereken eerst de vermenigvuldiging, daarna pas de optelling of aftrekking.', e.h],
-    `$${e.q}$\n$= ${e.a}$`);
+  const v = pick(ALG_LETTERS);
+  let a, b, c;
+  do {
+    a = _randNietNul(-6, 6); b = rand(2, 6); c = _randNietNul(-9, 9);
+  } while (a * b + c === 0 || Math.abs(a * b) > 36 || Math.abs(a) === 1);
+
+  const getalEerst = Math.random() < 0.5;
+  const product = getalEerst
+    ? `${_factor(String(a), true)} \\cdot ${_alM(b, v, 1)}`
+    : `${_alM(b, v, 1)} \\cdot ${_factor(String(a), false)}`;
+  const vraag = `${product} ${c < 0 ? '-' : '+'} ${_alM(Math.abs(c), v, 1)}`;
+  const ans = _alM(a * b + c, v, 1);
+
+  return _aQ('A.M1a', `Vereenvoudig: $${vraag}$`, ans, [v],
+    ['Bereken eerst de vermenigvuldiging, daarna pas de optelling of aftrekking.',
+     `Eerst: $${a} \\times ${b} = ${a * b}$; dan: $${a * b}${v} ${_erbij(c)}${v} = ${ans}$`],
+    `$${vraag}$\n$= ${ans}$`);
 }
+
 
 /* ── A.M1b – gemengd, 4 factoren/termen ────────────────────────── */
-const AM1b_POOL = [
-  { q:'2x \\cdot 3 + 4x \\cdot 2', a:'14x', vars:['x'],
-    h:'$2x\\cdot3=6x$ en $4x\\cdot2=8x$; dan: $6x+8x=14x$' },
-  { q:'5a \\cdot 2 - 3a \\cdot 4', a:'-2a', vars:['a'],
-    h:'$5a\\cdot2=10a$ en $3a\\cdot4=12a$; dan: $10a-12a=-2a$' },
-  { q:'3 \\cdot 2n + 4 \\cdot 5n', a:'26n', vars:['n'],
-    h:'$3\\cdot2n=6n$ en $4\\cdot5n=20n$; dan: $6n+20n=26n$' },
-  { q:'2x \\cdot 3y + 4x \\cdot y', a:'10xy', vars:['x','y'],
-    h:'$2x\\cdot3y=6xy$ en $4x\\cdot y=4xy$; dan: $6xy+4xy=10xy$' },
-  { q:'6x^{2} - 2x \\cdot 3x + x^{2}', a:'x^{2}', vars:['x'],
-    h:'$2x\\cdot3x=6x^2$; dan: $6x^2-6x^2+x^2=x^2$' },
-  { q:'3x \\cdot 2x + 5x \\cdot (-x)', a:'x^{2}', vars:['x'],
-    h:'$3x\\cdot2x=6x^2$ en $5x\\cdot(-x)=-5x^2$; dan: $6x^2-5x^2=x^2$' },
-  { q:'(-2a) \\cdot 3b + 5a \\cdot b', a:'-ab', vars:['a','b'],
-    h:'$-2a\\cdot3b=-6ab$ en $5a\\cdot b=5ab$; dan: $-6ab+5ab=-ab$' },
-  { q:'4m \\cdot 2 - 3m + m \\cdot 5', a:'10m', vars:['m'],
-    h:'$4m\\cdot2=8m$ en $m\\cdot5=5m$; dan: $8m-3m+5m=10m$' },
-  { q:'2x^{2} \\cdot 3 - x \\cdot 4x + x^{2}', a:'3x^{2}', vars:['x'],
-    h:'$2x^2\\cdot3=6x^2$ en $x\\cdot4x=4x^2$; dan: $6x^2-4x^2+x^2=3x^2$' },
-];
 function genAM1b() {
-  const e = pick(AM1b_POOL);
-  return _aQ('A.M1b', `Vereenvoudig: $${e.q}$`, e.a, e.vars,
-    ['Bereken eerst alle vermenigvuldigingen, combineer daarna gelijksoortige termen.', e.h],
-    `$${e.q}$\n$= ${e.a}$`);
+  const v = pick(ALG_LETTERS);
+  const kwadratisch = Math.random() < 0.45;
+  let a, b, c, d, res;
+  do {
+    a = _randNietNul(-5, 5); b = rand(2, 5);
+    c = _randNietNul(-5, 5); d = rand(2, 5);
+    res = a * b + c * d;
+  } while (res === 0 || Math.abs(a * b) > 25 || Math.abs(c * d) > 25);
+
+  let vraag, ans, tussen;
+  if (kwadratisch) {
+    // (a v) · (b v) + (c v) · (d v)  →  (ab + cd) v²
+    vraag = `${_alM(a, v, 1)} \\cdot ${_factor(_alM(b, v, 1), false)} + `
+          + `${_factor(_alM(c, v, 1), true)} \\cdot ${_factor(_alM(d, v, 1), false)}`;
+    tussen = `${_alM(a * b, v, 2)} ${_erbij(c * d)}${v}^{2}`;
+    ans = _alM(res, v, 2);
+  } else {
+    // a · (b v) + c · (d v)  →  (ab + cd) v
+    vraag = `${_factor(String(a), true)} \\cdot ${_alM(b, v, 1)} + `
+          + `${_factor(String(c), false)} \\cdot ${_alM(d, v, 1)}`;
+    tussen = `${_alM(a * b, v, 1)} ${_erbij(c * d)}${v}`;
+    ans = _alM(res, v, 1);
+  }
+
+  return _aQ('A.M1b', `Vereenvoudig: $${vraag}$`, ans, [v],
+    ['Bereken eerst alle vermenigvuldigingen, combineer daarna gelijksoortige termen.',
+     `$${tussen} = ${ans}$`],
+    `$${vraag}$\n$= ${tussen}$\n$= ${ans}$`);
 }
+
 
 /* ── A.D1a – delen, één letter ──────────────────────────────────── */
-const AD1a_POOL = [
-  { t:'9a^{4}', n:'3a', a:'3a^{3}', vars:['a'] },
-  { t:'8x^{3}', n:'4x', a:'2x^{2}', vars:['x'] },
-  { t:'12y^{5}', n:'4y^{2}', a:'3y^{3}', vars:['y'] },
-  { t:'15n^{4}', n:'5n', a:'3n^{3}', vars:['n'] },
-  { t:'6x^{2}', n:'2x', a:'3x', vars:['x'] },
-  { t:'-10a^{3}', n:'5a', a:'-2a^{2}', vars:['a'] },
-  { t:'20m^{4}', n:'4m^{2}', a:'5m^{2}', vars:['m'] },
-  { t:'-15b^{3}', n:'3b', a:'-5b^{2}', vars:['b'] },
-  { t:'18x^{6}', n:'6x^{3}', a:'3x^{3}', vars:['x'] },
-  { t:'16y^{3}', n:'8y', a:'2y^{2}', vars:['y'] },
-  { t:'-12a^{4}', n:'4a^{2}', a:'-3a^{2}', vars:['a'] },
-  { t:'24n^{5}', n:'6n^{2}', a:'4n^{3}', vars:['n'] },
-];
 function genAD1a() {
-  const e = pick(AD1a_POOL);
-  return _aQ('A.D1a',
-    `Vereenvoudig: $\\dfrac{${e.t}}{${e.n}}$`, e.a, e.vars,
+  const v = pick(ALG_LETTERS);
+  let c2, k, c1;
+  do {
+    c2 = rand(2, 8); k = _randNietNul(-6, 6); c1 = c2 * k;
+  } while (Math.abs(c1) > 48);
+  const p2 = rand(1, 3);
+  const p1 = p2 + rand(1, 3);
+
+  const teller = _alM(c1, v, p1);
+  const noemer = _alM(c2, v, p2);
+  const ans = _alM(k, v, p1 - p2);
+
+  return _aQ('A.D1a', `Vereenvoudig: $\\dfrac{${teller}}{${noemer}}$`, ans, [v],
     ['Deel de getallen; trek de macht van de noemer af van de macht van de teller.',
-     `$\\dfrac{${e.t}}{${e.n}} = ${e.a}$`],
-    `$\\dfrac{${e.t}}{${e.n}}$\n$= ${e.a}$`);
+     `$${c1} \\div ${c2} = ${k}$ en $${v}^{${p1}} \\div ${v}^{${p2}} = ${v}^{${p1 - p2}}$`],
+    `$\\dfrac{${teller}}{${noemer}}$\n$= ${ans}$`);
 }
 
+
 /* ── A.D1b – delen, meerdere letters ────────────────────────────── */
-const AD1b_POOL = [
-  { t:'8a^{3}b^{2}', n:'4a^{2}', a:'2ab^{2}', vars:['a','b'] },
-  { t:'12x^{2}y^{3}', n:'3xy', a:'4xy^{2}', vars:['x','y'] },
-  { t:'15a^{2}b', n:'5ab', a:'3a', vars:['a','b'] },
-  { t:'-6x^{2}y', n:'2xy', a:'-3x', vars:['x','y'] },
-  { t:'20m^{3}n^{2}', n:'4mn', a:'5m^{2}n', vars:['m','n'] },
-  { t:'9a^{2}b^{3}', n:'3ab', a:'3ab^{2}', vars:['a','b'] },
-  { t:'-10x^{3}y^{2}', n:'5xy^{2}', a:'-2x^{2}', vars:['x','y'] },
-  { t:'16a^{2}b^{2}', n:'4ab', a:'4ab', vars:['a','b'] },
-  { t:'-18m^{2}n^{3}', n:'6mn^{2}', a:'-3mn', vars:['m','n'] },
-  { t:'24x^{3}y^{2}', n:'8x^{2}y', a:'3xy', vars:['x','y'] },
-];
 function genAD1b() {
-  const e = pick(AD1b_POOL);
-  return _aQ('A.D1b',
-    `Vereenvoudig: $\\dfrac{${e.t}}{${e.n}}$`, e.a, e.vars,
+  const eerste = pick(ALG_LETTERS);
+  const tweede = pick(ALG_LETTERS.filter(l => l !== eerste));
+  const [a, b] = [eerste, tweede].sort();
+
+  let c2, k, c1;
+  do {
+    c2 = rand(2, 6); k = _randNietNul(-5, 5); c1 = c2 * k;
+  } while (Math.abs(c1) > 30);
+
+  let pa1, pa2, pb1, pb2;
+  do {
+    pa2 = rand(1, 2); pa1 = pa2 + rand(0, 2);
+    pb2 = rand(0, 2); pb1 = pb2 + rand(0, 2);
+  } while (pb1 === 0 || (pa1 - pa2) + (pb1 - pb2) === 0);
+
+  const teller = _alM2(c1, a, pa1, b, pb1);
+  const noemer = _alM2(c2, a, pa2, b, pb2);
+  const ans = _alM2(k, a, pa1 - pa2, b, pb1 - pb2);
+
+  return _aQ('A.D1b', `Vereenvoudig: $\\dfrac{${teller}}{${noemer}}$`, ans, [a, b],
     ['Deel de getallen; trek per letter de macht van de noemer af van die van de teller.',
-     `$\\dfrac{${e.t}}{${e.n}} = ${e.a}$`],
-    `$\\dfrac{${e.t}}{${e.n}}$\n$= ${e.a}$`);
+     `$${c1} \\div ${c2} = ${k}$; $${a}$: $${pa1} - ${pa2} = ${pa1 - pa2}$; ` +
+     `$${b}$: $${pb1} - ${pb2} = ${pb1 - pb2}$`],
+    `$\\dfrac{${teller}}{${noemer}}$\n$= ${ans}$`);
 }
+
 
 /* Helper: maak een algebra-vraag object met gefactoriseerd antwoord */
 function _aQF(id, vraag, antwoord, vars, hints, oplossing) {
@@ -2355,158 +2461,137 @@ function genAH1b() {
 }
 
 /* ── A.H1c – dubbele haakjes (FOIL) ──────────────────────────────── */
-const AH1c_POOL = [
-  { q:'(x+2)(x+3)', vars:['x'], c2:5, c1:6,  h:'$2+3=5$ en $2\\cdot3=6$' },
-  { q:'(x+1)(x+4)', vars:['x'], c2:5, c1:4,  h:'$1+4=5$ en $1\\cdot4=4$' },
-  { q:'(x+2)(x+5)', vars:['x'], c2:7, c1:10, h:'$2+5=7$ en $2\\cdot5=10$' },
-  { q:'(x+3)(x+4)', vars:['x'], c2:7, c1:12, h:'$3+4=7$ en $3\\cdot4=12$' },
-  { q:'(x-1)(x+4)', vars:['x'], c2:3, c1:-4, h:'$-1+4=3$ en $-1\\cdot4=-4$' },
-  { q:'(x+3)(x-2)', vars:['x'], c2:1, c1:-6, h:'$3-2=1$ en $3\\cdot(-2)=-6$' },
-  { q:'(x-2)(x-3)', vars:['x'], c2:-5, c1:6, h:'$-2-3=-5$ en $(-2)\\cdot(-3)=6$' },
-  { q:'(x-1)(x-5)', vars:['x'], c2:-6, c1:5, h:'$-1-5=-6$ en $(-1)\\cdot(-5)=5$' },
-  { q:'(x+4)(x-1)', vars:['x'], c2:3, c1:-4, h:'$4-1=3$ en $4\\cdot(-1)=-4$' },
-  { q:'(x-3)(x+5)', vars:['x'], c2:2, c1:-15,h:'$-3+5=2$ en $-3\\cdot5=-15$' },
-  { q:'(a+2)(a+6)', vars:['a'], c2:8, c1:12, h:'$2+6=8$ en $2\\cdot6=12$' },
-  { q:'(n-2)(n-4)', vars:['n'], c2:-6,c1:8,  h:'$-2-4=-6$ en $(-2)\\cdot(-4)=8$' },
-];
 
 function genAH1c() {
-  const e = pick(AH1c_POOL);
-  const v = e.vars[0];
-  const termen = [{c:1,v,p:2}];
-  if (e.c2 !== 0) termen.push({c:e.c2,v,p:1});
-  if (e.c1 !== 0) termen.push({c:e.c1,v:'',p:0});
-  const ans = _alS(termen);
-  return _aQ('A.H1c', `Werk de haakjes uit: $${e.q}$`, ans, e.vars,
-    ['Vermenigvuldig elk getal uit de eerste haakjes met elk getal uit de tweede (FOIL).', e.h],
-    `$${e.q}$\n$= ${ans}$`);
+  const v = pick(ALG_LETTERS);
+  let p, q;
+  do {
+    p = _randNietNul(-6, 6); q = _randNietNul(-6, 6);
+  } while (p + q === 0);          // p + q = 0 geeft een kwadraatverschil (A.H1d)
+
+  const vraag = `(${_haakje(v, p)})(${_haakje(v, q)})`;
+  const ans = _alS([{ c: 1, v, p: 2 }, { c: p + q, v, p: 1 }, { c: p * q, v: '', p: 0 }]);
+
+  return _aQ('A.H1c', `Werk de haakjes uit: $${vraag}$`, ans, [v],
+    ['Vermenigvuldig elke term uit de eerste haakjes met elke term uit de tweede.',
+     `$${p} ${_erbij(q)} = ${p + q}$ en $${p} \\times ${q} = ${p * q}$`],
+    `$${vraag}$\n$= ${ans}$`);
 }
+
 
 /* ── A.H1d – merkwaardige producten uitwerken ─────────────────────── */
-const AH1d_POOL = [
-  { q:'(x+2)^{2}',   ans:'x^{2} + 4x + 4',   vars:['x'], type:'kw+', a:'x', b:'2',
-    opl:'$(x+2)^2 = x^2 + 2\\cdot x\\cdot 2 + 2^2$\n$= x^{2} + 4x + 4$' },
-  { q:'(x+3)^{2}',   ans:'x^{2} + 6x + 9',   vars:['x'], type:'kw+', a:'x', b:'3',
-    opl:'$(x+3)^2 = x^2 + 2\\cdot x\\cdot 3 + 3^2$\n$= x^{2} + 6x + 9$' },
-  { q:'(x+5)^{2}',   ans:'x^{2} + 10x + 25', vars:['x'], type:'kw+', a:'x', b:'5',
-    opl:'$(x+5)^2 = x^2 + 2\\cdot x\\cdot 5 + 5^2$\n$= x^{2} + 10x + 25$' },
-  { q:'(x-2)^{2}',   ans:'x^{2} - 4x + 4',   vars:['x'], type:'kw-', a:'x', b:'2',
-    opl:'$(x-2)^2 = x^2 - 2\\cdot x\\cdot 2 + 2^2$\n$= x^{2} - 4x + 4$' },
-  { q:'(x-3)^{2}',   ans:'x^{2} - 6x + 9',   vars:['x'], type:'kw-', a:'x', b:'3',
-    opl:'$(x-3)^2 = x^2 - 2\\cdot x\\cdot 3 + 3^2$\n$= x^{2} - 6x + 9$' },
-  { q:'(x-4)^{2}',   ans:'x^{2} - 8x + 16',  vars:['x'], type:'kw-', a:'x', b:'4',
-    opl:'$(x-4)^2 = x^2 - 2\\cdot x\\cdot 4 + 4^2$\n$= x^{2} - 8x + 16$' },
-  { q:'(x+2)(x-2)',  ans:'x^{2} - 4',         vars:['x'], type:'vk',  a:'x', b:'2',
-    opl:'$(x+2)(x-2) = x^2 - 2^2$\n$= x^{2} - 4$' },
-  { q:'(x+3)(x-3)',  ans:'x^{2} - 9',         vars:['x'], type:'vk',  a:'x', b:'3',
-    opl:'$(x+3)(x-3) = x^2 - 3^2$\n$= x^{2} - 9$' },
-  { q:'(x+5)(x-5)',  ans:'x^{2} - 25',        vars:['x'], type:'vk',  a:'x', b:'5',
-    opl:'$(x+5)(x-5) = x^2 - 5^2$\n$= x^{2} - 25$' },
-  { q:'(a+4)^{2}',   ans:'a^{2} + 8a + 16',  vars:['a'], type:'kw+', a:'a', b:'4',
-    opl:'$(a+4)^2 = a^2 + 2\\cdot a\\cdot 4 + 4^2$\n$= a^{2} + 8a + 16$' },
-  { q:'(n-5)^{2}',   ans:'n^{2} - 10n + 25', vars:['n'], type:'kw-', a:'n', b:'5',
-    opl:'$(n-5)^2 = n^2 - 2\\cdot n\\cdot 5 + 5^2$\n$= n^{2} - 10n + 25$' },
-  { q:'(y+6)(y-6)',  ans:'y^{2} - 36',        vars:['y'], type:'vk',  a:'y', b:'6',
-    opl:'$(y+6)(y-6) = y^2 - 6^2$\n$= y^{2} - 36$' },
-];
 
 function genAH1d() {
-  const e = pick(AH1d_POOL);
-  const regel = e.type === 'kw+' ? `$(a+b)^2 = a^2 + 2ab + b^2$ met $a=${e.a}$, $b=${e.b}$`
-    : e.type === 'kw-' ? `$(a-b)^2 = a^2 - 2ab + b^2$ met $a=${e.a}$, $b=${e.b}$`
-    : `$(a+b)(a-b) = a^2 - b^2$ met $a=${e.a}$, $b=${e.b}$`;
-  return _aQ('A.H1d', `Werk de haakjes uit: $${e.q}$`, e.ans, e.vars,
+  const v = pick(ALG_LETTERS_MP);
+  const type = pick(['kw+', 'kw-', 'vk']);
+  const b = rand(2, 9);
+
+  let vraag, ans, regel, stap;
+  if (type === 'vk') {
+    vraag = `(${v}+${b})(${v}-${b})`;
+    ans = _alS([{ c: 1, v, p: 2 }, { c: -b * b, v: '', p: 0 }]);
+    regel = `$(a+b)(a-b) = a^2 - b^2$ met $a=${v}$, $b=${b}$`;
+    stap = `${v}^2 - ${b}^2`;
+  } else {
+    const teken = type === 'kw+' ? 1 : -1;
+    vraag = `(${_haakje(v, teken * b).replace(/ /g, '')})^{2}`;
+    ans = _alS([{ c: 1, v, p: 2 }, { c: teken * 2 * b, v, p: 1 }, { c: b * b, v: '', p: 0 }]);
+    regel = type === 'kw+'
+      ? `$(a+b)^2 = a^2 + 2ab + b^2$ met $a=${v}$, $b=${b}$`
+      : `$(a-b)^2 = a^2 - 2ab + b^2$ met $a=${v}$, $b=${b}$`;
+    stap = `${v}^2 ${teken > 0 ? '+' : '-'} 2\\cdot ${v}\\cdot ${b} + ${b}^2`;
+  }
+
+  return _aQ('A.H1d', `Werk de haakjes uit: $${vraag}$`, ans, [v],
     ['Gebruik een merkwaardig product.', regel],
-    e.opl);
+    `$${vraag}$\n$= ${stap}$\n$= ${ans}$`);
 }
+
 
 /* ── A.F1a – ontbinden: 1 term buiten haakjes (ggd) ──────────────── */
-const AF1a_POOL = [
-  { q:'6x^{2} + 4x',   ans:'2x(3x + 2)',  vars:['x'], h:'Ggd van $6$ en $4$ is $2$; laagste macht van $x$ is $x^1$.', opl:'$6x^{2} + 4x$\n$= 2x \\cdot 3x + 2x \\cdot 2$\n$= 2x(3x + 2)$' },
-  { q:'9x^{2} + 3x',   ans:'3x(3x + 1)',  vars:['x'], h:'Ggd van $9$ en $3$ is $3$; laagste macht van $x$ is $x^1$.', opl:'$9x^{2} + 3x$\n$= 3x \\cdot 3x + 3x \\cdot 1$\n$= 3x(3x + 1)$' },
-  { q:'12x^{2} - 8x',  ans:'4x(3x - 2)',  vars:['x'], h:'Ggd van $12$ en $8$ is $4$; laagste macht van $x$ is $x^1$.', opl:'$12x^{2} - 8x$\n$= 4x \\cdot 3x - 4x \\cdot 2$\n$= 4x(3x - 2)$' },
-  { q:'15a^{2} - 5a',  ans:'5a(3a - 1)',  vars:['a'], h:'Ggd van $15$ en $5$ is $5$; laagste macht van $a$ is $a^1$.', opl:'$15a^{2} - 5a$\n$= 5a \\cdot 3a - 5a \\cdot 1$\n$= 5a(3a - 1)$' },
-  { q:'10x^{2} + 6x',  ans:'2x(5x + 3)',  vars:['x'], h:'Ggd van $10$ en $6$ is $2$; laagste macht van $x$ is $x^1$.', opl:'$10x^{2} + 6x$\n$= 2x \\cdot 5x + 2x \\cdot 3$\n$= 2x(5x + 3)$' },
-  { q:'8y^{2} - 12y',  ans:'4y(2y - 3)',  vars:['y'], h:'Ggd van $8$ en $12$ is $4$; laagste macht van $y$ is $y^1$.', opl:'$8y^{2} - 12y$\n$= 4y \\cdot 2y - 4y \\cdot 3$\n$= 4y(2y - 3)$' },
-  { q:'4n^{2} + 6n',   ans:'2n(2n + 3)',  vars:['n'], h:'Ggd van $4$ en $6$ is $2$; laagste macht van $n$ is $n^1$.', opl:'$4n^{2} + 6n$\n$= 2n \\cdot 2n + 2n \\cdot 3$\n$= 2n(2n + 3)$' },
-  { q:'6x + 9',        ans:'3(2x + 3)',   vars:['x'], h:'Ggd van $6$ en $9$ is $3$; geen gemeenschappelijke variabele.', opl:'$6x + 9$\n$= 3 \\cdot 2x + 3 \\cdot 3$\n$= 3(2x + 3)$' },
-  { q:'10x + 15',      ans:'5(2x + 3)',   vars:['x'], h:'Ggd van $10$ en $15$ is $5$; geen gemeenschappelijke variabele.', opl:'$10x + 15$\n$= 5 \\cdot 2x + 5 \\cdot 3$\n$= 5(2x + 3)$' },
-  { q:'6a - 9',        ans:'3(2a - 3)',   vars:['a'], h:'Ggd van $6$ en $9$ is $3$; geen gemeenschappelijke variabele.', opl:'$6a - 9$\n$= 3 \\cdot 2a - 3 \\cdot 3$\n$= 3(2a - 3)$' },
-];
 
 function genAF1a() {
-  const e = pick(AF1a_POOL);
-  return _aQF('A.F1a', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
-    ['Zoek de grootste gemene deler (ggd) van de coëfficiënten en de laagste macht van de variabele.', e.h],
-    e.opl);
+  const v = pick(ALG_LETTERS);
+  const metVariabele = Math.random() < 0.7;
+  let g, m, n;
+  do {
+    g = rand(2, 6); m = rand(2, 6); n = rand(1, 6);
+  } while (gcd(m, n) !== 1);
+  const n2 = Math.random() < 0.4 ? -n : n;
+
+  // Let op: een losse constante moet v:'' krijgen. Met v:'x', p:0 zou _alM
+  // alsnog de letter meenemen, en dan klopt de opgave niet meer bij het antwoord.
+  const pHoog = metVariabele ? 2 : 1;
+  const laagsteTerm = metVariabele
+    ? { c: g * n2, v, p: 1 }
+    : { c: g * n2, v: '', p: 0 };
+  const vraag = _alS([{ c: g * m, v, p: pHoog }, laagsteTerm]);
+  const binnen = _alS([{ c: m, v, p: 1 }, { c: n2, v: '', p: 0 }]);
+  const factor = metVariabele ? _alM(g, v, 1) : String(g);
+  const ans = `${factor}(${binnen})`;
+
+  return _aQ_F_A_F1a(vraag, ans, v, g, m, n2, metVariabele, factor, binnen);
 }
+
+/* Apart gehouden zodat genAF1a kort blijft. */
+function _aQ_F_A_F1a(vraag, ans, v, g, m, n2, metVariabele, factor, binnen) {
+  const hint = metVariabele
+    ? `Ggd van de getallen is $${g}$; laagste macht van $${v}$ is $${v}^1$. Factor: $${factor}$`
+    : `Ggd van de getallen is $${g}$; er is geen gemeenschappelijke variabele.`;
+  return _aQF('A.F1a', `Ontbind in factoren: $${vraag}$`, ans, [v],
+    ['Zoek de grootste gemene deler (ggd) van de coëfficiënten en de laagste macht van de variabele.',
+     hint],
+    `$${vraag}$\n$= ${factor} \\cdot ${_alM(m, v, 1)} ${n2 < 0 ? '-' : '+'} ${factor} \\cdot ${Math.abs(n2)}$\n$= ${ans}$`);
+}
+
 
 /* ── A.F1b – ontbinden: som-product methode ──────────────────────── */
-const AF1b_POOL = [
-  { q:'x^{2} + 5x + 6',  ans:'(x+2)(x+3)', vars:['x'], p:2,q_:3,  h:'$2+3=5$ en $2\\cdot3=6$' },
-  { q:'x^{2} + 7x + 12', ans:'(x+3)(x+4)', vars:['x'], p:3,q_:4,  h:'$3+4=7$ en $3\\cdot4=12$' },
-  { q:'x^{2} + 8x + 15', ans:'(x+3)(x+5)', vars:['x'], p:3,q_:5,  h:'$3+5=8$ en $3\\cdot5=15$' },
-  { q:'x^{2} + 6x + 8',  ans:'(x+2)(x+4)', vars:['x'], p:2,q_:4,  h:'$2+4=6$ en $2\\cdot4=8$' },
-  { q:'x^{2} - 5x + 6',  ans:'(x-2)(x-3)', vars:['x'], p:-2,q_:-3,h:'$-2+(-3)=-5$ en $(-2)\\cdot(-3)=6$' },
-  { q:'x^{2} - 7x + 12', ans:'(x-3)(x-4)', vars:['x'], p:-3,q_:-4,h:'$-3+(-4)=-7$ en $(-3)\\cdot(-4)=12$' },
-  { q:'x^{2} + x - 6',   ans:'(x+3)(x-2)', vars:['x'], p:3,q_:-2, h:'$3+(-2)=1$ en $3\\cdot(-2)=-6$' },
-  { q:'x^{2} + 2x - 8',  ans:'(x+4)(x-2)', vars:['x'], p:4,q_:-2, h:'$4+(-2)=2$ en $4\\cdot(-2)=-8$' },
-  { q:'x^{2} - 2x - 8',  ans:'(x-4)(x+2)', vars:['x'], p:-4,q_:2, h:'$-4+2=-2$ en $(-4)\\cdot2=-8$' },
-  { q:'x^{2} - x - 6',   ans:'(x-3)(x+2)', vars:['x'], p:-3,q_:2, h:'$-3+2=-1$ en $(-3)\\cdot2=-6$' },
-  { q:'a^{2} + 7a + 10', ans:'(a+2)(a+5)', vars:['a'], p:2,q_:5,  h:'$2+5=7$ en $2\\cdot5=10$' },
-  { q:'n^{2} - 6n + 8',  ans:'(n-2)(n-4)', vars:['n'], p:-2,q_:-4,h:'$-2+(-4)=-6$ en $(-2)\\cdot(-4)=8$' },
-];
 
 function genAF1b() {
-  const e = pick(AF1b_POOL);
-  const v = e.vars[0];
-  const pStr = e.p >= 0 ? `+${e.p}` : `${e.p}`;
-  const qStr = e.q_ >= 0 ? `+${e.q_}` : `${e.q_}`;
-  return _aQF('A.F1b', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
-    [`Zoek $p$ en $q$ zodat $p+q=${e.p+e.q_}$ en $p\\cdot q=${e.p*e.q_}$.`, e.h],
-    `$${e.q}$\n$p=${e.p},\\; q=${e.q_}$\n$= (${v}${pStr})(${v}${qStr})$`);
+  const v = pick(ALG_LETTERS);
+  let p, q;
+  do {
+    p = _randNietNul(-6, 6); q = _randNietNul(-6, 6);
+  } while (p + q === 0 || p === q);   // die gevallen horen bij A.F1c
+
+  const vraag = _alS([{ c: 1, v, p: 2 }, { c: p + q, v, p: 1 }, { c: p * q, v: '', p: 0 }]);
+  const ans = `(${_haakje(v, p).replace(/ /g, '')})(${_haakje(v, q).replace(/ /g, '')})`;
+
+  return _aQF('A.F1b', `Ontbind in factoren: $${vraag}$`, ans, [v],
+    [`Zoek $p$ en $q$ zodat $p+q=${p + q}$ en $p\\cdot q=${p * q}$.`,
+     `$p=${p}$, $q=${q}$ want $${p} ${_erbij(q)} = ${p + q}$ en $${p} \\times ${q} = ${p * q}$`],
+    `$${vraag}$\n$= ${ans}$`);
 }
+
 
 /* ── A.F1c – ontbinden: merkwaardige producten ───────────────────── */
-const AF1c_POOL = [
-  { q:'x^{2} + 6x + 9',  ans:'(x+3)^{2}',  vars:['x'], type:'kw+', a:'x',b:'3',
-    opl:'$x^2+6x+9 = x^2 + 2\\cdot x\\cdot 3 + 3^2$\n$= (x+3)^{2}$' },
-  { q:'x^{2} + 4x + 4',  ans:'(x+2)^{2}',  vars:['x'], type:'kw+', a:'x',b:'2',
-    opl:'$x^2+4x+4 = x^2 + 2\\cdot x\\cdot 2 + 2^2$\n$= (x+2)^{2}$' },
-  { q:'x^{2} + 10x + 25',ans:'(x+5)^{2}',  vars:['x'], type:'kw+', a:'x',b:'5',
-    opl:'$x^2+10x+25 = x^2 + 2\\cdot x\\cdot 5 + 5^2$\n$= (x+5)^{2}$' },
-  { q:'x^{2} - 6x + 9',  ans:'(x-3)^{2}',  vars:['x'], type:'kw-', a:'x',b:'3',
-    opl:'$x^2-6x+9 = x^2 - 2\\cdot x\\cdot 3 + 3^2$\n$= (x-3)^{2}$' },
-  { q:'x^{2} - 8x + 16', ans:'(x-4)^{2}',  vars:['x'], type:'kw-', a:'x',b:'4',
-    opl:'$x^2-8x+16 = x^2 - 2\\cdot x\\cdot 4 + 4^2$\n$= (x-4)^{2}$' },
-  { q:'x^{2} - 4x + 4',  ans:'(x-2)^{2}',  vars:['x'], type:'kw-', a:'x',b:'2',
-    opl:'$x^2-4x+4 = x^2 - 2\\cdot x\\cdot 2 + 2^2$\n$= (x-2)^{2}$' },
-  { q:'x^{2} - 9',       ans:'(x+3)(x-3)', vars:['x'], type:'vk',  a:'x',b:'3',
-    opl:'$x^2-9 = x^2 - 3^2$\n$= (x+3)(x-3)$' },
-  { q:'x^{2} - 4',       ans:'(x+2)(x-2)', vars:['x'], type:'vk',  a:'x',b:'2',
-    opl:'$x^2-4 = x^2 - 2^2$\n$= (x+2)(x-2)$' },
-  { q:'x^{2} - 25',      ans:'(x+5)(x-5)', vars:['x'], type:'vk',  a:'x',b:'5',
-    opl:'$x^2-25 = x^2 - 5^2$\n$= (x+5)(x-5)$' },
-  { q:'x^{2} - 16',      ans:'(x+4)(x-4)', vars:['x'], type:'vk',  a:'x',b:'4',
-    opl:'$x^2-16 = x^2 - 4^2$\n$= (x+4)(x-4)$' },
-  { q:'a^{2} + 8a + 16', ans:'(a+4)^{2}',  vars:['a'], type:'kw+', a:'a',b:'4',
-    opl:'$a^2+8a+16 = a^2 + 2\\cdot a\\cdot 4 + 4^2$\n$= (a+4)^{2}$' },
-  { q:'n^{2} - 1',       ans:'(n+1)(n-1)', vars:['n'], type:'vk',  a:'n',b:'1',
-    opl:'$n^2-1 = n^2 - 1^2$\n$= (n+1)(n-1)$' },
-];
 
 function genAF1c() {
-  const e = pick(AF1c_POOL);
-  const tip = e.type === 'kw+' ? `Herken $(${e.a}+${e.b})^2 = ${e.a}^2 + 2\\cdot${e.a}\\cdot${e.b} + ${e.b}^2`
-    : e.type === 'kw-' ? `Herken $(${e.a}-${e.b})^2 = ${e.a}^2 - 2\\cdot${e.a}\\cdot${e.b} + ${e.b}^2`
-    : `Herken $(${e.a}+${e.b})(${e.a}-${e.b}) = ${e.a}^2 - ${e.b}^2`;
-  const hint2 = e.type === 'vk'
-    ? `$${tip}$`
-    : `$${tip}$ — schrijf het antwoord als $(\\ldots)^2$`;
-  return _aQM('A.F1c', `Ontbind in factoren: $${e.q}$`, e.ans, e.vars,
-    ['Zoek een merkwaardig product.', hint2],
-    e.opl);
+  const v = pick(ALG_LETTERS_MP);
+  const type = pick(['kw+', 'kw-', 'vk']);
+  const b = rand(2, 9);
+
+  let vraag, ans, tip, stap;
+  if (type === 'vk') {
+    vraag = _alS([{ c: 1, v, p: 2 }, { c: -b * b, v: '', p: 0 }]);
+    ans = `(${v}+${b})(${v}-${b})`;
+    tip = `Herken $a^2 - b^2 = (a+b)(a-b)$ met $a=${v}$, $b=${b}$`;
+    stap = `${v}^2 - ${b}^2`;
+  } else {
+    const teken = type === 'kw+' ? 1 : -1;
+    vraag = _alS([{ c: 1, v, p: 2 }, { c: teken * 2 * b, v, p: 1 }, { c: b * b, v: '', p: 0 }]);
+    ans = `(${_haakje(v, teken * b).replace(/ /g, '')})^{2}`;
+    tip = teken > 0
+      ? `Herken $a^2 + 2ab + b^2 = (a+b)^2$ met $a=${v}$, $b=${b}$ — schrijf het antwoord als $(\\ldots)^2$`
+      : `Herken $a^2 - 2ab + b^2 = (a-b)^2$ met $a=${v}$, $b=${b}$ — schrijf het antwoord als $(\\ldots)^2$`;
+    stap = `${v}^2 ${teken > 0 ? '+' : '-'} 2\\cdot ${v}\\cdot ${b} + ${b}^2`;
+  }
+
+  return _aQM('A.F1c', `Ontbind in factoren: $${vraag}$`, ans, [v],
+    ['Zoek een merkwaardig product.', tip],
+    `$${vraag}$\n$= ${stap}$\n$= ${ans}$`);
 }
+
 
 /* ── A.MV1a – machtsverheffen: productregel (willekeurig) ────────── */
 function genAMV1a() {
@@ -2640,45 +2725,62 @@ function genAMV1c() {
 }
 
 /* ── A.MV1d – machtsverheffen: gecombineerde sommen ─────────────── */
-const AMV1d_POOL = [
-  { q:'3a^{2} \\cdot 2a + 4a^{3}',                   ans:'10a^{3}', vars:['a'],
-    h:'Productregel: $3a^{2} \\cdot 2a = 6a^{3}$; optellen: $6a^{3} + 4a^{3} = 10a^{3}$.',
-    opl:'$3a^{2} \\cdot 2a + 4a^{3}$\n$= 6a^{3} + 4a^{3}$\n$= 10a^{3}$' },
-  { q:'(2x)^{2} - 3x^{2}',                           ans:'x^{2}',   vars:['x'],
-    h:'$(2x)^{2} = 4x^{2}$; aftrekken: $4x^{2} - 3x^{2} = x^{2}$.',
-    opl:'$(2x)^{2} - 3x^{2}$\n$= 4x^{2} - 3x^{2}$\n$= x^{2}$' },
-  { q:'5(x^{2})^{3} - 2x^{6}',                       ans:'3x^{6}',  vars:['x'],
-    h:'$(x^{2})^{3} = x^{6}$; aftrekken: $5x^{6} - 2x^{6} = 3x^{6}$.',
-    opl:'$5(x^{2})^{3} - 2x^{6}$\n$= 5x^{6} - 2x^{6}$\n$= 3x^{6}$' },
-  { q:'(3a)^{2} + 2a \\cdot a',                       ans:'11a^{2}', vars:['a'],
-    h:'$(3a)^{2} = 9a^{2}$ en $2a \\cdot a = 2a^{2}$; optellen: $9a^{2} + 2a^{2} = 11a^{2}$.',
-    opl:'$(3a)^{2} + 2a \\cdot a$\n$= 9a^{2} + 2a^{2}$\n$= 11a^{2}$' },
-  { q:'4x^{3} \\cdot 2x - 3x^{4}',                   ans:'5x^{4}',  vars:['x'],
-    h:'Productregel: $4x^{3} \\cdot 2x = 8x^{4}$; aftrekken: $8x^{4} - 3x^{4} = 5x^{4}$.',
-    opl:'$4x^{3} \\cdot 2x - 3x^{4}$\n$= 8x^{4} - 3x^{4}$\n$= 5x^{4}$' },
-  { q:'\\dfrac{x^{8}}{x^{2}} + 3x^{6}',               ans:'4x^{6}',  vars:['x'],
-    h:'Deelregel: $x^{8}/x^{2} = x^{6}$; optellen: $x^{6} + 3x^{6} = 4x^{6}$.',
-    opl:'$\\dfrac{x^{8}}{x^{2}} + 3x^{6}$\n$= x^{6} + 3x^{6}$\n$= 4x^{6}$' },
-  { q:'3a^{2} \\cdot 4a^{3} - 2a^{5}',               ans:'10a^{5}', vars:['a'],
-    h:'Productregel: $3a^{2} \\cdot 4a^{3} = 12a^{5}$; aftrekken: $12a^{5} - 2a^{5} = 10a^{5}$.',
-    opl:'$3a^{2} \\cdot 4a^{3} - 2a^{5}$\n$= 12a^{5} - 2a^{5}$\n$= 10a^{5}$' },
-  { q:'\\dfrac{(2x^{2})^{3}}{x^{2}} - 5x^{4}',        ans:'3x^{4}',  vars:['x'],
-    h:'$(2x^{2})^{3} = 8x^{6}$; deelregel: $8x^{6}/x^{2} = 8x^{4}$; aftrekken: $8x^{4} - 5x^{4} = 3x^{4}$.',
-    opl:'$\\dfrac{(2x^{2})^{3}}{x^{2}} - 5x^{4}$\n$= \\dfrac{8x^{6}}{x^{2}} - 5x^{4}$\n$= 8x^{4} - 5x^{4}$\n$= 3x^{4}$' },
-  { q:'(2a)^{3} + 3a \\cdot a^{2}',                   ans:'11a^{3}', vars:['a'],
-    h:'$(2a)^{3} = 8a^{3}$ en $3a \\cdot a^{2} = 3a^{3}$; optellen: $8a^{3} + 3a^{3} = 11a^{3}$.',
-    opl:'$(2a)^{3} + 3a \\cdot a^{2}$\n$= 8a^{3} + 3a^{3}$\n$= 11a^{3}$' },
-  { q:'5x^{2} \\cdot x^{3} - \\dfrac{x^{7}}{x^{2}}', ans:'4x^{5}',  vars:['x'],
-    h:'Productregel: $5x^{2} \\cdot x^{3} = 5x^{5}$; deelregel: $x^{7}/x^{2} = x^{5}$; aftrekken: $5x^{5} - x^{5} = 4x^{5}$.',
-    opl:'$5x^{2} \\cdot x^{3} - \\dfrac{x^{7}}{x^{2}}$\n$= 5x^{5} - x^{5}$\n$= 4x^{5}$' },
-];
 
 function genAMV1d() {
-  const e = pick(AMV1d_POOL);
-  return _aQ('A.MV1d', `Vereenvoudig: $${e.q}$`, e.ans, e.vars,
-    ['Pas eerst de machtsregels toe, combineer daarna de gelijksoortige termen.', e.h],
-    e.opl);
+  const v = pick(ALG_LETTERS);
+  const vorm = pick(['product', 'macht-haakjes', 'macht-macht', 'deling']);
+
+  let vraag, tussen, ans, hint;
+
+  if (vorm === 'product') {
+    // c1 v^a · c2 v^b + c3 v^{a+b}
+    const a = rand(1, 3), b = rand(1, 3);
+    const c1 = rand(2, 5), c2 = rand(2, 4);
+    let c3;
+    do { c3 = _randNietNul(-6, 6); } while (c1 * c2 + c3 === 0);
+    vraag = `${_alM(c1, v, a)} \\cdot ${_alM(c2, v, b)}${_plusTerm(c3, v, a + b)}`;
+    tussen = `${_alM(c1 * c2, v, a + b)}${_plusTerm(c3, v, a + b)}`;
+    ans = _alM(c1 * c2 + c3, v, a + b);
+    hint = `Productregel: $${_alM(c1, v, a)} \\cdot ${_alM(c2, v, b)} = ${_alM(c1 * c2, v, a + b)}$`;
+
+  } else if (vorm === 'macht-haakjes') {
+    // (c v^a)^n - d v^{an}
+    const c = rand(2, 3), a = rand(1, 2), n = rand(2, 3);
+    const cn = Math.pow(c, n);
+    let d;
+    do { d = _randNietNul(-6, 6); } while (cn + d === 0);
+    vraag = `(${_alM(c, v, a)})^{${n}}${_plusTerm(d, v, a * n)}`;
+    tussen = `${_alM(cn, v, a * n)}${_plusTerm(d, v, a * n)}`;
+    ans = _alM(cn + d, v, a * n);
+    hint = `$(${_alM(c, v, a)})^{${n}} = ${c}^{${n}}${v}^{${a}\\cdot${n}} = ${_alM(cn, v, a * n)}$`;
+
+  } else if (vorm === 'macht-macht') {
+    // c (v^a)^b - d v^{ab}
+    const a = rand(2, 3), b = rand(2, 3);
+    const c = rand(2, 6);
+    let d;
+    do { d = _randNietNul(-5, 5); } while (c + d === 0);
+    vraag = `${c}(${v}^{${a}})^{${b}}${_plusTerm(d, v, a * b)}`;
+    tussen = `${_alM(c, v, a * b)}${_plusTerm(d, v, a * b)}`;
+    ans = _alM(c + d, v, a * b);
+    hint = `$(${v}^{${a}})^{${b}} = ${v}^{${a}\\cdot${b}} = ${v}^{${a * b}}$`;
+
+  } else {
+    // v^m / v^n + c v^{m-n}
+    const n = rand(1, 3), m = n + rand(2, 4);
+    let c;
+    do { c = _randNietNul(-6, 6); } while (1 + c === 0);
+    vraag = `\\dfrac{${_macht(v, m)}}{${_macht(v, n)}}${_plusTerm(c, v, m - n)}`;
+    tussen = `${_macht(v, m - n)}${_plusTerm(c, v, m - n)}`;
+    ans = _alM(1 + c, v, m - n);
+    hint = `Deelregel: $${v}^{${m}} \\div ${v}^{${n}} = ${v}^{${m - n}}$`;
+  }
+
+  return _aQ('A.MV1d', `Vereenvoudig: $${vraag}$`, ans, [v],
+    ['Pas eerst de machtsregels toe, combineer daarna de gelijksoortige termen.', hint],
+    `$${vraag}$\n$= ${tussen}$\n$= ${ans}$`);
 }
+
 
 /* ── L.G1a/b – helpers voor lineaire grafieken ───────────────────── */
 function _lgFormule(m, b, mDisplay) {
@@ -3655,7 +3757,9 @@ function genLV1d() {
     const qSign = q > 0 ? `+ ${q}` : `- ${Math.abs(q)}`;
     const inner = p === 1 ? `x ${qSign}` : `${p}x ${qSign}`;
     const lhsTeX = `${aD}(${inner})`;
-    const rhsFull = c === 0 ? `${bD}x` : c > 0 ? `${bD}x + ${c}` : `${bD}x - ${Math.abs(c)}`;
+    // B = 10 geeft bD = 1; die coëfficiënt niet uitschrijven ("1x" moet "x" zijn).
+    const bDx = bD === 1 ? 'x' : bD === -1 ? '-x' : `${bD}x`;
+    const rhsFull = c === 0 ? bDx : c > 0 ? `${bDx} + ${c}` : `${bDx} - ${Math.abs(c)}`;
     const rhs10base = B === 10 ? '10x' : `${B}x`;
     const rhs10 = c === 0 ? rhs10base : c > 0 ? `${rhs10base} + ${10*c}` : `${rhs10base} - ${Math.abs(10*c)}`;
     const AP = A*p, AQ = A*q, coef = AP-B, rhsVal = 10*c - AQ;
@@ -5461,7 +5565,7 @@ function genGV2d() {
     } while (tries < 300);
     const a1 = b1 - r - s, a2 = b2 + r * s;
     const noeTex = s > 0 ? `x - ${s}` : `x + ${Math.abs(s)}`;
-    const aTex = `x^{2}${a1 > 0 ? ` + ${a1}x` : a1 < 0 ? ` - ${Math.abs(a1)}x` : ''}${a2 > 0 ? ` + ${a2}` : a2 < 0 ? ` - ${Math.abs(a2)}` : ''}`;
+    const aTex = `x^{2}${_plusTerm(a1, 'x', 1)}${_plusTerm(a2, '', 0)}`;
     const f1 = r >= 0 ? `x - ${r}` : `x + ${Math.abs(r)}`;
     const f2 = noeTex;
     return {
@@ -5502,7 +5606,7 @@ function genGV2d() {
   } while (tries < 300);
   const a1 = b1 - r1 - r2, a2 = b2 + r1 * r2;
   const noeTex = s > 0 ? `x - ${s}` : `x + ${Math.abs(s)}`;
-  const aTex = `x^{2}${a1 > 0 ? ` + ${a1}x` : a1 < 0 ? ` - ${Math.abs(a1)}x` : ''}${a2 > 0 ? ` + ${a2}` : a2 < 0 ? ` - ${Math.abs(a2)}` : ''}`;
+  const aTex = `x^{2}${_plusTerm(a1, 'x', 1)}${_plusTerm(a2, '', 0)}`;
   const g1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
   const g2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
   return {
@@ -5609,9 +5713,7 @@ function genGV2e() {
     break;
   } while (tries < 200);
   const sumR = r1 + r2, prodR = r1 * r2;
-  let aTex = 'x^{2}';
-  if (sumR > 0) aTex += ` - ${sumR}x`; else if (sumR < 0) aTex += ` + ${Math.abs(sumR)}x`;
-  if (prodR > 0) aTex += ` + ${prodR}`; else if (prodR < 0) aTex += ` - ${Math.abs(prodR)}`;
+  const aTex = `x^{2}${_plusTerm(-sumR, 'x', 1)}${_plusTerm(prodR, '', 0)}`;
   const f1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
   const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
   return {
@@ -5794,7 +5896,10 @@ function genBH1a() {
       c = pick([2, 3, 4, 5, 6, 8, 10]);
     } while (gcd(a, c) !== 1 || gcd(b, c) !== 1);
     const aCoeff = a === 1 ? '' : String(a);
-    const numTeX  = `${aCoeff}${v}^{2} + ${b}${v}`;
+    // b is hier een coëfficiënt vóór de letter, dus 1 niet uitschrijven:
+    // "a^2 + 1a" moet "a^2 + a" zijn.
+    const bCoeff = b === 1 ? '' : String(b);
+    const numTeX  = `${aCoeff}${v}^{2} + ${bCoeff}${v}`;
     const denTeX  = `${c}${v}`;
     const factTeX = `${v}(${aCoeff}${v} + ${b})`;
     const ansNum  = `${aCoeff}${v} + ${b}`;
@@ -6189,8 +6294,37 @@ const LEERDOELEN = [
   { id: 'S.1c', titel: 'Stelsel – één vergelijking in y=ax+b-vorm', groep: 'Lineair', gen: genStelselC },
 ];
 
+/* ── Herhaling voorkomen ──────────────────────────────────────────────────
+   Verschillende leerdoelen trekken uit een vaste pool van 9 tot 12 opgaven.
+   Zuiver willekeurig trekken geeft dan ongeveer 1 op de 10 kans dat een
+   leerling twee keer achter elkaar dezelfde som krijgt. We onthouden daarom
+   per leerdoel de laatst getoonde opgaven en trekken opnieuw zolang we een
+   herhaling zien.
+
+   Het maximum aantal pogingen zorgt dat een leerdoel met weinig mogelijke
+   opgaven nooit blijft hangen: lukt het niet, dan accepteren we de trekking. */
+const _recenteVragen = new Map();     // leerdoelId -> array met vraagsleutels
+const RECENT_ONTHOUDEN = 5;
+const MAX_TREKPOGINGEN = 30;
+
+/* De vraagtekst plus de data en het antwoord identificeren een opgave.
+   Het id niet meenemen: dat is per definitie uniek. */
+function _vraagSleutel(v) {
+  return JSON.stringify([v.vraag, v.data ?? null, v.antwoord ?? null]);
+}
+
 function generateVraag(leerdoelId) {
   const ld = LEERDOELEN.find(l => l.id === leerdoelId);
   if (!ld) throw new Error('Onbekend leerdoel: ' + leerdoelId);
-  return ld.gen();
+
+  const recent = _recenteVragen.get(leerdoelId) ?? [];
+  let vraag = ld.gen();
+  for (let i = 0; i < MAX_TREKPOGINGEN && recent.includes(_vraagSleutel(vraag)); i++) {
+    vraag = ld.gen();
+  }
+
+  recent.push(_vraagSleutel(vraag));
+  while (recent.length > RECENT_ONTHOUDEN) recent.shift();
+  _recenteVragen.set(leerdoelId, recent);
+  return vraag;
 }
