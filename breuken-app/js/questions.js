@@ -6258,6 +6258,16 @@ const LEERDOELEN = [
   { id: 'L.O1b',  titel: 'Lineair – ongelijkheid: 2-stap',            groep: 'Lineair', gen: genLO1b  },
   { id: 'L.O1c',  titel: 'Lineair – ongelijkheid: met haakjes',       groep: 'Lineair', gen: genLO1c  },
 
+  /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
+  /* Deze staan bewust vóór de machtsverbanden: het startscherm en de
+     docentenomgeving leiden hun groepsvolgorde af uit de volgorde hieronder,
+     en die hoort gelijk te lopen met het menu in de zijbalk. */
+  { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },
+  { id: 'K.B1a', titel: 'Kwadratisch – ax² = bx (gemeenschappelijke factor)',       groep: 'Kwadratisch', gen: genKWB },
+  { id: 'K.C1a', titel: 'Kwadratisch – ax² + bx + c = 0 (product-som)',            groep: 'Kwadratisch', gen: genKWC },
+  { id: 'K.D1a', titel: 'Kwadratisch – abc-formule (decimaal afronden)',            groep: 'Kwadratisch', gen: genKWD },
+  { id: 'K.E1a', titel: 'Kwadratisch – abc-formule (exact antwoord)',               groep: 'Kwadratisch', gen: genKWE },
+
   /* ── M.V-doelen (Machtsvergelijkingen) ─────────────────────────────── */
   { id: 'M.V1a', titel: 'Machtsvergelijking: directe wortel (x^n = c)',          groep: 'Machtsverbanden', gen: genMV1a },
   { id: 'M.V1b', titel: 'Machtsvergelijking: met vermenigvuldiging (ax^n = c)',  groep: 'Machtsverbanden', gen: genMV1b },
@@ -6280,13 +6290,6 @@ const LEERDOELEN = [
   { id: 'G.V2d', titel: 'Gebroken verg.: A/C = B/C',                          groep: 'Machtsverbanden', gen: genGV2d },
   { id: 'G.V2e', titel: 'Gebroken verg.: A/B = A/C',                          groep: 'Machtsverbanden', gen: genGV2e },
   { id: 'G.V2f', titel: 'Gebroken verg.: gemengd',                            groep: 'Machtsverbanden', gen: genGV2f },
-
-  /* ── K-doelen (Kwadratische verbanden) ───────────────────────────────────── */
-  { id: 'K.A1a', titel: 'Kwadratisch – ax² = c',                                   groep: 'Kwadratisch', gen: genKWA },
-  { id: 'K.B1a', titel: 'Kwadratisch – ax² = bx (gemeenschappelijke factor)',       groep: 'Kwadratisch', gen: genKWB },
-  { id: 'K.C1a', titel: 'Kwadratisch – ax² + bx + c = 0 (product-som)',            groep: 'Kwadratisch', gen: genKWC },
-  { id: 'K.D1a', titel: 'Kwadratisch – abc-formule (decimaal afronden)',            groep: 'Kwadratisch', gen: genKWD },
-  { id: 'K.E1a', titel: 'Kwadratisch – abc-formule (exact antwoord)',               groep: 'Kwadratisch', gen: genKWE },
 
   /* ── S-doelen (Stelsels vergelijkingen) ─────────────────────────────── */
   { id: 'S.1a', titel: 'Stelsel – direct optellen of aftrekken',    groep: 'Lineair', gen: genStelselE },

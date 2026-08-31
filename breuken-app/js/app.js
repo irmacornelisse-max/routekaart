@@ -1734,7 +1734,7 @@ function feedbackBoodschap(vraag, gegeven) {
     'A.D1b': 'Deel de coëfficiënten; trek per letter de macht van de deler af van die van het deeltal.',
     'A.H1a': 'Vermenigvuldig elk getal tussen de haakjes met het getal ervoor (distributieve eigenschap).',
     'A.H1b': 'Let op het minteken: $-a(b + c) = -ab - ac$ en $-a(b - c) = -ab + ac$.',
-    'A.H1c': 'Gebruik FOIL: eerste × eerste, buitenste, binnenste, laatste. Combineer daarna gelijksoortige termen.',
+    'A.H1c': 'Vermenigvuldig elke term uit de eerste haakjes met elke term uit de tweede. Combineer daarna gelijksoortige termen.',
     'A.H1d': 'Gebruik de merkwaardige producten: $(a+b)^2$, $(a-b)^2$ of $(a+b)(a-b)$.',
     'A.F1a': 'Zoek de grootste gemene deler van de coëfficiënten en de laagste macht van de variabele.',
     'A.F1b': 'Zoek twee getallen $p$ en $q$ zodat $p + q = b$ en $p \\times q = c$ (bij $x^2 + bx + c$).',
