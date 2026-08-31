@@ -3567,8 +3567,13 @@ function _lvXTeX(t, n) {
   if (n === 1) return `${t}`;
   return t < 0 ? `-\\dfrac{${-t}}{${n}}` : `\\dfrac{${t}}{${n}}`;
 }
+/* Coëfficiënt vóór x, zonder de 1 uit te schrijven: 1 -> "x", -1 -> "-x". */
+function _lvCoefX(a) {
+  return a === 1 ? 'x' : a === -1 ? '-x' : `${a}x`;
+}
+
 function _lvSideTeX(a, b) {
-  let s = a === 1 ? 'x' : a === -1 ? '-x' : `${a}x`;
+  const s = _lvCoefX(a);
   if (b === 0) return s;
   return b > 0 ? `${s} + ${b}` : `${s} - ${Math.abs(b)}`;
 }
@@ -3631,7 +3636,7 @@ function genLV1b() {
   const xTex = _lvXTeX(fr.t, fr.n);
   const lhsTeX = _lvSideTeX(a, b);
   const rhsTeX = _lvSideTeX(c, d);
-  const midTeX = `${coefX}x = ${rhs}`;
+  const midTeX = `${_lvCoefX(coefX)} = ${rhs}`;
 
   return {
     id: uid(), leerdoel: 'L.V1b',
@@ -3672,7 +3677,7 @@ function genLV1c() {
   const lhsTeX    = `${a}(${innerTeX})`;
   const rhsTeX    = _lvSideTeX(d, e);
   const expandedTeX = _lvSideTeX(expA, expC);
-  const midTeX    = `${coefX}x = ${rhs}`;
+  const midTeX    = `${_lvCoefX(coefX)} = ${rhs}`;
 
   return {
     id: uid(), leerdoel: 'L.V1c',
@@ -3722,7 +3727,7 @@ function genLV1d() {
     } while (++tries < 50);
     const lhsTeX = sideTeX(A,B), rhsTeX = sideTeX(C,D);
     const lhs10 = _lvSideTeX(A,B), rhs10 = _lvSideTeX(C,D);
-    const midTeX = `${A-C}x = ${D-B}`;
+    const midTeX = `${_lvCoefX(A-C)} = ${D-B}`;
     return {
       id: uid(), leerdoel: 'L.V1d',
       vraag: `Los op: $${lhsTeX} = ${rhsTeX}$`,
@@ -3778,7 +3783,7 @@ function genLV1d() {
         `$${lhsTeX} = ${rhsFull} \\quad|{\\times}10$`,
         `$${A}(${inner}) = ${rhs10}$`,
         `Uitwerken: $${expand10} = ${rhs10}$`,
-        `$${coef}x = ${rhsVal}$`,
+        `$${_lvCoefX(coef)} = ${rhsVal}$`,
         `$x = ${xTex}$`,
       ].join('\n'),
     };
@@ -3825,6 +3830,10 @@ function genLV1e() {
       q1 = pick([2,3,4,5,6]); q2 = pick([2,3,4,5,6]);
       p1 = rand(1, Math.min(q1*2, 8)); p2 = rand(1, Math.min(q2*2, 8));
       if (p1*q2 === p2*q1) { tries++; continue; } // gelijke coëff
+      // Dit leerdoel gaat over breuken: minstens één coëfficiënt moet er
+      // ook echt een zijn. Vallen ze allebei op een geheel getal terug,
+      // dan is het een gewone tweestapsvergelijking (L.V1b).
+      if (p1 % q1 === 0 && p2 % q2 === 0) { tries++; continue; }
       a = rand(-5,5); b = rand(-5,5);
       L = lcm(q1, q2);
       const A = L*p1/q1, B = L*p2/q2;
@@ -3851,7 +3860,7 @@ function genLV1e() {
       oplossing: [
         `$${lhsTeX} = ${rhsTeX} \\quad|{\\times}${L}$`,
         `$${lhs_L} = ${rhs_L}$`,
-        `$${coef}x = ${rhsVal}$`,
+        `$${_lvCoefX(coef)} = ${rhsVal}$`,
         `$x = ${xTex}$`,
       ].join('\n'),
     };
@@ -3895,7 +3904,7 @@ function genLV1e() {
         `$${lhsTeX} = ${rhsTeX}$`,
         `Omschrijven: $\\dfrac{${p}}{${q}}x + \\dfrac{${w*q+f}}{${q}} = ${rhsTeX}$`,
         `$\\quad|{\\times}${q}$: $${lhs_q} = ${rhs_q}$`,
-        `$${coef}x = ${rhsVal}$`,
+        `$${_lvCoefX(coef)} = ${rhsVal}$`,
         `$x = ${xTex}$`,
       ].join('\n'),
     };
@@ -3939,7 +3948,7 @@ function genLV1e() {
       `$${lhsTeX} = ${rhsTeX} \\quad|{\\times}${L}$`,
       `$${lhs_L} = ${rhs_L}$`,
       `Uitwerken: $${expand_L} = ${expand_R}$`,
-      `$${coef}x = ${rhsVal}$`,
+      `$${_lvCoefX(coef)} = ${rhsVal}$`,
       `$x = ${xTex}$`,
     ].join('\n'),
   };
@@ -5256,7 +5265,9 @@ function genGV1a() {
     `$${noem} = ${d}$`,
   ];
   if (b !== 0) steps.push(`$${axTex} = ${d - b}$`);
-  steps.push(`$x = ${xTex}$`);
+  // Bij a = 1 is de voorlaatste stap al "x = ...", dan niet nog eens herhalen.
+  const slotregel = `$x = ${xTex}$`;
+  if (steps[steps.length - 1] !== slotregel) steps.push(slotregel);
 
   return {
     id: uid(), leerdoel: 'G.V1a',
@@ -5517,11 +5528,8 @@ function genGV2c() {
   const aTex = a > 0 ? `x + ${a}` : a < 0 ? `x - ${Math.abs(a)}` : `x`;
   const bTex = b > 0 ? `x + ${b}` : b < 0 ? `x - ${Math.abs(b)}` : `x`;
   const coefX = a + b, coefC = a * b - pqVal;
-  let quadTex = 'x^{2}';
-  if (coefX > 0) quadTex += ` + ${coefX}x`;
-  else if (coefX < 0) quadTex += ` - ${Math.abs(coefX)}x`;
-  if (coefC > 0) quadTex += ` + ${coefC}`;
-  else if (coefC < 0) quadTex += ` - ${Math.abs(coefC)}`;
+  // Via _plusTerm, zodat een coëfficiënt 1 niet als "1x" wordt uitgeschreven.
+  const quadTex = `x^{2}${_plusTerm(coefX, 'x', 1)}${_plusTerm(coefC, '', 0)}`;
   const f1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
   const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
 
@@ -6328,9 +6336,21 @@ function _kommaInMath(tekst) {
   return tekst.replace(/\$[^$]*\$/g, (m) => m.replace(/(\d)\.(\d)/g, '$1{,}$2'));
 }
 
+/* Een uitwerking die eindigt met twee identieke regels voegt niets toe; dat
+   gebeurt als de voorlaatste stap toevallig al de eindvorm is (bijvoorbeeld
+   bij coëfficiënt 1: "x = -2" gevolgd door "x = -2"). */
+function _zonderDubbeleSlotregel(oplossing) {
+  if (typeof oplossing !== 'string') return oplossing;
+  const regels = oplossing.split('\n');
+  while (regels.length > 1 && regels[regels.length - 1].trim() === regels[regels.length - 2].trim()) {
+    regels.pop();
+  }
+  return regels.join('\n');
+}
+
 function _kommaNotatie(v) {
   v.vraag = _kommaInMath(v.vraag);
-  v.oplossing = _kommaInMath(v.oplossing);
+  v.oplossing = _zonderDubbeleSlotregel(_kommaInMath(v.oplossing));
   if (Array.isArray(v.hints)) v.hints = v.hints.map(_kommaInMath);
   return v;
 }
