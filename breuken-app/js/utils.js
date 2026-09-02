@@ -355,8 +355,12 @@ function _algTokenize(s, varVals) {
     else if (ch === '-') tokens.push({ t: 'op', v: '-' });
     else if (ch === '*') tokens.push({ t: 'op', v: '*' });
     else if (ch === '/') tokens.push({ t: 'op', v: '/' });
-    else if (ch === '(') { if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({ t: 'lp' }); }
-    else if (ch === ')') tokens.push({ t: 'rp' });
+    // Blokhaken tellen als gewone haakjes. Zonder dit vielen ze weg en werd
+    // (x - 3)[2x(x + 3) - 56] stilzwijgend als (x - 3)2x(x + 3) - 56 gelezen.
+    // De index van \sqrt[n]{} komt hier niet langs: die wordt hierboven al
+    // door de sqrt-tak opgegeten.
+    else if (ch === '(' || ch === '[') { if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({ t: 'lp' }); }
+    else if (ch === ')' || ch === ']') tokens.push({ t: 'rp' });
   }
   return tokens;
 }

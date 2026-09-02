@@ -1493,20 +1493,42 @@ function checkAntwoord(vraag, gegeven) {
     // daar hoort de verworpen waarde juist in de tussenstap thuis.
     // Een segment zonder oplossingen (x^2 = -4, de dode tak van een modulus)
     // mag altijd — dat perkt de oplossingen alleen maar in.
-    const strikt = !!correct.strikt;
+    // Standaard streng: een rij kale waarden is een eindantwoord, dus het
+    // aantal moet kloppen. Een leerdoel waar een verworpen waarde juist in de
+    // tussenstap thuishoort, zet `soepel: true`.
+    const strikt = correct.soepel !== true;
     const isOplossing = (w) => sols.some(s => Math.abs(w - s) <= 1e-4);
     const segments = rawV.split(/\s*v\s*/);
 
-    // Staan er alleen kale waarden ("x = 2 v x = -2 v x = 9"), dan is dit een
-    // eindantwoord en geen tussenstap. De exacte vergelijking hierboven is dan
-    // al mislukt, dus er klopt iets niet aan het aantal of aan een waarde.
+    // Rekent de leerling in de hulpvariabele (bijv. u = x^2)? Dan beoordelen we
+    // de stap tegen de u-waarden, want in x uitgedrukt klopt hij niet.
+    const hulp = correct.hulp;
+    if (hulp && new RegExp(`(?<![a-zA-Z])${hulp.letter}(?![a-zA-Z])`).test(rawV)
+        && !/(?<![a-zA-Z])x(?![a-zA-Z])/.test(rawV)) {
+      const gedekt = hulp.waarden.map(() => false);
+      for (const seg of segments) {
+        const delen = seg.split('=');
+        if (delen.length !== 2) continue;
+        hulp.waarden.forEach((w, i) => {
+          if (_tussenstapKlopt(delen[0].trim(), delen[1].trim(), hulp.letter, w))
+            gedekt[i] = true;
+        });
+      }
+      return gedekt.some(Boolean) ? 'tussenstap' : 'fout';
+    }
+
+    // Staan er alleen kale waarden ("x = 2 v x = -2"), dan is dit een
+    // eindantwoord. De exacte vergelijking hierboven is dan al mislukt, dus
+    // er ontbreekt er een of er deugt er een niet -- allebei fout. Een
+    // oplossing kwijtraken is geen halve fout maar een hele.
     const isKaleWaarde = (seg) => {
       const m = seg.trim().match(/^x\s*=\s*(.+)$/);
       return !!m && !/[a-zA-Z]/.test(m[1].replace(/\\[a-zA-Z]+/g, ''));
     };
-    if (strikt && segments.length > 1 && segments.every(isKaleWaarde)) return 'fout';
+    if (strikt && segments.every(isKaleWaarde) && segments.length) return 'fout';
 
     const covered = sols.map(() => false);
+    let vreemdeWortel = false;
     for (const seg of segments) {
       const eqParts = seg.split('=');
       if (eqParts.length !== 2) continue;
@@ -1516,9 +1538,13 @@ function checkAntwoord(vraag, gegeven) {
         if (_tussenstapKlopt(links, rechts, 'x', sols[si])) covered[si] = true;
       }
       if (strikt && _heeftVreemdeWortel(links, rechts, 'x', isOplossing, _scanBereik(sols)))
-        return 'fout';
+        vreemdeWortel = true;
     }
     if (covered.every(c => c)) return 'tussenstap';
+    // Eén geval van een gevalsonderscheiding ("Geval 1: x(x + 6) = 0") dekt maar
+    // een deel van de oplossingen. Dat mag, zolang die stap geen waarde toelaat
+    // die geen oplossing van de opgave is.
+    if (strikt && !vreemdeWortel && covered.some(c => c)) return 'tussenstap';
     return 'fout';
   }
 
@@ -1566,8 +1592,11 @@ function checkAntwoord(vraag, gegeven) {
       return 'fout';
     }
 
-    // Enkelvoudig "v = expr" is altijd fout (altijd twee oplossingen vereist)
-    if (enkel) return 'fout';
+    // Eén waarde terwijl er twee oplossingen zijn: fout. Bij een kwadratische
+    // vergelijking is een oplossing kwijtraken een echte fout, geen halve.
+    // Bij meer dan één "=" op de regel ("y = 0 v 3y = 9") beslist de
+    // takkencontrole hieronder.
+    if (enkel && (rawV.match(/=/g) || []).length === 1) return 'fout';
 
     // Opschrijfregels van de abc-methode: de coëfficiënten en de discriminant
     const hulp = _abcHulpregel(rawV, correct);

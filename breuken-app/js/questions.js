@@ -2675,8 +2675,12 @@ function genAMV1b() {
   if (tw) h2 += `; $(${w}^{${r}})^{${q}} = ${w}^{${ar}}$`;
   h2 += '.';
 
-  let opl = `$(${inn})^{${q}}$\n$= ${c}^{${q}} \\cdot (${v}^{${p}})^{${q}}`;
-  if (tw) opl += ` \\cdot (${w}^{${r}})^{${q}}`;
+  // Bij exponent 1 schrijven we geen (x^{1})^{2} maar gewoon x^{2}; de vraag
+  // schrijft die 1 immers ook niet. In de hint blijft hij wel staan, want daar
+  // maakt hij de machtsregel juist zichtbaar.
+  const basisMacht = (lt, e) => e === 1 ? `${lt}^{${q}}` : `(${lt}^{${e}})^{${q}}`;
+  let opl = `$(${inn})^{${q}}$\n$= ${c}^{${q}} \\cdot ${basisMacht(v, p)}`;
+  if (tw) opl += ` \\cdot ${basisMacht(w, r)}`;
   opl += `$\n$= ${ans}$`;
 
   return _aQ('A.MV1b', `Vereenvoudig: $(${inn})^{${q}}$`, ans, vars,
@@ -2967,6 +2971,9 @@ function genLG1b() {
 }
 
 /* ── L.F1/F2 – formule opstellen helpers ─────────────────────────────── */
+/* Haakjes om een negatief getal, zodat er geen "$\cdot -8$" komt te staan. */
+function _getalHaakjes(w) { return w < 0 ? `(${w})` : `${w}`; }
+
 /* De uitgerekende breuk Δy/Δx als tussenstap: het minteken hoort vóór de
    breuk, en bij noemer 1 is die tussenstap overbodig — dan staat de uitkomst
    er al. Levert in dat geval een lege string. */
@@ -2993,7 +3000,9 @@ function _lfOplTabel(m, b, p1, p2, mDisplay) {
   const mStr = mDisplay || String(m);
   return `Bereken $m$ uit de tabel:
 $m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})}${_lfHellingStap(dy, dx, mStr)} = ${mStr}$
-Vul in met $(${p1.x},\\ ${p1.y})$: $\\ ${p1.y} = ${mStr} \\cdot ${p1.x} + b \\Rightarrow b = ${b}$
+Vul in met $(${p1.x},\\ ${p1.y})$:
+$${p1.y} = ${mStr} \\cdot ${_getalHaakjes(p1.x)} + b$
+$b = ${b}$
 De formule is $${formule}$.`;
 }
 
@@ -4563,10 +4572,13 @@ function genMV2b() {
   if (u2 > 0) {
     const sol2Tex = _mvcSqrtTeX(u2);
     sols.push(Math.sqrt(u2), -Math.sqrt(u2));
-    oplU2Line  = `$x^2 = ${u1} \\Rightarrow x = \\pm ${sol1Tex}$\\quad en\\quad $x^2 = ${u2} \\Rightarrow x = \\pm ${sol2Tex}$`;
+    oplU2Line  = `$x^2 = ${u1} \\vee x^2 = ${u2}$\n`
+               + `$x = \\pm ${sol1Tex} \\vee x = \\pm ${sol2Tex}$`;
     oplSolLine = `$x = ${sol1Tex} \\vee x = -${sol1Tex} \\vee x = ${sol2Tex} \\vee x = -${sol2Tex}$`;
   } else {
-    oplU2Line  = `$x^2 = ${u1} \\Rightarrow x = \\pm ${sol1Tex}$\\quad en\\quad $x^2 = ${u2}$ heeft geen reële oplossing`;
+    oplU2Line  = `$x^2 = ${u1} \\vee x^2 = ${u2}$\n`
+               + `$x^2 = ${u2}$ heeft geen reële oplossing\n`
+               + `$x = \\pm ${sol1Tex}$`;
     oplSolLine = `$x = ${sol1Tex} \\vee x = -${sol1Tex}$`;
   }
 
@@ -4590,7 +4602,9 @@ function genMV2b() {
     id: uid(), leerdoel: 'M.V2b',
     vraag: `Los exact op: $${vraagTeX}$`,
     antwoordType: 'vergelijking-mv',
-    antwoord: { sols },
+    // hulp: de uitwerking rekent tussendoor in u; zonder deze waarden kan de
+    // nakijkfunctie een stap als "(u - 9)(u + 4) = 0" niet beoordelen
+    antwoord: { sols, hulp: { letter: 'u', waarden: [u1, u2] } },
     hints: [
       `Breng alles naar één kant en stel $u = x^2$. De vergelijking wordt $${uQuadTeX} = 0$.`,
       `Los de kwadratische vergelijking in $u$ op. Neem dan de vierkantswortel van elke positieve $u$-waarde. Vergeet $\\pm$ niet!`,
@@ -5158,9 +5172,10 @@ function genMV3a() {
     ],
     oplossing: [
       `$(${termA})(${termB}) = 0$`,
-      `Nulpuntsregel: $${termA} = 0$ of $${termB} = 0$`,
-      `$${termA} = 0 \\Rightarrow x(x + ${a}) = 0 \\Rightarrow x = 0 \\lor x = -${a}$`,
-      `$${termB} = 0 \\Rightarrow x^2 = ${k} \\Rightarrow x = ${sqrtTeX} \\lor x = -${sqrtTeX}$`,
+      // Beide gevallen naast elkaar op één regel: zo raakt er onderweg nooit
+      // een oplossing zoek.
+      `Nulpuntsregel: $${termA} = 0 \\lor ${termB} = 0$`,
+      `$x(x + ${a}) = 0 \\lor x^2 = ${k}$`,
       `Oplossingen: $x = 0 \\lor x = -${a} \\lor x = ${sqrtTeX} \\lor x = -${sqrtTeX}$`,
     ].join('\n'),
   };
@@ -5197,9 +5212,10 @@ function genMV3b() {
       `Stel $(${Atex}) = (${Btex})$ en daarna $(${Atex}) = -(${Btex})$. Los elk geval apart op.`,
     ],
     oplossing: [
-      `$(${Atex})^2 = (${Btex})^2 \\Rightarrow ${Atex} = \\pm(${Btex})$`,
-      `Geval 1: $${Atex} = ${Btex} \\Rightarrow x = ${x1Tex}$`,
-      `Geval 2: $${Atex} = -(${Btex}) \\Rightarrow x = ${x2Tex}$`,
+      `$(${Atex})^2 = (${Btex})^2$`,
+      `$${Atex} = \\pm(${Btex})$`,
+      // beide gevallen naast elkaar, zodat geen enkele regel een oplossing mist
+      `$${Atex} = ${Btex} \\lor ${Atex} = -(${Btex})$`,
       `Oplossingen: $x = ${x1Tex} \\lor x = ${x2Tex}$`,
     ].join('\n'),
   };
@@ -5288,20 +5304,19 @@ function genMV3d() {
   const s2Tex = _mv3FracTeX(1 - b, a);
   const s3Tex = n === 3 ? _mv3FracTeX(-1 - b, a) : null;
 
+  // De regel "u^n - u = 0" staat hieronder al; hier alleen het vervolg.
   const uLabel = n === 3
-    ? `$u^3 - u = 0 \\Rightarrow u(u^2 - 1) = 0 \\Rightarrow u = 0,\\; u = 1,\\; u = -1$`
-    : `$u^4 - u = 0 \\Rightarrow u(u^3 - 1) = 0 \\Rightarrow u = 0,\\; u = 1$`;
+    ? `$u(u^2 - 1) = 0$\n$u = 0 \\lor u = 1 \\lor u = -1$`
+    : `$u(u^3 - 1) = 0$\n$u = 0 \\lor u = 1$`;
 
+  // Alle gevallen naast elkaar per regel, zodat er onderweg geen oplossing wegvalt.
   const solLines = n === 3
     ? [
-        `$${linear} = 0 \\Rightarrow x = ${s1Tex}$`,
-        `$${linear} = 1 \\Rightarrow x = ${s2Tex}$`,
-        `$${linear} = -1 \\Rightarrow x = ${s3Tex}$`,
+        `$${linear} = 0 \\lor ${linear} = 1 \\lor ${linear} = -1$`,
         `Oplossingen: $x = ${s1Tex} \\lor x = ${s2Tex} \\lor x = ${s3Tex}$`,
       ]
     : [
-        `$${linear} = 0 \\Rightarrow x = ${s1Tex}$`,
-        `$${linear} = 1 \\Rightarrow x = ${s2Tex}$`,
+        `$${linear} = 0 \\lor ${linear} = 1$`,
         `Oplossingen: $x = ${s1Tex} \\lor x = ${s2Tex}$`,
       ];
 
@@ -5309,7 +5324,8 @@ function genMV3d() {
     id: uid(), leerdoel: 'M.V3d',
     vraag: `Los op: $(${linear})^${n} = ${linear}$`,
     antwoordType: 'vergelijking-mv',
-    antwoord: { sols },
+    // u = ax + b; de tussenstappen rekenen in u
+    antwoord: { sols, hulp: { letter: 'u', waarden: n === 3 ? [0, 1, -1] : [0, 1] } },
     hints: [
       `Stel $u = ${linear}$. De vergelijking wordt $u^${n} = u$.`,
       `Breng $u$ naar links: $u^${n} - u = 0$. Haal $u$ eruit en gebruik de nulpuntsregel.`,
@@ -5828,11 +5844,18 @@ function genGV2b() {
         `Vermenigvuldig beide kanten met $(${_lt(c, d)})$ zodat de breuk verdwijnt.`,
         `Je krijgt $${_lt(a, b)} = ${e}(${_lt(c, d)})$. Werk uit en los op naar $x$.`,
       ],
-      oplossing: [
-        `$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
-        `$${_lt(a, b)} = ${e}(${_lt(c, d)})$`,
-        `$x = ${xVal}$`,
-      ].join('\n'),
+      oplossing: (() => {
+        const stappen = [
+          `$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
+          `$${_lt(a, b)} = ${e}(${_lt(c, d)})$`,
+          `$${_lt(a, b)} = ${_lt(e * c, e * d)}$`,
+          `$${_lvCoefX(a - e * c)} = ${e * d - b}$`,
+        ];
+        // bij coëfficiënt 1 staat er al "x = ..."; niet nog eens herhalen
+        const slot = `$x = ${xVal}$`;
+        if (stappen[stappen.length - 1] !== slot) stappen.push(slot);
+        return stappen.join('\n');
+      })(),
     };
   }
   // Kwadratisch: (ax²+b)/(cx²+d) = e → x² = m² → x = ±m
@@ -5860,12 +5883,19 @@ function genGV2b() {
       `Vermenigvuldig beide kanten met $(${cT}x^{2}${dTex})$.`,
       `Je krijgt $${aT}x^{2}${bTex} = ${e}(${cT}x^{2}${dTex})$. Isoleer $x^{2}$.`,
     ],
-    oplossing: [
-      `$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
-      `$${aT}x^{2}${bTex} = ${e}(${cT}x^{2}${dTex})$`,
-      `$x^{2} = ${m * m}$`,
-      `$x = ${m} \\quad v \\quad x = -${m}$`,
-    ].join('\n'),
+    oplossing: (() => {
+      const ecT = e * c === 1 ? '' : `${e * c}`;
+      const edTex = e * d > 0 ? ` + ${e * d}` : ` - ${Math.abs(e * d)}`;
+      const stappen = [
+        `$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
+        `$${aT}x^{2}${bTex} = ${e}(${cT}x^{2}${dTex})$`,
+        `$${aT}x^{2}${bTex} = ${ecT}x^{2}${edTex}$`,
+        `$${_alM(a - e * c, 'x', 2)} = ${e * d - b}$`,
+      ];
+      if (a - e * c !== 1) stappen.push(`$x^{2} = ${m * m}$`);
+      stappen.push(`$x = ${m} \\quad v \\quad x = -${m}$`);
+      return stappen.join('\n');
+    })(),
   };
 }
 
@@ -6037,6 +6067,7 @@ function genGV2d() {
       oplossing: [
         `$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
         `$${aTex} = ${_lt(b1, b2)}$`,
+        `$x^{2}${_plusTerm(-(r + s), 'x', 1)}${_plusTerm(r * s, '', 0)} = 0$`,
         `$(${f1})(${f2}) = 0$`,
         `$x = ${r} \\quad v \\quad x = ${s}$`,
         `$x = ${s}$: noemer $= 0$ → schijnoplossing ✗`,
@@ -6078,6 +6109,7 @@ function genGV2d() {
     oplossing: [
       `$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
       `$${aTex} = ${_lt(b1, b2)}$`,
+      `$x^{2}${_plusTerm(-(r1 + r2), 'x', 1)}${_plusTerm(r1 * r2, '', 0)} = 0$`,
       `$(${g1})(${g2}) = 0$`,
       `$x = ${r1} \\quad v \\quad x = ${r2}$`,
       `Noemer bij beide $x$-waarden ≠ 0 ✓`,
@@ -6127,8 +6159,10 @@ function genGV2e() {
       ],
       oplossing: [
         `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
-        `Geval 1: $${aTex} = 0 \\Rightarrow x = ${r1}$`,
-        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+        `Geval 1: $${aTex} = 0$`,
+        `$x = ${r1}$`,
+        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$`,
+        `$x = ${bc.r3}$`,
         `Controleer: noemers ≠ 0 ✓`,
         `$x = ${[r1, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
       ].join('\n'),
@@ -6151,8 +6185,11 @@ function genGV2e() {
       ],
       oplossing: [
         `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
-        `Geval 1: $${aTex} = 0 \\Rightarrow x = ${m} \\quad v \\quad x = -${m}$`,
-        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+        `Geval 1: $${aTex} = 0$`,
+        `$x^{2} = ${m * m}$`,
+        `$x = ${m} \\quad v \\quad x = -${m}$`,
+        `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$`,
+        `$x = ${bc.r3}$`,
         `Controleer: noemers ≠ 0 ✓`,
         `$x = ${[-m, m, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
       ].join('\n'),
@@ -6184,8 +6221,11 @@ function genGV2e() {
     ],
     oplossing: [
       `$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
-      `Geval 1: $${aTex} = 0 \\Rightarrow (${f1})(${f2}) = 0 \\Rightarrow x = ${r1} \\quad v \\quad x = ${r2}$`,
-      `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)} \\Rightarrow x = ${bc.r3}$`,
+      `Geval 1: $${aTex} = 0$`,
+      `$(${f1})(${f2}) = 0$`,
+      `$x = ${r1} \\quad v \\quad x = ${r2}$`,
+      `Geval 2: $${_lt(bc.b1, bc.b2)} = ${_lt(bc.c1, bc.c2)}$`,
+      `$x = ${bc.r3}$`,
       `Controleer: noemers ≠ 0 ✓`,
       `$x = ${[r1, r2, bc.r3].sort((a,b)=>a-b).join(' \\quad v \\quad x = ')}$`,
     ].join('\n'),
@@ -6961,10 +7001,40 @@ function _zonderDubbeleSlotregel(oplossing) {
   return regels.join('\n');
 }
 
+/* "\dfrac{A}{1}" is geen breuk maar gewoon A. Dat gebeurt als een noemer
+   toevallig 1 wordt -- bij optellen dat precies 1 oplevert, of na
+   rationaliseren waar (2+\sqrt3)(2-\sqrt3) = 1. Alleen wegwerken waar de
+   breuk als geheel achter een "=" of een "$" staat; midden in een product zou
+   het weglaten van de breukstreep de betekenis veranderen. */
+function _zonderNoemerEen(tekst) {
+  if (typeof tekst !== 'string') return tekst;
+  const leesGroep = (s, i) => {                 // s[i] === '{'
+    let d = 0;
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === '{') d++;
+      else if (s[j] === '}' && --d === 0) return [s.slice(i + 1, j), j + 1];
+    }
+    return null;
+  };
+  const re = /(\$\s*|=\s*)\\d?frac\{/g;
+  let uit = tekst, m;
+  re.lastIndex = 0;
+  while ((m = re.exec(uit)) !== null) {
+    const teller = leesGroep(uit, m.index + m[0].length - 1);
+    if (!teller) continue;
+    const noemer = leesGroep(uit, teller[1]);
+    if (noemer && noemer[0].trim() === '1') {
+      uit = uit.slice(0, m.index) + m[1] + teller[0] + uit.slice(noemer[1]);
+      re.lastIndex = m.index;          // vanaf hier opnieuw, tekst is korter
+    }
+  }
+  return uit;
+}
+
 function _kommaNotatie(v) {
-  v.vraag = _kommaInMath(v.vraag);
-  v.oplossing = _zonderDubbeleSlotregel(_kommaInMath(v.oplossing));
-  if (Array.isArray(v.hints)) v.hints = v.hints.map(_kommaInMath);
+  v.vraag = _zonderNoemerEen(_kommaInMath(v.vraag));
+  v.oplossing = _zonderDubbeleSlotregel(_zonderNoemerEen(_kommaInMath(v.oplossing)));
+  if (Array.isArray(v.hints)) v.hints = v.hints.map(h => _zonderNoemerEen(_kommaInMath(h)));
   return v;
 }
 
