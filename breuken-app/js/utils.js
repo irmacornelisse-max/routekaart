@@ -376,18 +376,24 @@ function _algEval(latex, varVals) {
       return l;
     }
     function term() {
-      let l = power(); let op;
+      let l = unary(); let op;
       while ((op = eat(t => t.t === 'op' && (t.v === '*' || t.v === '/'))))
-        l = op.v === '*' ? l * power() : l / power();
+        l = op.v === '*' ? l * unary() : l / unary();
       return l;
+    }
+    /* Het minteken bindt losser dan de macht: -x^2 is -(x^2), niet (-x)^2. */
+    function unary() {
+      if (eat(t => t.t === 'op' && t.v === '-')) return -unary();
+      if (eat(t => t.t === 'op' && t.v === '+')) return unary();
+      return power();
     }
     function power() {
       let l = atom();
-      if (eat(t => t.t === 'op' && t.v === '^')) l = Math.pow(l, atom());
+      // exponent via unary(), zodat x^-2 en x^2^3 blijven werken
+      if (eat(t => t.t === 'op' && t.v === '^')) l = Math.pow(l, unary());
       return l;
     }
     function atom() {
-      if (eat(t => t.t === 'op' && t.v === '-')) return -atom();
       if (eat(t => t.t === 'lp')) { const v = expr(); eat(t => t.t === 'rp'); return v; }
       const tok = eat(t => t.t === 'v' || t.t === 'n');
       if (tok) return tok.v;

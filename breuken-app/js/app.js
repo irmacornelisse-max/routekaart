@@ -1064,6 +1064,132 @@ function valideerAntwoord(type, gegeven) {
   return !!(gegeven.latex?.trim());
 }
 
+/* ── Tussenstappen bij vergelijkingen met meer oplossingen ─────────────────
+   Een geldige tussenstap mag de oplossingsverzameling wél inperken — bij de
+   nulproductregel schrijft een leerling vaak eerst alleen $x - 1 = 0$ — maar
+   nooit een waarde toelaten die geen oplossing van de opgave is.
+
+   Zo wordt een foute ontbinding afgekeurd: $(x + 4)(x - 1) = 0$ klopt toevallig
+   bij $x = 1$, maar laat ook $x = -4$ toe, en dat is geen oplossing.
+
+   De vreemde waarden worden gezocht door te bemonsteren; dat is genoeg voor de
+   veeltermen en breuken die hier voorkomen.                                  */
+const TUSSENSTAP_BEREIK = 20;   // van -20 tot 20 ...
+const TUSSENSTAP_STAP   = 0.5;  // ... in stappen van een halve
+
+function _zijdeWaarde(uitdrukking, variabele, waarde) {
+  try { return _algEval(uitdrukking, { [variabele]: waarde }); } catch { return NaN; }
+}
+
+function _tussenstapKlopt(links, rechts, variabele, waarde) {
+  const l = _zijdeWaarde(links, variabele, waarde);
+  const r = _zijdeWaarde(rechts, variabele, waarde);
+  return isFinite(l) && isFinite(r) && Math.abs(l - r) < 1e-6;
+}
+
+/* Bij een deling door nul geeft _algEval stilletjes 0 terug. Zo'n pool is geen
+   oplossing; je herkent hem doordat de waarde er vlak naast wegloopt. */
+function _isPool(uitdrukking, variabele, waarde) {
+  const hier  = _zijdeWaarde(uitdrukking, variabele, waarde);
+  const naast = _zijdeWaarde(uitdrukking, variabele, waarde + 1e-6);
+  if (!isFinite(naast)) return true;
+  return Math.abs(naast) > 1e6 * (Math.abs(hier) + 1);
+}
+
+/* Zoekt een nulpunt van links - rechts dat géén oplossing van de opgave is.
+   Een vast rooster raakt een irrationale wortel nooit precies, dus wordt elke
+   tekenwisseling tussen twee roosterpunten met bisectie nagelopen. */
+function _heeftVreemdeWortel(links, rechts, variabele, isOplossing) {
+  const f = (w) => {
+    const l = _zijdeWaarde(links, variabele, w);
+    const r = _zijdeWaarde(rechts, variabele, w);
+    return (isFinite(l) && isFinite(r)) ? l - r : NaN;
+  };
+  const vreemd = (w) => !isOplossing(w)
+    && !_isPool(links, variabele, w) && !_isPool(rechts, variabele, w);
+
+  let vorige = f(-TUSSENSTAP_BEREIK);
+  if (Math.abs(vorige) < 1e-9 && vreemd(-TUSSENSTAP_BEREIK)) return true;
+
+  for (let w = -TUSSENSTAP_BEREIK + TUSSENSTAP_STAP;
+       w <= TUSSENSTAP_BEREIK + 1e-9; w += TUSSENSTAP_STAP) {
+    const hier = f(w);
+    if (Math.abs(hier) < 1e-9 && vreemd(w)) return true;      // roosterpunt is zelf wortel
+    if (isFinite(vorige) && isFinite(hier) && vorige * hier < 0) {
+      let a = w - TUSSENSTAP_STAP, b = w, fa = vorige;
+      for (let i = 0; i < 40; i++) {
+        const m = (a + b) / 2, fm = f(m);
+        if (!isFinite(fm)) break;
+        if (fa * fm <= 0) { b = m; } else { a = m; fa = fm; }
+      }
+      const wortel = (a + b) / 2;
+      if (Math.abs(f(wortel)) < 1e-6 && vreemd(wortel)) return true;
+    }
+    vorige = hier;
+  }
+  return false;
+}
+
+function _isGeldigeTussenstap(stap, variabele, sols, tol) {
+  const delen = stap.split('=');
+  if (delen.length !== 2) return false;
+  const links = delen[0].trim(), rechts = delen[1].trim();
+  if (!links || !rechts) return false;
+
+  // Een regel zonder de variabele is een losse berekening (bijv. √40 = 2√10);
+  // die perkt de oplossingen niet in, dus telt alleen of hij klopt.
+  const bevatVariabele = new RegExp(`(?<![a-zA-Z\\\\])${variabele}(?![a-zA-Z])`)
+                           .test(stap.replace(/\\[a-zA-Z]+/g, ' '));
+  if (!bevatVariabele) return _tussenstapKlopt(links, rechts, variabele, 0);
+
+  if (!sols.some(w => _tussenstapKlopt(links, rechts, variabele, w)))
+    return false;                                      // raakt geen enkele oplossing
+
+  const marge = Math.max(tol, 1e-4);
+  const isOplossing = (w) => sols.some(s => Math.abs(w - s) <= marge);
+  return !_heeftVreemdeWortel(links, rechts, variabele, isOplossing);
+}
+
+/* Herkent de twee opschrijfregels die bij de abc-methode horen:
+     a = 1, b = -6, c = 4          (de coëfficiënten)
+     D = (-6)^2 - 4 \cdot 1 \cdot 4 = 20   (de discriminant, eventueel als keten)
+   Geeft true/false als de regel er een van beide is, en null als het om iets
+   anders gaat — dan beslist de gewone tussenstapcontrole. */
+function _abcHulpregel(regel, correct) {
+  if (!correct.abc) return null;
+  const [a, b, c] = correct.abc;
+  const schoon = regel.replace(/\\[,;:!]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  if (schoon.includes(',')) {
+    const gevonden = {};
+    for (const deel of schoon.split(',')) {
+      const m = deel.trim().match(/^([abc])\s*=\s*(-?\d+)$/);
+      if (!m) return null;
+      gevonden[m[1]] = parseInt(m[2], 10);
+    }
+    if (!('a' in gevonden && 'b' in gevonden && 'c' in gevonden)) return null;
+    return gevonden.a === a && gevonden.b === b && gevonden.c === c;
+  }
+
+  const dMatch = schoon.match(/^D\s*=\s*(.+)$/);
+  if (!dMatch) return null;
+  const D = b * b - 4 * a * c;
+  const stukken = dMatch[1].split('=').map(s => s.trim()).filter(Boolean);
+  if (!stukken.length) return null;
+  return stukken.every(stuk => {
+    let w;
+    try { w = _algEval(stuk, {}); } catch { return false; }
+    return isFinite(w) && Math.abs(w - D) < 1e-6;
+  });
+}
+
+/* Splitst "x - 1 = 0 v x - 3 = 0" in losse takken. De variabele heet nooit v
+   (het zijn m, n, t, x of y), dus de v is altijd het scheidingsteken. */
+function _splitsTakken(stap) {
+  if ((stap.match(/=/g) || []).length < 2) return [stap];
+  return stap.split(/\s*v\s*(?=[^=]*=)/).map(s => s.trim()).filter(Boolean);
+}
+
 /* ── Check answer ────────────────────────────────────────────────────────── */
 function checkAntwoord(vraag, gegeven) {
   const type = vraag.antwoordType;
@@ -1203,18 +1329,12 @@ function checkAntwoord(vraag, gegeven) {
       return 'fout';
     }
 
-    // Tussenstap: lhs = rhs geldig voor x = oplossing
-    const parts = raw.split('=');
-    if (parts.length === 2) {
-      const testVals = [expected_pos, ...(hasNeg ? [expected_neg] : [])];
-      for (const xv of testVals) {
-        try {
-          const lhs = _algEval(parts[0].trim(), { x: xv });
-          const rhs = _algEval(parts[1].trim(), { x: xv });
-          if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) return 'tussenstap';
-        } catch {}
-      }
-    }
+    // Tussenstap: een vergelijking die uit de opgave volgt. Ze mag niet ook
+    // gelden voor een waarde die geen oplossing is.
+    const oplossingen = [expected_pos, ...(hasNeg ? [expected_neg] : [])];
+    const takken = _splitsTakken(rawV);
+    if (takken.length && takken.every(t => _isGeldigeTussenstap(t, 'x', oplossingen, 1e-6)))
+      return 'tussenstap';
     return 'fout';
   }
 
@@ -1390,22 +1510,36 @@ function checkAntwoord(vraag, gegeven) {
       return 'fout';
     }
 
-    // Enkelvoudig "v = expr" is altijd fout (altijd twee oplossingen vereist)
-    const simpleEq = rawV.match(new RegExp(`^${vEsc}\\s*=\\s*(.+)$`));
-    if (simpleEq) return 'fout';
-
-    // Tussenstap: geldige vergelijking (bijv. x² = 9) die klopt voor een van de oplossingen
-    const parts = rawV.split('=');
-    if (parts.length === 2) {
-      for (const sol of sols) {
-        try {
-          const lhsV = _algEval(parts[0].trim(), { [v]: sol });
-          const rhsV = _algEval(parts[1].trim(), { [v]: sol });
-          if (isFinite(lhsV) && isFinite(rhsV) && Math.abs(lhsV - rhsV) < 1e-6)
-            return 'tussenstap';
-        } catch {}
-      }
+    // "v = expr met ±" — de abc-formule vóór het uitsplitsen. Beide takken
+    // moeten de twee oplossingen opleveren; het is een tussenstap, want het
+    // eindantwoord vraagt de oplossingen los van elkaar.
+    const enkel = rawV.match(new RegExp(`^${vEsc}\\s*=\\s*(.+)$`));
+    if (enkel && /\\pm|±/.test(enkel[1])) {
+      const tak = (teken) => enkel[1].trim().replace(/\\pm|±/g, teken);
+      try {
+        const p1 = _algEval(tak('+'), {});
+        const p2 = _algEval(tak('-'), {});
+        const [s1, s2] = sols;
+        if (isFinite(p1) && isFinite(p2) &&
+            ((Math.abs(p1 - s1) <= tol && Math.abs(p2 - s2) <= tol) ||
+             (Math.abs(p1 - s2) <= tol && Math.abs(p2 - s1) <= tol)))
+          return 'tussenstap';
+      } catch {}
+      return 'fout';
     }
+
+    // Enkelvoudig "v = expr" is altijd fout (altijd twee oplossingen vereist)
+    if (enkel) return 'fout';
+
+    // Opschrijfregels van de abc-methode: de coëfficiënten en de discriminant
+    const hulp = _abcHulpregel(rawV, correct);
+    if (hulp !== null) return hulp ? 'tussenstap' : 'fout';
+
+    // Tussenstap: een vergelijking die uit de opgave volgt (bijv. x² = 9), of
+    // losse takken van de nulproductregel met een v ertussen.
+    const takken = _splitsTakken(rawV);
+    if (takken.length && takken.every(t => _isGeldigeTussenstap(t, v, sols, tol)))
+      return 'tussenstap';
     return 'fout';
   }
 

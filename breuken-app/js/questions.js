@@ -2967,12 +2967,22 @@ function genLG1b() {
 }
 
 /* ── L.F1/F2 – formule opstellen helpers ─────────────────────────────── */
+/* De uitgerekende breuk Δy/Δx als tussenstap: het minteken hoort vóór de
+   breuk, en bij noemer 1 is die tussenstap overbodig — dan staat de uitkomst
+   er al. Levert in dat geval een lege string. */
+function _lfHellingStap(dy, dx, mStr) {
+  if (dx < 0) { dy = -dy; dx = -dx; }
+  if (dx === 1) return '';
+  const tex = dy < 0 ? `-\\dfrac{${-dy}}{${dx}}` : `\\dfrac{${dy}}{${dx}}`;
+  return tex === mStr ? '' : ` = ${tex}`;   // niet twee keer hetzelfde opschrijven
+}
+
 function _lfOpl(m, b, p1, p2, mDisplay) {
   const formule = _lgFormule(m, b, mDisplay);
   const dy = p2.y - p1.y, dx = p2.x - p1.x;
   const mStr = mDisplay || String(m);
   return `Kies twee punten op de lijn: $(${p1.x},\\ ${p1.y})$ en $(${p2.x},\\ ${p2.y})$.
-$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})} = \\dfrac{${dy}}{${dx}} = ${mStr}$
+$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})}${_lfHellingStap(dy, dx, mStr)} = ${mStr}$
 $b = ${p1.y} - ${mStr} \\cdot ${p1.x} = ${b}$
 De formule is $${formule}$.`;
 }
@@ -2982,7 +2992,7 @@ function _lfOplTabel(m, b, p1, p2, mDisplay) {
   const dy = p2.y - p1.y, dx = p2.x - p1.x;
   const mStr = mDisplay || String(m);
   return `Bereken $m$ uit de tabel:
-$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})} = \\dfrac{${dy}}{${dx}} = ${mStr}$
+$m = \\dfrac{${p2.y} - (${p1.y})}{${p2.x} - (${p1.x})}${_lfHellingStap(dy, dx, mStr)} = ${mStr}$
 Vul in met $(${p1.x},\\ ${p1.y})$: $\\ ${p1.y} = ${mStr} \\cdot ${p1.x} + b \\Rightarrow b = ${b}$
 De formule is $${formule}$.`;
 }
@@ -3598,9 +3608,12 @@ function genLV1a() {
     eqTeX = `${a}x = ${b}`;
     const xTex = _lvXTeX(fr.t, fr.n);
     hints = [`Deel beide kanten door $${a}$: dan staat $x$ alleen.`];
+    // Het minteken hoort vóór de breuk, niet in de teller. Staat de onvereen-
+    // voudigde breuk er al goed op, dan hoeft hij niet nog eens herhaald.
+    const ruwTeX = _lvXTeX(b, a);
     opl = fr.n === 1
       ? `$${a}x = ${b}$\nDeel door $${a}$: $x = ${b} \\div ${a} = ${fr.t}$`
-      : `$${a}x = ${b}$\nDeel door $${a}$: $x = \\dfrac{${b}}{${a}} = ${xTex}$`;
+      : `$${a}x = ${b}$\nDeel door $${a}$: $x = ${ruwTeX === xTex ? xTex : `${ruwTeX} = ${xTex}`}$`;
   } else if (subtype === 'xpb=c') {
     const b = rand(2, 9);
     const c = rand(-8, 8);
@@ -4745,7 +4758,9 @@ function genKWD() {
     id: uid(), leerdoel: 'K.D1a',
     vraag: `Los op: $${lhsTeX} = 0$`,
     antwoordType: 'kwadratisch',
-    antwoord: { sols: [sol1, sol2], v, decimaal: true },
+    // abc gaat mee zodat de nakijkfunctie de tussenstappen van de abc-methode
+    // (de coefficientenregel en de discriminant) kan controleren.
+    antwoord: { sols: [sol1, sol2], v, decimaal: true, abc: [a, b, c] },
     hints: [
       `Gebruik de abc-formule: $${v} = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.`,
       `Identificeer $a = ${a}$, $b = ${b}$, $c = ${c}$ en vul in. Rond af op 2 decimalen.`,
@@ -4809,7 +4824,7 @@ function genKWE() {
     id: uid(), leerdoel: 'K.E1a',
     vraag: `Los op: $${lhsTeX} = 0$`,
     antwoordType: 'kwadratisch',
-    antwoord: { sols: [sol1, sol2], v, decimaal: false },
+    antwoord: { sols: [sol1, sol2], v, decimaal: false, abc: [a, b, c] },
     hints: [
       `Gebruik de abc-formule: $${v} = \\dfrac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$.`,
       `Vereenvoudig de wortel en de breuk zo ver mogelijk. Geef het exacte antwoord (geen decimalen).`,
@@ -5083,7 +5098,8 @@ function _mv3FracTeX(num, den) {
   let n = num / g, d = den / g;
   if (d < 0) { n = -n; d = -d; }
   if (d === 1) return `${n}`;
-  return `\\frac{${n}}{${d}}`;
+  // het minteken hoort vóór de breuk, niet in de teller
+  return n < 0 ? `-\\dfrac{${-n}}{${d}}` : `\\dfrac{${n}}{${d}}`;
 }
 
 function _mv3LinFacTeX(r) {
