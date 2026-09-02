@@ -2153,6 +2153,13 @@ function _plusTerm(c, v, p) {
 /* (x + p) met het juiste teken. */
 function _haakje(v, n) { return n < 0 ? `${v} - ${-n}` : `${v} + ${n}`; }
 
+/* t/n als geheel getal of als vereenvoudigde breuk; het minteken komt vooraan. */
+function _breukTex(t, n) {
+  const teken = (t < 0) !== (n < 0) ? '-' : '';
+  const [tv, nv] = simplifyFrac(Math.abs(t), Math.abs(n));
+  return nv === 1 ? `${teken}${tv}` : `${teken}\\dfrac{${tv}}{${nv}}`;
+}
+
 function genAO1b() {
   const v1 = pick(ALG_LETTERS);
   const metTweedeLetter = Math.random() < 0.55;
@@ -4123,35 +4130,103 @@ function genMV1a() {
   };
 }
 
-/* ── M.V1b – ax^n = c (antwoord vereist wortel) ─────────────────────────── */
+/* $\sqrt{..}$ of $\sqrt[n]{..}$ om een willekeurige inhoud heen. */
+function _mvWortel(n, inhoud) {
+  return n === 2 ? `\\sqrt{${inhoud}}` : `\\sqrt[${n}]{${inhoud}}`;
+}
+
+/* De n-de-machtswortel van een geheel getal, vereenvoudigd: 12 -> 2\sqrt{3}. */
+function _wortelUit(n, val) {
+  let binnen = Math.abs(val), buiten = 1;
+  for (let f = 2; Math.pow(f, n) <= binnen; f++) {
+    while (binnen % Math.pow(f, n) === 0) { binnen /= Math.pow(f, n); buiten *= f; }
+  }
+  if (binnen === 1) return `${buiten}`;
+  return (buiten === 1 ? '' : `${buiten}`) + _mvWortel(n, String(binnen));
+}
+
+/* Zin over het aantal oplossingen, voor in de hint bij een even macht. */
+const _MV_TWEE = ' Er zijn twee oplossingen bij een even macht. Gebruik de v knop '
+               + 'op het toetsenbord en typ de twee oplossingen met een v ertussen.';
+
+/* ── M.V1b – ax^n = c (antwoord vereist wortel) ─────────────────────────────
+   Vier vormen met steeds dezelfde aanpak (isoleer x^n, neem de wortel), maar
+   met een andere bewerking om weg te werken:
+     A  ax^n = c        B  -ax^n = c        C  x^n/a = c
+     D  ax^n = c waarbij c/a een breuk is                                    */
 function genMV1b() {
   const n = pick([2, 3, 4, 5, 6]);
   const hasNeg = n % 2 === 0;
   const a = pick([2, 3, 4, 5]);
-  let inner;
-  do { inner = rand(2, 15); } while (_mvIsPerfect(inner, n));
-  if (!hasNeg && Math.random() < 0.3) inner = -inner;
-  const c = a * inner;
+  const vorm = pick(n === 2 ? ['A', 'A', 'B', 'C'] : ['A', 'A', 'B', 'C', 'D']);
 
-  const rootTeX = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  /* Waarden die na het isoleren overblijven; nooit een macht van een geheel
+     getal, want dit leerdoel vraagt juist om een wortel als antwoord. */
+  const geenMacht = (stap) => {
+    const uit = [];
+    for (let m = 2 * stap; m <= 15 * stap; m += stap) if (!_mvIsPerfect(m, n)) uit.push(m);
+    return uit;
+  };
+  let inner, innerTeX, lhsTeX, rhs, eersteHint;
+
+  if (vorm === 'D') {
+    // c/a moet een echte breuk zijn en de wortel eruit mag niet opgaan
+    const kandidaten = [];
+    for (let t = 2; t <= 20; t++) {
+      const [p, q] = simplifyFrac(t, a);
+      if (q > 1 && !(_mvIsPerfect(p, n) && _mvIsPerfect(q, n))) kandidaten.push([t, p, q]);
+    }
+    const [t, p, q] = pick(kandidaten);
+    inner = p / q;
+    innerTeX = `\\dfrac{${p}}{${q}}`;
+    lhsTeX = `${a}x^{${n}}`;
+    rhs = String(t);
+    eersteHint = `Deel beide kanten door $${a}$; er blijft een breuk staan.`;
+  } else if (vorm === 'C') {
+    // x^n/a = c, dus x^n = a*c: inner moet een veelvoud van a zijn
+    inner = pick(geenMacht(a));
+    innerTeX = String(inner);
+    lhsTeX = `\\dfrac{x^{${n}}}{${a}}`;
+    rhs = String(inner / a);
+    eersteHint = `Vermenigvuldig beide kanten met $${a}$.`;
+  } else {
+    const m = pick(geenMacht(1));
+    inner = (!hasNeg && Math.random() < 0.3) ? -m : m;
+    innerTeX = String(inner);
+    if (vorm === 'B') {
+      lhsTeX = `-${a}x^{${n}}`;
+      rhs = String(-a * inner);
+      eersteHint = `Deel beide kanten door $-${a}$; let op het teken.`;
+    } else {
+      lhsTeX = `${a}x^{${n}}`;
+      rhs = String(a * inner);
+      eersteHint = `Deel beide kanten door $${a}$.`;
+    }
+  }
+
+  const rootTeX = vorm === 'D' ? _mvWortel(n, innerTeX) : _wortelUit(n, inner);
   const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
   const solTeX = hasNeg ? `\\pm ${rootTeX}` : rootDisp;
 
   return {
     id: uid(), leerdoel: 'M.V1b',
-    vraag: `Los op: $${a}x^{${n}} = ${c}$`,
+    vraag: `Los op: $${lhsTeX} = ${rhs}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p: 0 },
     hints: [
-      `Deel beide kanten door $${a}$.`,
-      `Neem daarna de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.` +
-      (hasNeg ? ' Er zijn twee oplossingen bij een even macht. Gebruik de v knop op het toetsenbord en typ de twee oplossingen met een v ertussen.' : ''),
+      eersteHint,
+      `Neem daarna de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.`
+      + (hasNeg ? _MV_TWEE : ''),
     ],
-    oplossing: [`$${a}x^{${n}} = ${c}$`, `$x^{${n}} = ${inner}$`, `$x = ${solTeX}$`].join('\n'),
+    oplossing: [`$${lhsTeX} = ${rhs}$`, `$x^{${n}} = ${innerTeX}$`,
+                `$x = ${solTeX}$`].join('\n'),
   };
 }
 
-/* ── M.V1c – ax^n + b = c (gemengd: nette en niet-nette antwoorden) ─────── */
+/* ── M.V1c – machtsvergelijking met optellen/aftrekken ──────────────────────
+   Vier vormen, zodat het isoleren van $x^n$ niet steeds dezelfde handeling is:
+     A  ax^n + b = c     B  b - ax^n = c
+     C  b + ax^n = c     D  x^n/d + b = c                                    */
 function genMV1c() {
   const n = pick([2, 3, 4, 5, 6]);
   const hasNeg = n % 2 === 0;
@@ -4170,11 +4245,40 @@ function genMV1c() {
     if (!hasNeg && Math.random() < 0.3) inner = -inner;
   }
   if (hasNeg && inner < 0) inner = -inner;
-  const c = a * inner + b;
 
-  const bStr = b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
-  const lhsTeX = `${a}x^{${n}}${bStr}`;
-  const rootTeX = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  // deelvorm alleen als x^n netjes door d te delen is
+  const delers = [2, 3, 4, 5].filter(d => inner % d === 0);
+  const vorm = pick(['A', 'A', 'B', 'C', ...(delers.length ? ['D'] : [])]);
+  const d = delers.length ? pick(delers) : 0;
+
+  const bStr = b > 0 ? ` + ${b}` : ` - ${-b}`;
+  let lhsTeX, c, stap1, isoleerHint;
+  if (vorm === 'B') {
+    lhsTeX = `${b} - ${a}x^{${n}}`;
+    c = b - a * inner;
+    stap1 = `$-${a}x^{${n}} = ${c - b}$`;
+    isoleerHint = `Breng $${b}$ naar rechts; links blijft $-${a}x^{${n}}$ staan. `
+                + `Deel daarna door $-${a}$.`;
+  } else if (vorm === 'C') {
+    lhsTeX = `${b} + ${a}x^{${n}}`;
+    c = b + a * inner;
+    stap1 = `$${a}x^{${n}} = ${c - b}$`;
+    isoleerHint = `De volgorde maakt niet uit: breng $${b}$ naar rechts en deel door $${a}$.`;
+  } else if (vorm === 'D') {
+    lhsTeX = `\\dfrac{x^{${n}}}{${d}}${bStr}`;
+    c = inner / d + b;
+    stap1 = `$\\dfrac{x^{${n}}}{${d}} = ${c - b}$`;
+    isoleerHint = `Breng $${b > 0 ? b : `(${b})`}$ naar rechts en vermenigvuldig `
+                + `daarna beide kanten met $${d}$.`;
+  } else {
+    lhsTeX = `${a}x^{${n}}${bStr}`;
+    c = a * inner + b;
+    stap1 = `$${a}x^{${n}} = ${c - b}$`;
+    isoleerHint = `Isoleer $x^{${n}}$: breng $${b > 0 ? b : `(${b})`}$ naar de rechterkant `
+                + `en deel door $${a}$.`;
+  }
+
+  const rootTeX = _wortelUit(n, inner);
   const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
   const k = niceAns ? Math.round(_mvNthRoot(Math.abs(inner), n)) : 0;
   const solTeX = hasNeg
@@ -4187,15 +4291,12 @@ function genMV1c() {
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p: 0 },
     hints: [
-      `Isoleer $x^{${n}}$: breng $${b > 0 ? b : `(${b})`}$ naar de rechterkant.`,
-      `Neem dan de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.` +
-      (hasNeg ? ' Er zijn twee oplossingen bij een even macht. Gebruik de v knop op het toetsenbord en typ de twee oplossingen met een v ertussen.' : ''),
+      isoleerHint,
+      `Neem dan de ${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`} van beide kanten.`
+      + (hasNeg ? _MV_TWEE : ''),
     ],
     oplossing: [
-      `$${lhsTeX} = ${c}$`,
-      `$${a}x^{${n}} = ${c - b}$`,
-      `$x^{${n}} = ${inner}$`,
-      `$x = ${solTeX}$`,
+      `$${lhsTeX} = ${c}$`, stap1, `$x^{${n}} = ${inner}$`, `$x = ${solTeX}$`,
     ].join('\n'),
   };
 }
@@ -4228,7 +4329,7 @@ function genMV1d() {
   const xpTeX  = p > 0 ? `x + ${p}` : `x - ${-p}`;
   const offsetStr = p > 0 ? ` - ${p}` : ` + ${-p}`;
 
-  const rootTeX  = n === 2 ? `\\sqrt{${Math.abs(inner)}}` : `\\sqrt[${n}]{${Math.abs(inner)}}`;
+  const rootTeX  = _wortelUit(n, inner);
   const rootDisp = inner < 0 && !hasNeg ? `-${rootTeX}` : rootTeX;
   const k = niceAns ? Math.round(_mvNthRoot(Math.abs(inner), n)) : 0;
 
@@ -4284,12 +4385,16 @@ function _mvcFactor(root) {
 }
 
 function _mvcSqrtTeX(n) {
-  const k = Math.round(Math.sqrt(n));
-  return k * k === n ? `${k}` : `\\sqrt{${n}}`;
+  return _wortelUit(2, n);   // vereenvoudigt ook: 12 -> 2\sqrt{3}
 }
 
-/* ── M.V2a – x³-vergelijking (herschikking → x eruit factoriseren) ──────── */
-function genMV2a() {
+/* ── M.V2a – x³-vergelijking (herschikking → x eruit factoriseren) ──────────
+   Vijf vormen rond dezelfde kern (alles naar één kant, x buiten haakjes):
+     A  x³ + βx² = -γx          B  x³ = -βx² - γx
+     C  ax³ + aβx² + aγx = 0    (eerst de gemeenschappelijke factor a)
+     D  x³ = -βx²               (dubbel nulpunt: maar twee oplossingen)
+     E  x³ = γx                 (verschil van kwadraten; soms wortels)        */
+function _mv2aDrieNulpunten() {
   let p, q, tries = 0;
   do {
     p = rand(-5, 5);
@@ -4297,41 +4402,93 @@ function genMV2a() {
     tries++;
   } while ((p === 0 || q === 0 || p === q || p + q === 0) && tries < 100);
 
-  const β = -(p + q);  // x²-coëfficiënt in standaardvorm
-  const γ = p * q;     // x-coëfficiënt in standaardvorm
+  const β = -(p + q), γ = p * q;
+  const a = Math.random() < 0.3 ? pick([2, 3]) : 1;
+  const av = a === 1 ? '' : `${a}`;
+  const stdForm = a === 1
+    ? `x^3${_mvcTerm(β, 'x^{2}', false)}${_mvcTerm(γ, 'x', false)} = 0`
+    : `${a}x^3${_mvcTerm(a * β, 'x^{2}', false)}${_mvcTerm(a * γ, 'x', false)} = 0`;
+  const quadTeX = `x^{2}${_mvcTerm(β, 'x', false)}${_mvcTerm(γ, '', false)}`;
 
-  const stdForm   = `x^3${_mvcTerm(β, 'x^{2}', false)}${_mvcTerm(γ, 'x', false)} = 0`;
-  const quadTeX   = `x^{2}${_mvcTerm(β, 'x', false)}${_mvcTerm(γ, '', false)}`;
-  const factored  = `x${_mvcFactor(p)}${_mvcFactor(q)} = 0`;
-
-  // Vraagvorm: herschikking (γx naar rechts, of βx²+γx naar rechts)
   let vraagTeX;
-  if (Math.random() < 0.5) {
-    // Optie A: x³ + βx² = −γx
-    const lhs = `x^3${_mvcTerm(β, 'x^{2}', false)}`;
-    const rhs = _mvcTerm(-γ, 'x', true);
-    vraagTeX = `${lhs} = ${rhs}`;
+  if (a !== 1) {
+    vraagTeX = stdForm;
+  } else if (Math.random() < 0.5) {
+    vraagTeX = `x^3${_mvcTerm(β, 'x^{2}', false)} = ${_mvcTerm(-γ, 'x', true)}`;
   } else {
-    // Optie B: x³ = −βx² − γx
-    const rhs = `${_mvcTerm(-β, 'x^{2}', true)}${_mvcTerm(-γ, 'x', false)}`;
-    vraagTeX = `x^3 = ${rhs}`;
+    vraagTeX = `x^3 = ${_mvcTerm(-β, 'x^{2}', true)}${_mvcTerm(-γ, 'x', false)}`;
   }
 
   return {
-    id: uid(), leerdoel: 'M.V2a',
-    vraag: `Los op: $${vraagTeX}$`,
-    antwoordType: 'vergelijking-mv',
-    antwoord: { sols: [0, p, q] },
+    vraagTeX, sols: [0, p, q],
+    hints: [
+      `Breng alles naar één kant: $${stdForm}$ Daarna kun je ${a === 1 ? '' : `$${a}$ en `}$x$ buiten haakjes brengen.`,
+      `Na uitfactoriseren: $${av}x(${quadTeX}) = 0$. Ontbind de kwadratische factor verder en pas de nulpuntsregel toe.`,
+    ],
+    steps: [
+      `$${stdForm}$`,
+      `$${av}x(${quadTeX}) = 0$`,
+      `$${av}x${_mvcFactor(p)}${_mvcFactor(q)} = 0$`,
+      `$x = 0 \\vee x = ${p} \\vee x = ${q}$`,
+    ],
+  };
+}
+
+function _mv2aDubbelNulpunt() {
+  let β; do { β = rand(-6, 6); } while (β === 0);
+  const stdForm = `x^3${_mvcTerm(β, 'x^{2}', false)} = 0`;
+  const vraagTeX = Math.random() < 0.5 ? stdForm
+                 : `x^3 = ${_mvcTerm(-β, 'x^{2}', true)}`;
+  return {
+    vraagTeX, sols: [0, -β],
+    hints: [
+      `Breng alles naar één kant: $${stdForm}$ Beide termen bevatten $x^{2}$.`,
+      `Na uitfactoriseren staat er $x^{2}(x ${β > 0 ? `+ ${β}` : `- ${-β}`}) = 0$. `
+      + 'Er zijn hier maar twee oplossingen.',
+    ],
+    steps: [
+      `$${stdForm}$`,
+      `$x^{2}(x ${β > 0 ? `+ ${β}` : `- ${-β}`}) = 0$`,
+      `$x = 0 \\vee x = ${-β}$`,
+    ],
+  };
+}
+
+function _mv2aVerschil() {
+  const γ = pick([2, 3, 4, 5, 6, 7, 9, 10, 12, 16, 20, 25]);
+  const k = Math.round(Math.sqrt(γ));
+  const netjes = k * k === γ;
+  const wortel = _wortelUit(2, γ);
+  const stdForm = `x^3 - ${γ}x = 0`;
+  const vraagTeX = Math.random() < 0.5 ? stdForm : `x^3 = ${γ}x`;
+  return {
+    vraagTeX, sols: [0, Math.sqrt(γ), -Math.sqrt(γ)],
     hints: [
       `Breng alles naar één kant: $${stdForm}$ Daarna kun je $x$ buiten haakjes brengen.`,
-      `Na uitfactoriseren: $x(${quadTeX}) = 0$. Ontbind de kwadratische factor verder en pas de nulpuntsregel toe.`,
+      `Na uitfactoriseren: $x(x^{2} - ${γ}) = 0$. Los $x^{2} = ${γ}$ op; `
+      + 'daar horen twee oplossingen bij.',
     ],
-    oplossing: [
+    steps: [
       `$${stdForm}$`,
-      `$x(${quadTeX}) = 0$`,
-      `$${factored}$`,
-      `$x = 0 \\vee x = ${p} \\vee x = ${q}$`,
-    ].join('\n'),
+      `$x(x^{2} - ${γ}) = 0$`,
+      ...(netjes ? [`$x(x - ${k})(x + ${k}) = 0$`] : []),
+      `$x = 0 \\vee x = ${wortel} \\vee x = -${wortel}$`,
+    ],
+  };
+}
+
+function genMV2a() {
+  const v = pick([_mv2aDrieNulpunten, _mv2aDrieNulpunten, _mv2aDrieNulpunten,
+                  _mv2aDubbelNulpunt, _mv2aVerschil])();
+  // de uitwerking begint bij de opgave zelf, ook als die nog herschikt moet worden
+  const steps = v.steps[0] === `$${v.vraagTeX}$` ? v.steps : [`$${v.vraagTeX}$`, ...v.steps];
+  return {
+    id: uid(), leerdoel: 'M.V2a',
+    vraag: `Los op: $${v.vraagTeX}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: v.sols },
+    hints: v.hints,
+    oplossing: steps.join('\n'),
   };
 }
 
@@ -4470,7 +4627,7 @@ function genKWA() {
   const eqTeX = pick(forms);
   const [cn, cd] = simplifyFrac(c, a);
   const innerStr = cd === 1 ? `${cn}` : `\\frac{${cn}}{${cd}}`;
-  const rootTeX = a === 1 ? `\\sqrt{${c}}` : `\\sqrt{${innerStr}}`;
+  const rootTeX = cd === 1 ? _wortelUit(2, cn) : `\\sqrt{${innerStr}}`;
   const decApprox = integerAns ? null : Math.round(sol * 100) / 100;
   const oplSteps = [
     `$${aTeX}${v}^{2} = ${c}$`,
@@ -4944,7 +5101,7 @@ function genMV3a() {
   } while (Math.abs(a - sqrtK) < 0.01 && tries < 30);
 
   const isIntSqrt = Number.isInteger(sqrtK);
-  const sqrtTeX = isIntSqrt ? `${Math.round(sqrtK)}` : `\\sqrt{${k}}`;
+  const sqrtTeX = _wortelUit(2, k);
   const termA = `x^2 + ${a}x`;
   const termB = `x^2 - ${k}`;
 
@@ -5130,80 +5287,157 @@ function genMV3e() {
   return { ...v, id: uid(), leerdoel: 'M.V3e' };
 }
 
-/* ── W.V1a – a√(±bx+c) + d = e (isoleren, kwadrateren) ─────────────────── */
-// negX-variant: a√(c - bx) + d = e  (x-coëfficiënt negatief in de wortel)
-function genWV1a() {
-  let a, b, c, d, e, u, x, tries = 0;
-  const negX = Math.random() < 0.5;
-  do {
-    a = pick([2, 3, 4]);
-    b = pick([2, 3, 5, 6, 7]);
-    u = rand(3, 10);
-    x = rand(2, 8);
-    // standaard: bx + c = u²  →  c = u² - bx
-    // negX:      c - bx = u²  →  c = u² + bx  (altijd positief)
-    c = negX ? u * u + b * x : u * u - b * x;
-    d = pick([-80, -60, -40, 40, 60, 80]);
-    e = a * u + d;
-    tries++;
-  } while (tries < 200 && (e <= 0 || (!negX && Math.abs(c) > 80) || (negX && c > 250)));
+/* ── W.V1a – isoleren en kwadrateren ────────────────────────────────────
+   Vier vormen, zodat de zes opgaven van een bundel niet zes keer dezelfde
+   som zijn. De uitkomst is soms een geheel getal, soms een breuk.
+     A  a√(bx + c) + d = e      (klassiek isoleren)
+     B  d - a√(bx + c) = e      (delen door een negatief getal)
+     C  √(ax + b) = √(cx + d)   (twee wortels tegenover elkaar)
+     D  √(ax + b) + c = x-vrij  → als A, maar met een breuk als uitkomst   */
 
-  const radTex = negX
-    ? `${c} - ${b}x`
-    : c === 0 ? `${b}x`
-    : c > 0   ? `${b}x + ${c}`
-    :            `${b}x - ${Math.abs(c)}`;
-  const dTex = d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`;
-  const rhs1 = e - d;    // a*u
-  const u2   = u * u;
-  const bxVal = b * x;   // numerieke waarde van bx
+/* Radicaal ±bx + c netjes opschrijven. */
+function _wv1aRad(b, c, negX) {
+  if (negX) return c === 0 ? `-${b}x` : `${c} - ${b}x`;
+  return c === 0 ? _lvCoefX(b) : `${_lvCoefX(b)} ${c > 0 ? '+' : '-'} ${Math.abs(c)}`;
+}
 
+function _wv1aVormA(breukAntwoord) {
+  const a = pick([2, 3, 4]);
+  const b = pick(breukAntwoord ? [2, 3, 4, 5, 6] : [2, 3, 5, 6, 7]);
+  const negX = Math.random() < 0.4;
+  const u = rand(3, 10);
+  // teller = u² - c (standaard) of c - u² (negX); we kiezen x eerst.
+  const teller = breukAntwoord ? rand(2, 8) * b + pick([1, b - 1, ...(b > 3 ? [2] : [])])
+                               : rand(2, 8) * b;
+  const c = negX ? u * u + teller : u * u - teller;
+  const d = pick([-80, -60, -40, 40, 60, 80].filter(n => a * u + n > 0));
+  const e = a * u + d;
+
+  const rad = _wv1aRad(b, c, negX);
+  const dTex = d > 0 ? ` + ${d}` : ` - ${-d}`;
+  const verg = `${a}\\sqrt{${rad}}${dTex} = ${e}`;
   const steps = [
-    `$${a}\\sqrt{${radTex}}${dTex} = ${e}$`,
-    `$${a}\\sqrt{${radTex}} = ${rhs1}$`,
-    `$\\sqrt{${radTex}} = ${u}$`,
-    `$${radTex} = ${u2}$`,
+    `$${verg}$`,
+    `$${a}\\sqrt{${rad}} = ${e - d}$`,
+    `$\\sqrt{${rad}} = ${u}$`,
+    `$${rad} = ${u * u}$`,
   ];
-  // voor negX is c altijd ≠ 0; voor standaard: toon stap alleen als c ≠ 0
-  if (c !== 0) steps.push(`$${b}x = ${bxVal}$`);
-  steps.push(`$x = ${x}$`);
+  if (c !== 0) steps.push(`$${_lvCoefX(b)} = ${teller}$`);
+  steps.push(`$x = ${_breukTex(teller, b)}$`);
+  return { verg, steps, x: teller / b,
+           hint: `Deel door ${a} zodat de wortel alleen staat. Kwadrateer dan beide kanten.` };
+}
 
+function _wv1aVormB() {
+  const a = pick([2, 3, 4]);
+  const b = pick([2, 3, 4, 5, 6]);
+  const u = rand(2, 9);
+  const teller = rand(2, 8) * b + pick([0, 0, 1, b - 1]);
+  const c = u * u - teller;
+  const e = pick([-20, -10, 5, 10, 20].filter(n => n + a * u > 0));
+  const d = e + a * u;
+
+  const rad = _wv1aRad(b, c, false);
+  const verg = `${d} - ${a}\\sqrt{${rad}} = ${e}`;
+  const steps = [
+    `$${verg}$`,
+    `$-${a}\\sqrt{${rad}} = ${e - d}$`,
+    `$\\sqrt{${rad}} = ${u}$`,
+    `$${rad} = ${u * u}$`,
+  ];
+  if (c !== 0) steps.push(`$${_lvCoefX(b)} = ${teller}$`);
+  steps.push(`$x = ${_breukTex(teller, b)}$`);
+  return { verg, steps, x: teller / b,
+           hint: `Breng $${d}$ naar rechts; er staat dan $-${a}\\sqrt{\\ldots}$. `
+                 + `Deel door $-${a}$.` };
+}
+
+function _wv1aVormC() {
+  // √(ax + b) = √(cx + d), oplossing x = (d - b)/(a - c)
+  const a = pick([2, 3, 4, 5]);
+  const c = pick([1, 2, 3].filter(n => n !== a));
+  const x = rand(2, 9);
+  const b = rand(0, 12);
+  const d = (a - c) * x + b;                 // zorgt dat x de oplossing is
+  const linksTex = _wv1aRad(a, b, false);
+  const rechtsTex = _wv1aRad(c, d, false);
+  const verg = `\\sqrt{${linksTex}} = \\sqrt{${rechtsTex}}`;
+  return {
+    verg,
+    steps: [
+      `$${verg}$`,
+      `$${linksTex} = ${rechtsTex}$`,
+      `$${_lvCoefX(a - c)} = ${d - b}$`,
+      `$x = ${_breukTex(d - b, a - c)}$`,
+    ],
+    x,
+    hint: 'Kwadrateer beide kanten; de wortels verdwijnen allebei en je houdt '
+          + 'een lineaire vergelijking over.',
+  };
+}
+
+function genWV1a() {
+  const v = pick([_wv1aVormA, _wv1aVormA, _wv1aVormB, _wv1aVormC,
+                  () => _wv1aVormA(true)])();
   return {
     id: uid(), leerdoel: 'W.V1a',
-    vraag: `Los de vergelijking op.\n$${a}\\sqrt{${radTex}}${dTex} = ${e}$`,
+    vraag: `Los de vergelijking op.\n$${v.verg}$`,
     antwoordType: 'wortelverg',
-    antwoord: { valid: x, extraneous: null },
+    antwoord: { valid: v.x, extraneous: null },
     hints: [
-      'Isoleer het wortelteken: breng het losse getal naar de rechterkant.',
-      `Deel door ${a} zodat de wortel alleen staat. Kwadreer dan beide kanten.`,
-      `Los op naar $x$.`,
+      'Zorg eerst dat de wortel alleen staat aan één kant van het isgelijkteken.',
+      v.hint,
+      'Los de vergelijking op die je na het kwadrateren overhoudt.',
     ],
-    oplossing: steps.join('\n'),
+    oplossing: v.steps.join('\n'),
   };
 }
 
 /* ── W.V1b – √(ax²+b) = cx (schijnoplossing na kwadrateren) ─────────────── */
-function genWV1b() {
-  let a, c, k, b, D, tries = 0;
-  do {
-    a = pick([2, 3, 5, 6]);
-    c = pick([3, 4, 5, 6, 7]);
-    k = rand(1, 4);
-    D = c * c - a;
-    b = k * k * D;
-    tries++;
-  } while (tries < 200 && (D <= 0 || b < 1 || b > 300));
+/* Drie vormen die alle drie een schijnoplossing opleveren, zodat het leerdoel
+   niet zes keer dezelfde som is:
+     A  sqrt(ax^2 + b) = cx        — rechterkant negatief bij de negatieve wortel
+     B  sqrt(x + a)    = x - b     — rechterkant negatief bij de kleinste wortel
+     C  x = sqrt(ax + b)           — linkerkant negatief bij de negatieve wortel */
+/* Vaste parameterlijsten in plaats van trekken-en-verwerpen: zo kan er nooit
+   een ontaarde opgave ontstaan (x - 0, \sqrt{x}, ...) als het verwerpen
+   toevallig te vaak achter elkaar misgaat. */
+const _WV1B_A = (() => {
+  const uit = [];
+  for (const a of [2, 3, 5, 6]) for (let c = 3; c <= 7; c++) for (let k = 1; k <= 4; k++) {
+    const D = c * c - a, b = k * k * D;
+    if (D > 0 && b >= 1 && b <= 300) uit.push({ a, c, k, D, b });
+  }
+  return uit;
+})();
 
-  const c2     = c * c;
-  const c2aTex = D === 1 ? '' : `${D}`;
-  const lhsChk = a * k * k + b;
-  const sqChk  = c * k;
+/* sqrt(x + a) = x - b heeft wortels r1, r2 met r1 + r2 = 2b + 1 en
+   r1*r2 = b^2 - a. Kies dus b en r1; de rest volgt. */
+const _WV1B_B = (() => {
+  const uit = [];
+  for (let b = 1; b <= 5; b++) for (let r1 = b + 2; r1 <= b + 8; r1++) {
+    const r2 = 2 * b + 1 - r1, a = b * b - r1 * r2;
+    if (a !== 0 && Math.abs(a) <= 40 && r2 !== 0) uit.push({ b, r1, r2, a });
+  }
+  return uit;
+})();
 
-  const steps = [
-    `$\\sqrt{${a}x^{2}+${b}} = ${c}x$`,
-    `$${a}x^{2}+${b} = ${c2}x^{2}$`,
-    `$${c2aTex}x^{2} = ${b}$`,
-  ];
+/* x = sqrt(ax + b) heeft wortels r1 > 0 en r2 < 0 met a = r1 + r2 en b = -r1*r2. */
+const _WV1B_C = (() => {
+  const uit = [];
+  for (let r1 = 3; r1 <= 8; r1++) for (let r2 = -1; r2 >= 1 - r1; r2--) {
+    const a = r1 + r2, b = -r1 * r2;
+    if (a >= 1 && b <= 60) uit.push({ r1, r2, a, b });
+  }
+  return uit;
+})();
+
+function _wv1bVormA() {
+  const { a, c, k, D, b } = pick(_WV1B_A);
+  const c2 = c * c, c2aTex = D === 1 ? '' : `${D}`;
+  const lhsChk = a * k * k + b, sqChk = c * k;
+  const verg = `\\sqrt{${a}x^{2}+${b}} = ${c}x`;
+  const steps = [`$${verg}$`, `$${a}x^{2}+${b} = ${c2}x^{2}$`, `$${c2aTex}x^{2} = ${b}$`];
   if (D !== 1) steps.push(`$x^{2} = ${k * k}$`);
   steps.push(
     `$x = ${k}\\quad\\text{of}\\quad x = -${k}$`,
@@ -5211,16 +5445,68 @@ function genWV1b() {
     `Controleer $x = -${k}$: linkerkant $= ${sqChk}$ maar $${c}\\cdot(-${k}) = -${sqChk}$ ✗ — schijnoplossing`,
     `$x = ${k}$`,
   );
+  return { verg, steps, valid: k, extraneous: -k,
+           hint: `Rechts staat $${c}x$; dat kan niet negatief zijn.` };
+}
+
+function _wv1bVormB() {
+  const { b, r1, r2, a } = pick(_WV1B_B);
+  const binnen = _haakje('x', a);
+  const verg = `\\sqrt{${binnen}} = x - ${b}`;
+  const som = r1 + r2, prod = r1 * r2;
+  return {
+    verg,
+    steps: [
+      `$${verg}$`,
+      `$${binnen} = (x - ${b})^{2}$`,
+      `$${binnen} = x^{2} - ${2 * b}x + ${b * b}$`,
+      `$x^{2} - ${som}x ${prod < 0 ? `- ${-prod}` : `+ ${prod}`} = 0$`,
+      `$(x - ${r1})(${_haakje('x', -r2)}) = 0$`,
+      `$x = ${r1}\\quad\\text{of}\\quad x = ${r2}$`,
+      `Controleer $x = ${r1}$: $\\sqrt{${r1 + a}} = ${r1 - b}$ en $${r1} - ${b} = ${r1 - b}$ ✓`,
+      `Controleer $x = ${r2}$: rechterkant $= ${r2} - ${b} = ${r2 - b}$ en dat is negatief ✗ — schijnoplossing`,
+      `$x = ${r1}$`,
+    ],
+    valid: r1, extraneous: r2,
+    hint: `Rechts staat $x - ${b}$; een wortel is nooit negatief, dus $x \\geq ${b}$.`,
+  };
+}
+
+function _wv1bVormC() {
+  const { r1, r2, a, b } = pick(_WV1B_C);
+  const aTex = _lvCoefX(a);
+  const binnen = `${aTex} + ${b}`;
+  const verg = `x = \\sqrt{${binnen}}`;
+  return {
+    verg,
+    steps: [
+      `$${verg}$`,
+      `$x^{2} = ${binnen}$`,
+      `$x^{2} - ${aTex} - ${b} = 0$`,
+      `$(x - ${r1})(x + ${-r2}) = 0$`,
+      `$x = ${r1}\\quad\\text{of}\\quad x = ${r2}$`,
+      `Controleer $x = ${r1}$: $\\sqrt{${a * r1 + b}} = ${r1}$ ✓`,
+      `Controleer $x = ${r2}$: de wortel is $${-r2}$, maar links staat $${r2}$ ✗ — schijnoplossing`,
+      `$x = ${r1}$`,
+    ],
+    valid: r1, extraneous: r2,
+    hint: `Links staat $x$; een wortel is nooit negatief, dus $x \\geq 0$.`,
+  };
+}
+
+function genWV1b() {
+  const v = pick([_wv1bVormA, _wv1bVormB, _wv1bVormC])();
+  const steps = v.steps;
 
   return {
     id: uid(), leerdoel: 'W.V1b',
-    vraag: `Los de vergelijking op.\n$\\sqrt{${a}x^{2}+${b}} = ${c}x$`,
+    vraag: `Los de vergelijking op.\n$${v.verg}$`,
     antwoordType: 'wortelverg',
-    antwoord: { valid: k, extraneous: -k },
+    antwoord: { valid: v.valid, extraneous: v.extraneous },
     hints: [
-      'Kwadreer beide kanten om de wortel weg te werken — dit kan schijnoplossingen opleveren!',
-      'Na kwadrateren heb je een vergelijking in $x^{2}$. Los op naar $x^{2}$ en neem de vierkantswortel.',
-      'Je vindt twee mogelijke waarden voor $x$. Vul ze allebei terug in de <strong>originele</strong> vergelijking. Welke geeft een negatieve rechterkant?',
+      'Kwadrateer beide kanten om de wortel weg te werken — dit kan schijnoplossingen opleveren!',
+      'Na kwadrateren houd je een kwadratische vergelijking over. Los die op.',
+      `Je vindt twee waarden. Vul ze allebei terug in de <strong>originele</strong> vergelijking. ${v.hint}`,
     ],
     oplossing: steps.join('\n'),
   };
@@ -5230,147 +5516,185 @@ function genWV1b() {
    G.V – Gebroken vergelijkingen
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── G.V1a – k/(ax+b) = c (noemer wegwerken, lineair oplossen) ─────────── */
+/* ── G.V1a – gebroken vergelijking met een lineaire noemer ──────────────────
+   Drie vormen rond dezelfde aanpak (noemer wegwerken, lineair oplossen):
+     A  k/(ax+b) = c        (c negatief als de noemer bij de oplossing < 0 is)
+     B  (ax+b)/t = c        (de x staat in de teller)
+     C  k/(ax+b) = p/q      (rechts ook een breuk: kruislings vermenigvuldigen) */
+const _GV1A_OPL = [
+  {n:1,d:1},{n:2,d:1},{n:3,d:1},{n:4,d:1},{n:5,d:1},{n:6,d:1},
+  {n:1,d:2},{n:3,d:2},{n:5,d:2},
+  {n:1,d:3},{n:2,d:3},{n:4,d:3},{n:5,d:3},
+];
+
 function genGV1a() {
-  let a, b, c, k, xNum, xDen, axVal, d, tries = 0;
-  const solPool = [
-    {n:1,d:1},{n:2,d:1},{n:3,d:1},{n:4,d:1},{n:5,d:1},{n:6,d:1},
-    {n:1,d:2},{n:3,d:2},{n:5,d:2},
-    {n:1,d:3},{n:2,d:3},{n:4,d:3},{n:5,d:3},
-  ];
-  do {
-    const sol = pick(solPool);
-    xNum = sol.n; xDen = sol.d;
-    a = xDen * rand(1, 3);   // a deelbaar door xDen → a*x is geheel
-    b = pick([-6,-4,-3,-2,2,3,4,6]);
-    c = rand(2, 12);
-    axVal = a * xNum / xDen;
-    d = axVal + b;
-    if (d <= 0 || d > 60) { tries++; continue; }
-    k = c * d;
-    if (k <= 0 || k > 200) { tries++; continue; }
-    tries++;
-    break;
-  } while (tries < 500);
+  const sol = pick(_GV1A_OPL);
+  const xNum = (Math.random() < 0.3 ? -1 : 1) * sol.n, xDen = sol.d;
+  const a = xDen * rand(1, 3);                 // a deelbaar door xDen → ax geheel
+  const b = pick([-6, -4, -3, -2, 2, 3, 4, 6]);
+  const d = a * xNum / xDen + b;               // waarde van de noemer
+  if (d === 0) return genGV1a();               // noemer nul: opnieuw trekken
 
-  const bTex  = b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
-  const aTex  = a === 1 ? '' : `${a}`;
-  const noem  = `${aTex}x${bTex}`;
-  const xTex  = xDen === 1 ? `${xNum}` : `\\dfrac{${xNum}}{${xDen}}`;
-  const axTex = a === 1 ? `x` : `${a}x`;
+  const noem  = `${_lvCoefX(a)} ${b > 0 ? '+' : '-'} ${Math.abs(b)}`;
+  const xTex  = _breukTex(xNum, xDen);
+  const axTex = _lvCoefX(a);
 
-  const steps = [
-    `$\\dfrac{${k}}{${noem}} = ${c}$`,
-    `$${k} = ${c}(${noem})$`,
-    `$${noem} = ${d}$`,
-  ];
+  const delers = [2, 3, 4, 5, 6].filter(t => d % t === 0);
+  const vorm = pick(['A', 'A', 'A', ...(delers.length ? ['B', 'C'] : [])]);
+
+  let vraagTeX, steps, hints;
+  if (vorm === 'B') {
+    const t = pick(delers), c = d / t;
+    vraagTeX = `\\dfrac{${noem}}{${t}} = ${c}`;
+    steps = [`$${vraagTeX}$`, `$${noem} = ${d}$`];
+    hints = [
+      `Vermenigvuldig beide kanten met $${t}$ zodat de breuk verdwijnt.`,
+      `Je krijgt $${noem} = ${d}$. Los dat lineair op naar $x$.`,
+    ];
+  } else if (vorm === 'C') {
+    const q = pick(delers);
+    const p = Math.sign(d) * pick([1, 2, 3, 4, 5].filter(n => gcd(n, q) === 1));
+    const k = p * d / q;
+    // bij p = 1 zijn de haakjes overbodig
+    const rechts = p === 1 ? noem : p === -1 ? `-(${noem})` : `${p}(${noem})`;
+    vraagTeX = `\\dfrac{${k}}{${noem}} = ${_breukTex(p, q)}`;
+    steps = [`$${vraagTeX}$`, `$${k * q} = ${rechts}$`, `$${noem} = ${d}$`];
+    hints = [
+      'Vermenigvuldig kruislings: teller links maal noemer rechts, en omgekeerd.',
+      `Je krijgt $${k * q} = ${rechts}$. Deel door $${p}$ en los op naar $x$.`,
+    ];
+  } else {
+    const c = Math.sign(d) * rand(2, 12);
+    const k = c * d;
+    vraagTeX = `\\dfrac{${k}}{${noem}} = ${c}`;
+    steps = [`$${vraagTeX}$`, `$${k} = ${c}(${noem})$`,
+             `$${noem} = ${d}$`];
+    hints = [
+      `Vermenigvuldig beide kanten met $(${noem})$ zodat de noemer verdwijnt.`,
+      `Je krijgt $${k} = ${c}(${noem})$. `
+      + `Deel daarna beide kanten door $${c}$ en los op naar $x$.`,
+    ];
+  }
+
   if (b !== 0) steps.push(`$${axTex} = ${d - b}$`);
-  // Bij a = 1 is de voorlaatste stap al "x = ...", dan niet nog eens herhalen.
   const slotregel = `$x = ${xTex}$`;
   if (steps[steps.length - 1] !== slotregel) steps.push(slotregel);
 
   return {
     id: uid(), leerdoel: 'G.V1a',
-    vraag: `Los de vergelijking op.\n$\\dfrac{${k}}{${noem}} = ${c}$`,
+    vraag: `Los de vergelijking op.\n$${vraagTeX}$`,
     antwoordType: 'vergelijking',
     antwoord: { teller: xNum, noemer: xDen },
-    hints: [
-      `Vermenigvuldig beide kanten met $(${noem})$ zodat de noemer verdwijnt.`,
-      `Je krijgt $${k} = ${c}(${noem})$. Deel daarna beide kanten door $${c}$ en los op naar $x$.`,
-    ],
+    hints,
     oplossing: steps.join('\n'),
   };
 }
 
-/* ── G.V1b – k/x^n = c of k/x² = px (noemer wegwerken, machtsvergelijking) */
+/* ── G.V1b – gebroken vergelijking met een macht van x in de noemer ─────────
+   Vier vormen rond dezelfde kern (noemer wegwerken, dan de wortel nemen):
+     A  k/xⁿ = c            (n = 2, 3 of 4)
+     B  k/x² = (p/q)x       (na wegwerken een derdegraadsvergelijking)
+     C  k/xⁿ + b = c        (eerst de losse term wegwerken)
+     D  xⁿ/k = c            (de macht staat in de teller)                    */
+
+/* Waarde die x^n moet krijgen; soms een mooie macht, soms niet. */
+function _gv1bInner(n) {
+  if (n % 2 === 1) return pick([-4, -3, -2, 2, 3, 4]) ** n;
+  if (Math.random() < 0.65) return rand(2, n === 4 ? 4 : 6) ** n;
+  let m; do { m = rand(2, 20); } while (_mvIsPerfect(m, n));
+  return m;
+}
+
+/* De slotregel: ±m, ±ⁿ√inner, een geheel getal of een derdemachtswortel. */
+function _gv1bSlot(inner, n) {
+  const m = Math.round(_mvNthRoot(Math.abs(inner), n));
+  const netjes = Math.abs(m ** n - Math.abs(inner)) < 0.5 && m >= 2;
+  const waarde = netjes ? `${m}` : _wortelUit(n, inner);
+  return n % 2 === 0 ? `x = \\pm ${waarde}`
+                     : `x = ${inner < 0 ? '-' : ''}${waarde}`;
+}
+
+/* k/xⁿ met het minteken vóór de breuk in plaats van in de teller. */
+function _gv1bBreuk(k, n) {
+  return `${k < 0 ? '-' : ''}\\dfrac{${Math.abs(k)}}{x^{${n}}}`;
+}
+
 function genGV1b() {
-  const sub = pick(['div_sq_const', 'div_sq_linear', 'div_cu_const']);
+  const vorm = pick(['A', 'A', 'B', 'C', 'D']);
+  let n, inner, vraagTeX, steps, hints;
 
-  if (sub === 'div_sq_const') {
-    // k/x² = c  →  x² = m²  →  x = ±m
-    const m = rand(2, 6);
+  if (vorm === 'B') {
+    // k/x² = (p/q)x  →  k = (p/q)x³
+    n = 3;
+    const xVal = pick([-4, -3, -2, 2, 3, 4]);
+    const breuken = [[1, 2], [2, 3], [1, 3], [2, 1], [3, 1], [3, 2]]
+      .filter(([p, q]) => Number.isInteger(p * xVal ** 3 / q)
+                       && Math.abs(p * xVal ** 3 / q) <= 100);
+    const [p, q] = pick(breuken);
+    const k = p * xVal ** 3 / q;
+    inner = xVal ** 3;
+    const pqTex = _breukTex(p, q);
+    vraagTeX = `${_gv1bBreuk(k, 2)} = ${pqTex}x`;
+    steps = [`$${vraagTeX}$`, `$${k} = ${pqTex}x^{3}$`, `$x^{3} = ${inner}$`];
+    hints = [
+      'Vermenigvuldig beide kanten met $x^{2}$ zodat de noemer verdwijnt.',
+      `Je krijgt $${k} = ${pqTex}x^{3}$ — deel door $${pqTex}$ en neem daarna de `
+      + 'derdemachtswortel.',
+    ];
+  } else if (vorm === 'C') {
+    n = pick([2, 2, 3]);
+    inner = _gv1bInner(n);
+    const c0 = rand(2, 8);
+    let b; do { b = rand(-9, 9); } while (b === 0);
+    const k = c0 * inner;
+    const c = c0 + b;
+    vraagTeX = `${_gv1bBreuk(k, n)} ${b > 0 ? '+' : '-'} ${Math.abs(b)} = ${c}`;
+    steps = [`$${vraagTeX}$`, `$${_gv1bBreuk(k, n)} = ${c0}$`,
+             `$${k} = ${c0}x^{${n}}$`, `$x^{${n}} = ${inner}$`];
+    hints = [
+      `Breng $${b > 0 ? b : `(${b})`}$ eerst naar de rechterkant.`,
+      `Vermenigvuldig daarna met $x^{${n}}$ en neem de `
+      + `${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`}.`
+      + (n % 2 === 0 ? _MV_TWEE : ''),
+    ];
+  } else if (vorm === 'D') {
+    n = pick([2, 2, 3]);
+    inner = _gv1bInner(n);
+    const delers = [2, 3, 4, 5, 6].filter(t => inner % t === 0);
+    if (!delers.length) return genGV1b();
+    const k = pick(delers);
+    vraagTeX = `\\dfrac{x^{${n}}}{${k}} = ${inner / k}`;
+    steps = [`$${vraagTeX}$`, `$x^{${n}} = ${inner}$`];
+    hints = [
+      `Vermenigvuldig beide kanten met $${k}$.`,
+      `Je krijgt $x^{${n}} = ${inner}$ — neem de `
+      + `${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`}.`
+      + (n % 2 === 0 ? _MV_TWEE : ''),
+    ];
+  } else {
+    n = pick([2, 2, 3, 4]);
+    inner = _gv1bInner(n);
     const c = rand(2, 8);
-    const k = c * m * m;
-    return {
-      id: uid(), leerdoel: 'G.V1b',
-      vraag: `Los de vergelijking op.\n$\\dfrac{${k}}{x^{2}} = ${c}$`,
-      antwoordType: 'machtsvergelijking',
-      antwoord: { inner: m * m, n: 2, hasNeg: true, p: 0 },
-      hints: [
-        `Vermenigvuldig beide kanten met $x^{2}$ zodat de noemer verdwijnt.`,
-        `Je krijgt $x^{2} = \\ldots$ — neem de vierkantswortel van beide kanten. Vergeet $\\pm$ niet.`,
-      ],
-      oplossing: [
-        `$\\dfrac{${k}}{x^{2}} = ${c}$`,
-        `$${k} = ${c}x^{2}$`,
-        `$x^{2} = ${m * m}$`,
-        `$x = \\pm${m}$`,
-      ].join('\n'),
-    };
+    const k = c * inner;
+    vraagTeX = `${_gv1bBreuk(k, n)} = ${c}`;
+    steps = [`$${vraagTeX}$`, `$${k} = ${c}x^{${n}}$`, `$x^{${n}} = ${inner}$`];
+    hints = [
+      `Vermenigvuldig beide kanten met $x^{${n}}$ zodat de noemer verdwijnt.`,
+      `Je krijgt $x^{${n}} = \\ldots$ — neem de `
+      + `${n === 2 ? 'vierkantswortel' : `$${n}$e-machtswortel`}.`
+      + (n % 2 === 0 ? _MV_TWEE : ''),
+    ];
   }
 
-  if (sub === 'div_sq_linear') {
-    // k/x² = (p/q)x  →  k = (p/q)x³  →  x³ = kq/p  →  x = ∛(kq/p)
-    const neg = Math.random() < 0.4;
-    const absX = pick([2, 3, 4]);
-    const xVal = neg ? -absX : absX;
-    const fracs = [[1,2],[2,3],[1,3],[2,1],[3,1],[3,2]];
-    let p, q, k, found = false;
-    for (let t = 0; t < 60; t++) {
-      [p, q] = pick(fracs);
-      const kRaw = (p / q) * xVal ** 3;
-      if (Number.isInteger(kRaw) && Math.abs(kRaw) >= 2 && Math.abs(kRaw) <= 100) {
-        k = kRaw; found = true; break;
-      }
-    }
-    if (!found) return genGV1b();
-
-    const kAbs = Math.abs(k), kSign = k < 0 ? '-' : '';
-    const pqTex = q === 1 ? `${p}` : `\\dfrac{${p}}{${q}}`;
-    const xCu = xVal ** 3;
-
-    return {
-      id: uid(), leerdoel: 'G.V1b',
-      vraag: `Los de vergelijking op.\n$\\dfrac{${kSign}${kAbs}}{x^{2}} = ${pqTex}x$`,
-      antwoordType: 'vergelijking',
-      antwoord: { teller: xVal, noemer: 1 },
-      hints: [
-        `Vermenigvuldig beide kanten met $x^{2}$ zodat de noemer verdwijnt.`,
-        `Je krijgt $x^{3} = \\ldots$ — neem daarna de derde machtswortel.`,
-      ],
-      oplossing: [
-        `$\\dfrac{${kSign}${kAbs}}{x^{2}} = ${pqTex}x$`,
-        `$${kSign}${kAbs} = ${pqTex}x^{3}$`,
-        `$x^{3} = ${xCu}$`,
-        `$x = ${xVal}$`,
-      ].join('\n'),
-    };
-  }
-
-  // sub === 'div_cu_const': k/x³ = c  →  x³ = k/c  →  x = ∛(k/c)
-  const neg = Math.random() < 0.4;
-  const absX = pick([2, 3, 4]);
-  const xVal = neg ? -absX : absX;
-  const c = rand(2, 8);
-  const k = c * xVal ** 3;
-  const cubeVal = xVal ** 3;
-  const kAbs = Math.abs(k), kSign = k < 0 ? '-' : '';
+  steps.push(`$${_gv1bSlot(inner, n)}$`);
 
   return {
     id: uid(), leerdoel: 'G.V1b',
-    vraag: `Los de vergelijking op.\n$\\dfrac{${kSign}${kAbs}}{x^{3}} = ${c}$`,
-    antwoordType: 'vergelijking',
-    antwoord: { teller: xVal, noemer: 1 },
-    hints: [
-      `Vermenigvuldig beide kanten met $x^{3}$ zodat de noemer verdwijnt.`,
-      `Je krijgt $x^{3} = \\ldots$ — neem daarna de derde machtswortel.`,
-    ],
-    oplossing: [
-      `$\\dfrac{${kSign}${kAbs}}{x^{3}} = ${c}$`,
-      `$${kSign}${kAbs} = ${c}x^{3}$`,
-      `$x^{3} = ${cubeVal}$`,
-      `$x = ${xVal}$`,
-    ].join('\n'),
+    vraag: `Los de vergelijking op.\n$${vraagTeX}$`,
+    antwoordType: 'machtsvergelijking',
+    antwoord: { inner, n, hasNeg: n % 2 === 0, p: 0 },
+    hints,
+    oplossing: steps.join('\n'),
   };
 }
 
@@ -5503,8 +5827,41 @@ function genGV2b() {
   };
 }
 
-/* ── G.V2c – A/B = C/D: kruislings vermenigvuldigen ─────────────────────── */
-function genGV2c() {
+/* x, x + 3 of x - 3 — zonder "x + 0". */
+function _xPlus(t) { return t === 0 ? 'x' : _haakje('x', t); }
+
+/* Haakjes om een factor, maar niet om een kale x. */
+function _omhaak(t) { return t === 'x' ? 'x' : `(${t})`; }
+
+/* (x+a)/(x+b) = p/q met x = r als oplossing: p/q is (r+a)/(r+b) vereenvoudigd. */
+const _GV2C_LIN1 = (() => {
+  const uit = [];
+  for (let r = -4; r <= 5; r++) for (let a = -6; a <= 6; a++) for (let b = -6; b <= 6; b++) {
+    const s = r + a, t = r + b;
+    if (a === b || s === 0 || t === 0) continue;
+    const g = gcd(Math.abs(s), Math.abs(t));
+    let p = s / g, q = t / g;
+    if (q < 0) { p = -p; q = -q; }
+    if (q >= 2 && q <= 12 && Math.abs(p) <= 12 && p !== q) uit.push({ r, a, b, p, q });
+  }
+  return uit;
+})();
+
+/* (x+a)/m = (x+b)/n met x = r: kies k, dan a = mk - r en b = nk - r. */
+const _GV2C_LIN2 = (() => {
+  const uit = [];
+  for (let m = 2; m <= 9; m++) for (let n = 2; n <= 9; n++) {
+    if (m === n) continue;
+    for (const k of [-4, -3, -2, -1, 1, 2, 3, 4]) for (let r = -4; r <= 5; r++) {
+      const a = m * k - r, b = n * k - r;
+      if (Math.abs(a) <= 12 && Math.abs(b) <= 12) uit.push({ r, a, b, m, n });
+    }
+  }
+  return uit;
+})();
+
+/* Parameters voor de kwadratische vormen: (x+a)(x+b) = pq met wortels r1, r2. */
+function _gv2cKwadratisch() {
   let r1, r2, a, b, pqVal, p, q, tries = 0;
   do {
     r1 = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
@@ -5513,7 +5870,7 @@ function genGV2c() {
     b = rand(1, 5) * pick([-1, 1]);
     a = -(r1 + r2) - b;
     pqVal = a * b - r1 * r2;
-    if (pqVal <= 0 || pqVal > 60) { tries++; continue; }
+    if (pqVal < 2 || pqVal > 60) { tries++; continue; }
     if (r1 + b === 0 || r2 + b === 0) { tries++; continue; }
     const fps = [];
     for (let pp = 1; pp <= pqVal; pp++) {
@@ -5524,27 +5881,77 @@ function genGV2c() {
     tries++;
     break;
   } while (tries < 500);
+  return { r1, r2, a, b, p, q, pqVal };
+}
 
-  const aTex = a > 0 ? `x + ${a}` : a < 0 ? `x - ${Math.abs(a)}` : `x`;
-  const bTex = b > 0 ? `x + ${b}` : b < 0 ? `x - ${Math.abs(b)}` : `x`;
+/* ── G.V2c – A/B = C/D (kruislings vermenigvuldigen) ────────────────────────
+   Vier vormen: twee worden na kruislings vermenigvuldigen kwadratisch (twee
+   oplossingen), twee blijven lineair (één oplossing).
+     A  (x+a)/p = q/(x+b)      B  p/(x+a) = (x+b)/q
+     C  (x+a)/(x+b) = p/q      D  (x+a)/m = (x+b)/n                          */
+function genGV2c() {
+  const vorm = pick(['A', 'A', 'B', 'B', 'C', 'D']);
+
+  if (vorm === 'C' || vorm === 'D') {
+    const lin = vorm === 'C' ? pick(_GV2C_LIN1) : pick(_GV2C_LIN2);
+    const { r, a, b } = lin;
+    // linkerkant maal rechternoemer = rechterkant maal linkernoemer
+    // factor waarmee je de linker- resp. rechterkant vermenigvuldigt
+    const m = vorm === 'C' ? lin.q : lin.n;
+    const n = vorm === 'C' ? lin.p : lin.m;
+    const aTex = _xPlus(a), bTex = _xPlus(b);
+    const vraagTeX = vorm === 'C'
+      ? `\\dfrac{${aTex}}{${bTex}} = ${_breukTex(lin.p, lin.q)}`
+      : `\\dfrac{${aTex}}{${lin.m}} = \\dfrac{${bTex}}{${lin.n}}`;
+    // beide vormen leiden tot  m(x+a) = n(x+b)
+    const mTex = m === 1 ? '' : m === -1 ? '-' : `${m}`;
+    const nTex = n === 1 ? '' : n === -1 ? '-' : `${n}`;
+    const steps = [
+      `$${vraagTeX}$`,
+      `$${mTex}${_omhaak(aTex)} = ${nTex}${_omhaak(bTex)}$`,
+      `$${_lvSideTeX(m, m * a)} = ${_lvSideTeX(n, n * b)}$`,
+      `$${_lvCoefX(m - n)} = ${n * b - m * a}$`,
+    ];
+    const slot = `$x = ${r}$`;
+    if (steps[steps.length - 1] !== slot) steps.push(slot);
+    return {
+      id: uid(), leerdoel: 'G.V2c',
+      vraag: `Los op.\n$${vraagTeX}$`,
+      antwoordType: 'vergelijking-mv',
+      antwoord: { sols: [r] },
+      hints: [
+        `Vermenigvuldig kruislings: $${mTex}${_omhaak(aTex)} = ${nTex}${_omhaak(bTex)}$.`,
+        'De $x^{2}$-termen ontstaan hier niet: werk de haakjes uit en los lineair op.',
+      ],
+      oplossing: steps.join('\n'),
+    };
+  }
+
+  const kw = _gv2cKwadratisch();
+  const { r1, r2, a, b, pqVal } = kw;
+  // de zichtbare noemer mag geen 1 zijn; p en q zijn onderling verwisselbaar
+  const wissel = vorm === 'A' ? kw.p === 1 : kw.q === 1;
+  const p = wissel ? kw.q : kw.p, q = wissel ? kw.p : kw.q;
+  const aTex = _xPlus(a), bTex = _xPlus(b);
   const coefX = a + b, coefC = a * b - pqVal;
-  // Via _plusTerm, zodat een coëfficiënt 1 niet als "1x" wordt uitgeschreven.
   const quadTex = `x^{2}${_plusTerm(coefX, 'x', 1)}${_plusTerm(coefC, '', 0)}`;
-  const f1 = r1 >= 0 ? `x - ${r1}` : `x + ${Math.abs(r1)}`;
-  const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
+  const f1 = _xPlus(-r1), f2 = _xPlus(-r2);
+  const vraagTeX = vorm === 'A'
+    ? `\\dfrac{${aTex}}{${p}} = \\dfrac{${q}}{${bTex}}`
+    : `\\dfrac{${p}}{${aTex}} = \\dfrac{${bTex}}{${q}}`;
 
   return {
     id: uid(), leerdoel: 'G.V2c',
-    vraag: `Los op.\n$\\dfrac{${aTex}}{${p}} = \\dfrac{${q}}{${bTex}}$`,
+    vraag: `Los op.\n$${vraagTeX}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [r1, r2] },
     hints: [
-      `Vermenigvuldig kruislings: $(${aTex}) \\cdot (${bTex}) = ${p} \\cdot ${q} = ${pqVal}$.`,
+      `Vermenigvuldig kruislings: $${_omhaak(aTex)} \\cdot ${_omhaak(bTex)} = ${p} \\cdot ${q} = ${pqVal}$.`,
       `Werk de haakjes uit, breng alles naar één kant en ontbind in factoren.`,
     ],
     oplossing: [
-      `$\\dfrac{${aTex}}{${p}} = \\dfrac{${q}}{${bTex}}$`,
-      `$(${aTex})(${bTex}) = ${pqVal}$`,
+      `$${vraagTeX}$`,
+      `$${_omhaak(aTex)}${_omhaak(bTex)} = ${pqVal}$`,
       `$${quadTex} = 0$`,
       `$(${f1})(${f2}) = 0$`,
       `$x = ${r1} \\quad v \\quad x = ${r2}$`,
