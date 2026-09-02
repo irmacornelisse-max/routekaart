@@ -255,6 +255,12 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Specifieke vormen', knoppen: [{l:'a',id:'G.V2a'},{l:'b',id:'G.V2b'},{l:'c',id:'G.V2c'},{l:'d',id:'G.V2d'},{l:'e',id:'G.V2e'},{l:'f',id:'G.V2f'}] },
         ]
       },
+      {
+        id: 'modulus-vergelijking', label: 'Modulusvergelijkingen',
+        items: [
+          { label: 'Modulusvergelijkingen', knoppen: [{l:'a',id:'MO.V1a'},{l:'b',id:'MO.V1b'},{l:'c',id:'MO.V1c'},{l:'d',id:'MO.V1d'}] },
+        ]
+      },
     ]
   },
   {
@@ -1099,7 +1105,8 @@ function _isPool(uitdrukking, variabele, waarde) {
 /* Zoekt een nulpunt van links - rechts dat géén oplossing van de opgave is.
    Een vast rooster raakt een irrationale wortel nooit precies, dus wordt elke
    tekenwisseling tussen twee roosterpunten met bisectie nagelopen. */
-function _heeftVreemdeWortel(links, rechts, variabele, isOplossing) {
+function _heeftVreemdeWortel(links, rechts, variabele, isOplossing, bereik) {
+  const grens = bereik || TUSSENSTAP_BEREIK;
   const f = (w) => {
     const l = _zijdeWaarde(links, variabele, w);
     const r = _zijdeWaarde(rechts, variabele, w);
@@ -1108,11 +1115,10 @@ function _heeftVreemdeWortel(links, rechts, variabele, isOplossing) {
   const vreemd = (w) => !isOplossing(w)
     && !_isPool(links, variabele, w) && !_isPool(rechts, variabele, w);
 
-  let vorige = f(-TUSSENSTAP_BEREIK);
-  if (Math.abs(vorige) < 1e-9 && vreemd(-TUSSENSTAP_BEREIK)) return true;
+  let vorige = f(-grens);
+  if (Math.abs(vorige) < 1e-9 && vreemd(-grens)) return true;
 
-  for (let w = -TUSSENSTAP_BEREIK + TUSSENSTAP_STAP;
-       w <= TUSSENSTAP_BEREIK + 1e-9; w += TUSSENSTAP_STAP) {
+  for (let w = -grens + TUSSENSTAP_STAP; w <= grens + 1e-9; w += TUSSENSTAP_STAP) {
     const hier = f(w);
     if (Math.abs(hier) < 1e-9 && vreemd(w)) return true;      // roosterpunt is zelf wortel
     if (isFinite(vorige) && isFinite(hier) && vorige * hier < 0) {
@@ -1147,7 +1153,27 @@ function _isGeldigeTussenstap(stap, variabele, sols, tol) {
 
   const marge = Math.max(tol, 1e-4);
   const isOplossing = (w) => sols.some(s => Math.abs(w - s) <= marge);
-  return !_heeftVreemdeWortel(links, rechts, variabele, isOplossing);
+  return !_heeftVreemdeWortel(links, rechts, variabele, isOplossing, _scanBereik(sols));
+}
+
+/* Het scanbereik moet ruim om de oplossingen heen liggen, anders blijft een
+   vreemde wortel die verder weg ligt onopgemerkt. */
+function _scanBereik(sols) {
+  const uiterste = sols.reduce((m, s) => Math.max(m, Math.abs(s) || 0), 0);
+  return Math.max(TUSSENSTAP_BEREIK, uiterste * 1.5 + 10);
+}
+
+/* Een getal uit het antwoordveld. De 1a/b-knop levert een gemengd getal als
+   2\frac{1}{3}; _algEval leest dat als een vermenigvuldiging, dus die vorm
+   vangen we apart af. Het boek schrijft breuken zo, dus leerlingen ook. */
+function _getalUitLatex(s) {
+  const gemengd = String(s).trim().match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  if (gemengd) {
+    const teken = gemengd[1] === '-' ? -1 : 1;
+    return teken * (parseInt(gemengd[2], 10)
+                    + parseInt(gemengd[3], 10) / parseInt(gemengd[4], 10));
+  }
+  return _algEval(s, {});
 }
 
 /* Herkent de twee opschrijfregels die bij de abc-methode horen:
@@ -1345,13 +1371,7 @@ function checkAntwoord(vraag, gegeven) {
 
     const rawV = raw.replace(/\\quad/g, '').replace(/\\;/g, '').replace(/\\text\s*\{[^}]*v[^}]*\}/g, 'v');
 
-    // Gemengd getal: (-?)integer\frac{n}{d} → ±(integer + n/d)
-    const _parseNum = (s) => {
-      const std = _algEval(s, {});
-      const mx = s.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
-      if (mx) return (mx[1] === '-' ? -1 : 1) * (parseInt(mx[2]) + parseInt(mx[3]) / parseInt(mx[4]));
-      return std;
-    };
+    const _parseNum = _getalUitLatex;
 
     // "x = val1 v x = val2" — W.V1a (extraneous=null): nooit twee oplossingen
     //                         W.V1b: valid + extraneous, beide moeten kloppen
@@ -1453,7 +1473,7 @@ function checkAntwoord(vraag, gegeven) {
         const m = part.trim().match(/^x\s*=\s*(.+)$/);
         if (!m) { ok = false; break; }
         try {
-          const v = _algEval(m[1].trim(), {});
+          const v = _getalUitLatex(m[1].trim());
           if (!isFinite(v)) { ok = false; break; }
           parsed.push(v);
         } catch { ok = false; break; }
@@ -1465,20 +1485,38 @@ function checkAntwoord(vraag, gegeven) {
       }
     }
 
-    // Tussenstap: alle oplossingen moeten door minstens één v-segment gedekt worden
+    // Tussenstap: elke oplossing moet door minstens één v-segment gedekt worden.
+    //
+    // Leerdoelen zonder schijnoplossingen zetten `strikt`; dan mag een segment
+    // bovendien geen waarde toelaten die géén oplossing is, zodat een extra
+    // verzonnen oplossing wordt afgekeurd. Bij G.V2d en verwanten kan dat niet:
+    // daar hoort de verworpen waarde juist in de tussenstap thuis.
+    // Een segment zonder oplossingen (x^2 = -4, de dode tak van een modulus)
+    // mag altijd — dat perkt de oplossingen alleen maar in.
+    const strikt = !!correct.strikt;
+    const isOplossing = (w) => sols.some(s => Math.abs(w - s) <= 1e-4);
     const segments = rawV.split(/\s*v\s*/);
+
+    // Staan er alleen kale waarden ("x = 2 v x = -2 v x = 9"), dan is dit een
+    // eindantwoord en geen tussenstap. De exacte vergelijking hierboven is dan
+    // al mislukt, dus er klopt iets niet aan het aantal of aan een waarde.
+    const isKaleWaarde = (seg) => {
+      const m = seg.trim().match(/^x\s*=\s*(.+)$/);
+      return !!m && !/[a-zA-Z]/.test(m[1].replace(/\\[a-zA-Z]+/g, ''));
+    };
+    if (strikt && segments.length > 1 && segments.every(isKaleWaarde)) return 'fout';
+
     const covered = sols.map(() => false);
     for (const seg of segments) {
       const eqParts = seg.split('=');
-      if (eqParts.length === 2) {
-        for (let si = 0; si < sols.length; si++) {
-          try {
-            const lhs = _algEval(eqParts[0].trim(), { x: sols[si] });
-            const rhs = _algEval(eqParts[1].trim(), { x: sols[si] });
-            if (isFinite(lhs) && isFinite(rhs) && Math.abs(lhs - rhs) < 1e-6) covered[si] = true;
-          } catch {}
-        }
+      if (eqParts.length !== 2) continue;
+      const links = eqParts[0].trim(), rechts = eqParts[1].trim();
+      if (!links || !rechts) continue;
+      for (let si = 0; si < sols.length; si++) {
+        if (_tussenstapKlopt(links, rechts, 'x', sols[si])) covered[si] = true;
       }
+      if (strikt && _heeftVreemdeWortel(links, rechts, 'x', isOplossing, _scanBereik(sols)))
+        return 'fout';
     }
     if (covered.every(c => c)) return 'tussenstap';
     return 'fout';
@@ -1924,6 +1962,10 @@ function feedbackBoodschap(vraag, gegeven) {
     'G.V2d': 'Gelijke noemers? Dan zijn ook de tellers gelijk. Los de vergelijking op — maar controleer bij elke oplossing of de noemer dan nul wordt (schijnoplossing).',
     'G.V2e': 'Gelijke tellers? Ofwel de teller is nul (geval 1), ofwel de noemers zijn gelijk (geval 2). Werk beide gevallen uit en controleer de noemers.',
     'G.V2f': 'Herken eerst de vorm: $\\frac{A}{B}=0$, $\\frac{A}{B}=C$, $\\frac{A}{B}=\\frac{C}{D}$, $\\frac{A}{C}=\\frac{B}{C}$ of $\\frac{A}{B}=\\frac{A}{C}$.',
+    'MO.V1a': 'Splits de modulus: $|A| = c$ betekent $A = c$ of $A = -c$. Los beide vergelijkingen apart op en laat een breuk als breuk staan.',
+    'MO.V1b': 'Splits in $A = c$ en $A = -c$, werk beide uit tot $x^2 = \\ldots$. Een tak met $x^2 = $ negatief valt af; een tak met $x^2 = $ positief geeft twee oplossingen.',
+    'MO.V1c': 'Splits in $A = c$ en $A = -c$. Bij een oneven macht geeft elke tak één oplossing; bij een even macht twee, tenzij er een negatief getal uitkomt.',
+    'MO.V1d': 'Kijk eerst wat er binnen de modulus staat: een lineaire term, een kwadraat of een hogere macht. Splitsen doe je altijd hetzelfde: $A = c$ of $A = -c$.',
     'M.V1a': 'Neem de nde-machtswortel van beide kanten. Bij een even macht zijn er twee oplossingen: gebruik $\\pm$.',
     'M.V1b': 'Deel eerst door de coëfficiënt, neem dan de nde-machtswortel. Bij een even macht: $\\pm$.',
     'M.V1c': 'Isoleer eerst $x^n$ door het losse getal naar rechts te brengen. Neem dan de wortel.',

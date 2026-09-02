@@ -140,3 +140,17 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
 | machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b, M.V3a, M.V3b, M.V3c, M.V3d, M.V3e |
 | wortel-vergelijking | W.V1a, W.V1b |
+| gebroken-vergelijking | G.V1a, G.V1b, G.V2a, G.V2b, G.V2c, G.V2d, G.V2e, G.V2f |
+| modulus-vergelijking | MO.V1a, MO.V1b, MO.V1c, MO.V1d |
+
+## Antwoordcontrole – twee dingen om te weten
+
+- **Tussenstappen.** Een tussenstap mag de oplossingen inperken (één tak van de
+  nulproductregel), maar nooit een waarde toelaten die geen oplossing is. Zie
+  `_isGeldigeTussenstap` in `app.js`. Vreemde wortels worden gezocht via
+  tekenwisseling plus bisectie, dus ook irrationale.
+- **`strikt` in het antwoordobject.** Zet je dat bij `vergelijking-mv`, dan wordt
+  een rij kale `x = getal`-waarden als eindantwoord gelezen: het aantal moet dan
+  precies kloppen. Zonder die vlag telt alleen dat elke oplossing gedekt is —
+  nodig bij G.V2d en verwanten, waar een verworpen schijnoplossing juist in de
+  tussenstap thuishoort.

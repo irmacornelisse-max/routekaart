@@ -4148,14 +4148,40 @@ function _mvWortel(n, inhoud) {
   return n === 2 ? `\\sqrt{${inhoud}}` : `\\sqrt[${n}]{${inhoud}}`;
 }
 
-/* De n-de-machtswortel van een geheel getal, vereenvoudigd: 12 -> 2\sqrt{3}. */
+/* De n-de-machtswortel van een geheel getal, zo ver mogelijk vereenvoudigd.
+   Twee dingen gebeuren er: hele n-de machten gaan naar buiten ($\sqrt{12}$
+   wordt $2\sqrt{3}$) en de wortelexponent zakt als dat kan ($\sqrt[4]{4}$ is
+   $\sqrt{2}$, want $4 = 2^2$ en $\gcd(2,4) = 2$). */
 function _wortelUit(n, val) {
-  let binnen = Math.abs(val), buiten = 1;
-  for (let f = 2; Math.pow(f, n) <= binnen; f++) {
-    while (binnen % Math.pow(f, n) === 0) { binnen /= Math.pow(f, n); buiten *= f; }
+  const getal = Math.abs(val);
+  if (getal === 0) return '0';
+
+  const machten = new Map();
+  let rest = getal;
+  for (let f = 2; f * f <= rest; f++) while (rest % f === 0) {
+    machten.set(f, (machten.get(f) || 0) + 1);
+    rest /= f;
   }
-  if (binnen === 1) return `${buiten}`;
-  return (buiten === 1 ? '' : `${buiten}`) + _mvWortel(n, String(binnen));
+  if (rest > 1) machten.set(rest, (machten.get(rest) || 0) + 1);
+
+  let buiten = 1;
+  const over = new Map();
+  for (const [f, e] of machten) {
+    buiten *= Math.pow(f, Math.floor(e / n));
+    if (e % n) over.set(f, e % n);
+  }
+  if (!over.size) return `${buiten}`;
+
+  let index = n;
+  let deler = n;
+  for (const e of over.values()) deler = gcd(deler, e);
+  if (deler > 1) index = n / deler;
+
+  let binnen = 1;
+  for (const [f, e] of over) binnen *= Math.pow(f, e / deler);
+
+  if (index === 1) return `${buiten * binnen}`;
+  return (buiten === 1 ? '' : `${buiten}`) + _mvWortel(index, String(binnen));
 }
 
 /* Zin over het aantal oplossingen, voor in de hint bij een even macht. */
@@ -6521,6 +6547,164 @@ function genBH1c() {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MO.V – Modulusvergelijkingen
+   ═══════════════════════════════════════════════════════════════════════════
+
+   $|A| = c$ met $c > 0$ splitst in twee gevallen: $A = c$ en $A = -c$.
+
+   Bij MO.V1b en MO.V1c is $A$ van de vorm $a x^n + b$. Het is handig om eerst
+   te kiezen wélke twee waarden $x^n$ krijgt ($w_1$ en $w_2$) en $b$ en $c$
+   daaruit af te leiden:
+
+       a·w1 + b =  c
+       a·w2 + b = -c      =>      b = -a(w1 + w2)/2   en   c = |a(w1 - w2)/2|
+
+   Bij een even $n$ heeft de tak met een negatieve $w$ geen oplossing — precies
+   de valkuil uit het boek, waar $x^2 = -7$ afvalt en alleen $x^2 = 9$ overblijft.
+   Er is altijd minstens één tak die wél oplossingen geeft.                    */
+
+/* De exacte oplossingen van x^n = w, elk met hun LaTeX-vorm. */
+function _moWortels(w, n) {
+  if (n % 2 === 1) {
+    const t = _wortelUit(n, Math.abs(w));
+    return [{ x: _mvNthRoot(w, n), tex: w < 0 ? `-${t}` : t }];
+  }
+  if (w < 0) return [];                    // even macht: geen reële oplossing
+  const t = _wortelUit(n, w);
+  const r = Math.pow(w, 1 / n);
+  return [{ x: r, tex: t }, { x: -r, tex: `-${t}` }];
+}
+
+/* Alle (a, b, c) waarvoor |a x^n + b| = c gehele tussenwaarden oplevert. */
+function _moParams(n, aPool, wPool) {
+  const uit = [];
+  for (const a of aPool) for (const w1 of wPool) for (const w2 of wPool) {
+    if (w1 === w2 || w1 === 0 || w2 === 0) continue;
+    if ((a * (w1 + w2)) % 2 !== 0 || (a * (w1 - w2)) % 2 !== 0) continue;
+    const b = -a * (w1 + w2) / 2;
+    const c = Math.abs(a * (w1 - w2) / 2);
+    // zonder losse term is de modulus zinloos bij een even macht
+    if (b === 0 || c < 1 || c > 40 || Math.abs(b) > 30) continue;
+    const geeftOplossing = (w) => n % 2 === 1 || w > 0;
+    if (!geeftOplossing(w1) && !geeftOplossing(w2)) continue;
+    uit.push({ a, b, c });
+  }
+  return uit;
+}
+
+const _MO_W2 = [-8, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 8, 9, 12, 16];
+const _MO_W3 = [-27, -8, -5, -4, -2, -1, 1, 2, 4, 5, 8, 10, 27];
+const _MO_W4 = [-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 8, 16, 81];
+
+const _MO_PARAMS = {
+  2: _moParams(2, [1, -1, 2, 3, -2], _MO_W2),
+  3: _moParams(3, [1, -1, 2, 3], _MO_W3),
+  4: _moParams(4, [1, -1, 2], _MO_W4),
+};
+
+/* Bouwt de opgave |a x^n + b| = c met de bijbehorende uitwerking. */
+function _moVraag(leerdoel, n) {
+  const { a, b, c } = pick(_MO_PARAMS[n]);
+  const machtTeX = `x^{${n}}`;
+  const aMachtTeX = _alM(a, 'x', n);
+  // bij een negatieve coëfficiënt leest de constante vooraan prettiger:
+  // "5 - x^{4}" in plaats van "-x^{4} + 5", net als in het boek
+  const binnen = (a < 0 && b > 0)
+    ? `${b} - ${_alM(-a, 'x', n)}`
+    : `${aMachtTeX} ${b > 0 ? '+' : '-'} ${Math.abs(b)}`;
+  const verg = `\\left|${binnen}\\right| = ${c}`;
+
+  const wPlus = (c - b) / a, wMin = (-c - b) / a;
+  const oplossingen = [..._moWortels(wPlus, n), ..._moWortels(wMin, n)];
+
+  const steps = [
+    `$${verg}$`,
+    `$${binnen} = ${c} \\vee ${binnen} = -${c}$`,
+  ];
+  if (b !== 0) steps.push(`$${aMachtTeX} = ${c - b} \\vee ${aMachtTeX} = ${-c - b}$`);
+  // bij a = 1 staat er dan al x^n = ..., dan is deze regel een herhaling
+  if (a !== 1) steps.push(`$${machtTeX} = ${wPlus} \\vee ${machtTeX} = ${wMin}$`);
+  const zonder = [wPlus, wMin].filter(w => n % 2 === 0 && w < 0);
+  if (zonder.length)
+    steps.push(`$${machtTeX} = ${zonder[0]}$ heeft geen oplossing`);
+  steps.push(`$${oplossingen.map(s => `x = ${s.tex}`).join(' \\vee ')}$`);
+
+  const hints = [
+    `Een modulus splits je in twee gevallen: $${binnen} = ${c}$ of $${binnen} = -${c}$.`,
+    `Werk beide gevallen apart uit tot $${machtTeX} = \\ldots$ staat.`,
+    n % 2 === 0
+      ? `Let op: een even macht kan niet negatief zijn. Komt er $${machtTeX} = $ een `
+        + 'negatief getal uit, dan valt die tak af.'
+      : `Neem van beide kanten de ${n}e-machtswortel. Een oneven macht geeft per `
+        + 'tak precies één oplossing.',
+  ];
+
+  return {
+    id: uid(), leerdoel,
+    vraag: `Los exact op: $${verg}$`,
+    antwoordType: 'vergelijking-mv',
+    // strikt: bij een modulus bestaan geen schijnoplossingen, dus een extra
+    // oplossing erbij verzinnen mag niet als tussenstap gelden
+    antwoord: { sols: oplossingen.map(s => s.x), strikt: true },
+    hints,
+    oplossing: steps.join('\n'),
+  };
+}
+
+/* ── MO.V1a – lineair binnen de modulus: |ax + b| = c ──────────────────────
+   Twee vormen, zodat het niet steeds dezelfde volgorde is:
+     A  |ax + b| = c        B  |b - ax| = c                                  */
+function genMOV1a() {
+  const vormB = Math.random() < 0.35;
+  const a = rand(1, 5);
+  const c = rand(2, 15);
+  let b;
+  do { b = vormB ? rand(1, 9) : rand(-9, 9); } while (b === 0);
+
+  const p = vormB ? -a : a;                       // coëfficiënt van x
+  const binnen = vormB
+    ? `${b} - ${_alM(a, 'x', 1)}`
+    : `${_lvCoefX(a)} ${b > 0 ? '+' : '-'} ${Math.abs(b)}`;
+  const verg = `\\left|${binnen}\\right| = ${c}`;
+
+  const t1 = c - b, t2 = -c - b;                  // rechterkant na b wegwerken
+  const x1 = t1 / p, x2 = t2 / p;
+
+  const steps = [
+    `$${verg}$`,
+    `$${binnen} = ${c} \\vee ${binnen} = -${c}$`,
+    `$${_alM(p, 'x', 1)} = ${t1} \\vee ${_alM(p, 'x', 1)} = ${t2}$`,
+  ];
+  const slot = `$x = ${_breukTex(t1, p)} \\vee x = ${_breukTex(t2, p)}$`;
+  if (steps[steps.length - 1] !== slot) steps.push(slot);
+
+  return {
+    id: uid(), leerdoel: 'MO.V1a',
+    vraag: `Los exact op: $${verg}$`,
+    antwoordType: 'vergelijking-mv',
+    antwoord: { sols: [x1, x2], strikt: true },
+    hints: [
+      `Een modulus splits je in twee gevallen: $${binnen} = ${c}$ of $${binnen} = -${c}$.`,
+      'Los beide vergelijkingen los van elkaar op naar $x$.',
+      'Laat een antwoord dat niet heel is als breuk staan; rond niet af.',
+    ],
+    oplossing: steps.join('\n'),
+  };
+}
+
+/* ── MO.V1b – kwadratisch binnen de modulus: |ax² + b| = c ──────────────── */
+function genMOV1b() { return _moVraag('MO.V1b', 2); }
+
+/* ── MO.V1c – derde- of vierdemacht binnen de modulus ───────────────────── */
+function genMOV1c() { return _moVraag('MO.V1c', pick([3, 3, 4, 4])); }
+
+/* ── MO.V1d – gemengd ───────────────────────────────────────────────────── */
+function genMOV1d() {
+  const v = pick([genMOV1a, genMOV1b, genMOV1c])();
+  return { ...v, id: uid(), leerdoel: 'MO.V1d' };
+}
+
 const LEERDOELEN = [
   { id: 'B.0',   titel: 'Teller en noemer herkennen',            groep: 'Basis',        gen: genB0   },
   { id: 'B.01a', titel: 'Breuk op getallenlijn – invullen',      groep: 'Basis',        gen: genB01a },
@@ -6721,6 +6905,12 @@ const LEERDOELEN = [
   { id: 'G.V2d', titel: 'Gebroken verg.: A/C = B/C',                          groep: 'Machtsverbanden', gen: genGV2d },
   { id: 'G.V2e', titel: 'Gebroken verg.: A/B = A/C',                          groep: 'Machtsverbanden', gen: genGV2e },
   { id: 'G.V2f', titel: 'Gebroken verg.: gemengd',                            groep: 'Machtsverbanden', gen: genGV2f },
+
+  /* ── MO-doelen (Modulusvergelijkingen) ──────────────────────────────── */
+  { id: 'MO.V1a', titel: 'Modulusvergelijking: lineair',                      groep: 'Machtsverbanden', gen: genMOV1a },
+  { id: 'MO.V1b', titel: 'Modulusvergelijking: kwadratisch',                  groep: 'Machtsverbanden', gen: genMOV1b },
+  { id: 'MO.V1c', titel: 'Modulusvergelijking: derde- en vierdemacht',        groep: 'Machtsverbanden', gen: genMOV1c },
+  { id: 'MO.V1d', titel: 'Modulusvergelijking: gemengd',                      groep: 'Machtsverbanden', gen: genMOV1d },
 
   /* ── S-doelen (Stelsels vergelijkingen) ─────────────────────────────── */
   { id: 'S.1a', titel: 'Stelsel – direct optellen of aftrekken',    groep: 'Lineair', gen: genStelselE },
