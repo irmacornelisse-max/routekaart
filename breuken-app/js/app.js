@@ -2053,8 +2053,16 @@ function toonNieuweVraagKnop() {
   btn.textContent = 'Nieuwe vraag →';
   btn.addEventListener('click', nieuweVraag);
   bar.appendChild(btn);
-  const c = document.getElementById('btn-controleer');
-  if (c) c.disabled = true;
+  // Controleer blijft hier bewust staan. Is de uitwerking getoond terwijl het
+  // invoerveld nog actief is, dan kan een leerling het antwoord overnemen en
+  // alsnog bevestigd krijgen dat het klopt. Waar er niets meer in te vullen is
+  // — na een goed antwoord of een verlopen timer — zet de aanroeper de knop
+  // zelf uit. Bij meerkeuze liggen de knoppen na de eerste poging al vast, dus
+  // daar levert nog een keer controleren alleen hetzelfde kruisje op.
+  if (APP.huidigVraag?.antwoordType === 'mc') {
+    const c = document.getElementById('btn-controleer');
+    if (c) c.disabled = true;
+  }
 }
 
 function kleurMcKnoppen(vraag) {
@@ -2311,6 +2319,9 @@ function controleer(vraag) {
     if (useStepList) freezeActiveRow('goed');
     toonFeedback('goed', 'Goed zo! Je antwoord is correct.');
     if (type === 'mc') kleurMcKnoppen(vraag);
+    // De invoerregel is nu bevroren; er valt niets meer te controleren.
+    const ctrlBtn = document.getElementById('btn-controleer');
+    if (ctrlBtn) ctrlBtn.disabled = true;
     toonNieuweVraagKnop();
   } else if (staat === 'tussenstap') {
     if (useStepList) {
