@@ -137,7 +137,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | lin-vergelijking | L.V1a, L.V1b, L.V1c, L.V1d, L.V1e |
 | lin-ongelijkheid | L.O1a, L.O1b, L.O1c |
 | lin-stelsel | S.1a, S.1b, S.1c |
-| kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a |
+| kw-vergelijking | K.A1a, K.B1a, K.C1a, K.D1a, K.E1a, K.F1a |
 | machts-vergelijking | M.V1a, M.V1b, M.V1c, M.V1d, M.V2a, M.V2b, M.V3a, M.V3b, M.V3c, M.V3d, M.V3e |
 | wortel-vergelijking | W.V1a, W.V1b |
 | gebroken-vergelijking | G.V1a, G.V1b, G.V2a, G.V2b, G.V2c, G.V2d, G.V2e, G.V2f |

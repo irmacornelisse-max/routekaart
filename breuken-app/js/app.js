@@ -226,7 +226,7 @@ const TOC_HOOFDSTUKKEN = [
       {
         id: 'kw-vergelijking', label: 'Kwadratische vergelijkingen',
         items: [
-          { label: 'Kwadratische vergelijkingen', knoppen: [{l:'a',id:'K.A1a'},{l:'b',id:'K.B1a'},{l:'c',id:'K.C1a'},{l:'d',id:'K.D1a'},{l:'e',id:'K.E1a'}] },
+          { label: 'Kwadratische vergelijkingen', knoppen: [{l:'a',id:'K.A1a'},{l:'b',id:'K.B1a'},{l:'c',id:'K.C1a'},{l:'d',id:'K.D1a'},{l:'e',id:'K.E1a'},{l:'f',id:'K.F1a'}] },
         ]
       },
     ]
@@ -1814,6 +1814,14 @@ function feedbackBoodschap(vraag, gegeven) {
     if (ld === 'K.C1a') return 'Zoek de juiste factoren met de product-som methode. Vergeet niet: er zijn <strong>twee</strong> oplossingen.';
     if (ld === 'K.D1a') return 'Gebruik de abc-formule en rond af op <strong>2 decimalen</strong>. Geef twee oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'K.E1a') return 'Gebruik de abc-formule en geef het <strong>exacte</strong> antwoord met de wortel. Geen decimalen.';
+    // Bij de gemengde variant hangt de feedback aan de vorm van déze opgave:
+    // alleen de abc-opgaven stellen een eis aan de antwoordvorm.
+    if (ld === 'K.F1a') {
+      if (!vraag.antwoord.abc) return 'Kijk naar de vorm van de vergelijking en kies de bijbehorende methode: wortel trekken, ontbinden of de abc-formule. Geef twee oplossingen met de <strong>v</strong>-knop.';
+      return vraag.antwoord.decimaal
+        ? 'Gebruik de abc-formule en rond af op <strong>2 decimalen</strong>. Geef twee oplossingen met de <strong>v</strong>-knop.'
+        : 'Gebruik de abc-formule en geef het <strong>exacte</strong> antwoord met de wortel. Geen decimalen.';
+    }
     return 'Geef twee oplossingen met de <strong>v</strong>-knop.';
   }
   if (vraag.antwoordType === 'stelsel') {
@@ -2004,6 +2012,7 @@ function feedbackBoodschap(vraag, gegeven) {
     'K.C1a': 'Product-som methode: zoek twee getallen met het juiste product en de juiste som. Gebruik daarna de nulpuntsregel.',
     'K.D1a': 'Vul $a$, $b$ en $c$ in de abc-formule in: $v = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$. Rond af op 2 decimalen.',
     'K.E1a': 'Vul $a$, $b$ en $c$ in de abc-formule in. Vereenvoudig de wortel en de breuk volledig. Geef het exacte antwoord.',
+    'K.F1a': 'Kijk eerst naar de vorm: staat er alleen $x^2$, is er een gemeenschappelijke factor $x$, of staat er $ax^2 + bx + c = 0$? Kies dan wortel trekken, ontbinden of de abc-formule. Let op de opdrachtregel: afronden of exact.',
     'S.1a': 'Vergelijk de coëfficiënten van $x$ en van $y$. Zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als $(x, y)$.',
     'S.1b': 'Vermenigvuldig één of beide vergelijkingen met een getal zodat een coëfficiënt gelijk of tegengesteld wordt. Dan optellen of aftrekken. Geef het eindantwoord als $(x, y)$.',
     'S.1c': 'Vergelijking $(1)$ geeft $y$ of $x$ al vrij. Vul die uitdrukking direct in vergelijking $(2)$ in. Geef het eindantwoord als $(x, y)$.',

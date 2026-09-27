@@ -200,9 +200,12 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .opgave-nr { font-size: .85rem; color: var(--text-soft); }
 .opgave-dots { display: flex; gap: 5px; }
 
+/* pre-line: een \n in de vraagtekst is een echte regelovergang. Zo staat de
+   opdrachtregel ("Los op. Rond af op twee decimalen.") boven de vergelijking
+   in plaats van ernaast. */
 .vraag-tekst {
   font-size: 1.15rem; line-height: 1.7; margin-bottom: 20px;
-  color: var(--text);
+  color: var(--text); white-space: pre-line;
 }
 .vraag-tekst .katex { font-size: 1.2em; }
 

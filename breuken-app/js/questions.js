@@ -4385,8 +4385,8 @@ function genMV1d() {
   if (hasNeg) {
     xpStap = niceAns ? `${xpTeX} = \\pm ${k}` : `${xpTeX} = \\pm ${rootTeX}`;
     solTeX = niceAns
-      ? `x = ${k - p}$ of $x = ${-k - p}`
-      : `x = ${rootTeX}${offsetStr}$ of $x = -${rootTeX}${offsetStr}`;
+      ? `x = ${k - p} \\quad v \\quad x = ${-k - p}`
+      : `x = ${rootTeX}${offsetStr} \\quad v \\quad x = -${rootTeX}${offsetStr}`;
   } else {
     const niceVal = niceAns ? (inner < 0 ? -k : k) - p : null;
     xpStap = niceAns ? `${xpTeX} = ${inner < 0 ? -k : k}` : `${xpTeX} = ${rootDisp}`;
@@ -4686,8 +4686,9 @@ function genKWA() {
     `$${aTeX}${v}^{2} = ${c}$`,
     a !== 1 ? `$${v}^{2} = ${innerStr}$` : null,
     integerAns
-      ? `$${v} = ${sol}$ of $${v} = -${sol}$`
-      : `$${v} = ${rootTeX}$ of $${v} = -${rootTeX}$ ($\\approx ${decApprox}$ of $\\approx -${decApprox}$)`,
+      ? `$${v} = ${sol} \\quad v \\quad ${v} = -${sol}$`
+      : `$${v} = ${rootTeX} \\quad v \\quad ${v} = -${rootTeX}$`,
+    integerAns ? null : `$${v} \\approx ${decApprox} \\quad v \\quad ${v} \\approx -${decApprox}$`,
   ].filter(Boolean);
   return {
     id: uid(), leerdoel: 'K.A1a',
@@ -4722,10 +4723,10 @@ function genKWB() {
   const factorTeX = `${v}(${aTeX}${v} - ${b})`;
   const stapsB = [`$${aTeX}${v}^{2} - ${bVTeX} = 0$`, `$${factorTeX} = 0$`];
   if (a === 1) {
-    stapsB.push(`$${v} = 0$ of $${v} = ${sol2TeX}$`);
+    stapsB.push(`$${v} = 0 \\quad v \\quad ${v} = ${sol2TeX}$`);
   } else {
-    stapsB.push(`$${v} = 0$ of $${aTeX}${v} = ${b}$`);
-    stapsB.push(`$${v} = 0$ of $${v} = ${sol2TeX}$`);
+    stapsB.push(`$${v} = 0 \\quad v \\quad ${aTeX}${v} = ${b}$`);
+    stapsB.push(`$${v} = 0 \\quad v \\quad ${v} = ${sol2TeX}$`);
   }
   return {
     id: uid(), leerdoel: 'K.B1a',
@@ -4757,7 +4758,7 @@ function genKWC() {
   const stapsC = [`$${lhsTeX} = 0$`];
   if (a > 1) stapsC.push(`$${_kwPolyTeX(1, bCoef / a, cCoef / a, v)} = 0$`);
   stapsC.push(`$${monicFactored} = 0$`);
-  stapsC.push(`$${v} = ${r1}$ of $${v} = ${r2}$`);
+  stapsC.push(`$${v} = ${r1} \\quad v \\quad ${v} = ${r2}$`);
   return {
     id: uid(), leerdoel: 'K.C1a',
     vraag: `Los op: $${lhsTeX} = 0$`,
@@ -4796,7 +4797,7 @@ function genKWD() {
   const cDisp = c < 0 ? `(${c})` : `${c}`;
   return {
     id: uid(), leerdoel: 'K.D1a',
-    vraag: `Los op: $${lhsTeX} = 0$`,
+    vraag: `Los op. Rond af op twee decimalen.\n$${lhsTeX} = 0$`,
     antwoordType: 'kwadratisch',
     // abc gaat mee zodat de nakijkfunctie de tussenstappen van de abc-methode
     // (de coefficientenregel en de discriminant) kan controleren.
@@ -4809,7 +4810,7 @@ function genKWD() {
       `$a = ${a},\\; b = ${b},\\; c = ${c}$`,
       `$D = (${b})^2 - 4 \\cdot ${a} \\cdot ${cDisp} = ${D}$`,
       `$${v} = \\dfrac{${negB} \\pm \\sqrt{${D}}}{${twoA}}$`,
-      `$${v} \\approx ${dec1}$ of $${v} \\approx ${dec2}$`,
+      `$${v} \\approx ${dec1} \\quad v \\quad ${v} \\approx ${dec2}$`,
     ].join('\n'),
   };
 }
@@ -4859,10 +4860,10 @@ function genKWE() {
     `$D = (${b})^2 - 4 \\cdot ${a} \\cdot ${cDisp} = ${D}$`,
   ];
   if (sqC > 1) stapsE.push(`$\\sqrt{${D}} = ${rootTeX}$`);
-  stapsE.push(`$${v} = ${sol1TeX}$ of $${v} = ${sol2TeX}$`);
+  stapsE.push(`$${v} = ${sol1TeX} \\quad v \\quad ${v} = ${sol2TeX}$`);
   return {
     id: uid(), leerdoel: 'K.E1a',
-    vraag: `Los op: $${lhsTeX} = 0$`,
+    vraag: `Los exact op.\n$${lhsTeX} = 0$`,
     antwoordType: 'kwadratisch',
     antwoord: { sols: [sol1, sol2], v, decimaal: false, abc: [a, b, c] },
     hints: [
@@ -4871,6 +4872,12 @@ function genKWE() {
     ],
     oplossing: stapsE.join('\n'),
   };
+}
+
+/* ── K.F1a – Gemengd: alle vormen van kwadratische vergelijkingen ───────── */
+function genKWF() {
+  const q = pick([genKWA, genKWB, genKWC, genKWD, genKWE])();
+  return { ...q, id: uid(), leerdoel: 'K.F1a' };
 }
 
 /* ── Stelsels – hulpfuncties ─────────────────────────────────────────────── */
@@ -5498,7 +5505,7 @@ function _wv1bVormA() {
   const steps = [`$${verg}$`, `$${a}x^{2}+${b} = ${c2}x^{2}$`, `$${c2aTex}x^{2} = ${b}$`];
   if (D !== 1) steps.push(`$x^{2} = ${k * k}$`);
   steps.push(
-    `$x = ${k}\\quad\\text{of}\\quad x = -${k}$`,
+    `$x = ${k} \\quad v \\quad x = -${k}$`,
     `Controleer $x = ${k}$: $\\sqrt{${lhsChk}} = ${sqChk}$ en $${c}\\cdot${k} = ${sqChk}$ ✓`,
     `Controleer $x = -${k}$: linkerkant $= ${sqChk}$ maar $${c}\\cdot(-${k}) = -${sqChk}$ ✗ — schijnoplossing`,
     `$x = ${k}$`,
@@ -5520,7 +5527,7 @@ function _wv1bVormB() {
       `$${binnen} = x^{2} - ${2 * b}x + ${b * b}$`,
       `$x^{2} - ${som}x ${prod < 0 ? `- ${-prod}` : `+ ${prod}`} = 0$`,
       `$(x - ${r1})(${_haakje('x', -r2)}) = 0$`,
-      `$x = ${r1}\\quad\\text{of}\\quad x = ${r2}$`,
+      `$x = ${r1} \\quad v \\quad x = ${r2}$`,
       `Controleer $x = ${r1}$: $\\sqrt{${r1 + a}} = ${r1 - b}$ en $${r1} - ${b} = ${r1 - b}$ ✓`,
       `Controleer $x = ${r2}$: rechterkant $= ${r2} - ${b} = ${r2 - b}$ en dat is negatief ✗ — schijnoplossing`,
       `$x = ${r1}$`,
@@ -5542,7 +5549,7 @@ function _wv1bVormC() {
       `$x^{2} = ${binnen}$`,
       `$x^{2} - ${aTex} - ${b} = 0$`,
       `$(x - ${r1})(x + ${-r2}) = 0$`,
-      `$x = ${r1}\\quad\\text{of}\\quad x = ${r2}$`,
+      `$x = ${r1} \\quad v \\quad x = ${r2}$`,
       `Controleer $x = ${r1}$: $\\sqrt{${a * r1 + b}} = ${r1}$ ✓`,
       `Controleer $x = ${r2}$: de wortel is $${-r2}$, maar links staat $${r2}$ ✗ — schijnoplossing`,
       `$x = ${r1}$`,
@@ -6922,6 +6929,7 @@ const LEERDOELEN = [
   { id: 'K.C1a', titel: 'Kwadratisch – ax² + bx + c = 0 (product-som)',            groep: 'Kwadratisch', gen: genKWC },
   { id: 'K.D1a', titel: 'Kwadratisch – abc-formule (decimaal afronden)',            groep: 'Kwadratisch', gen: genKWD },
   { id: 'K.E1a', titel: 'Kwadratisch – abc-formule (exact antwoord)',               groep: 'Kwadratisch', gen: genKWE },
+  { id: 'K.F1a', titel: 'Kwadratisch – gemengd (alle vormen)',                      groep: 'Kwadratisch', gen: genKWF },
 
   /* ── M.V-doelen (Machtsvergelijkingen) ─────────────────────────────── */
   { id: 'M.V1a', titel: 'Machtsvergelijking: directe wortel (x^n = c)',          groep: 'Machtsverbanden', gen: genMV1a },
