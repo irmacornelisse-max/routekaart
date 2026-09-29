@@ -242,7 +242,9 @@ function evaluateLatex(latex) {
 }
 
 function isEindvorm(latex) {
-  const s = (latex || '').trim();
+  // MathQuill schrijft een getypte spatie als "\ ". Die zegt niets over de
+  // vorm, maar liet 3\ :\ 4 wel als tussenstap gelden.
+  const s = (latex || '').replace(/\\[ ,;!]/g, '').trim();
   if (!s) return false;
   if (/^\d+$/.test(s)) return true;
   if (/^-\d+$/.test(s)) return true; // negatief geheel getal

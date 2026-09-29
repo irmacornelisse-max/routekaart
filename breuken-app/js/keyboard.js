@@ -73,7 +73,11 @@ function handleKbdKey(val) {
     case 'CLR':   mq.latex(''); mq.focus(); break;
     case 'NEXT':  mq.keystroke('Right'); break;
     case 'FRAC':  mq.typedText('/'); break;
-    case ':':     mq.typedText('/'); break;
+    // Bij een verhouding hoort een echte dubbele punt (3 : 4). Overal elders is
+    // deze toets het deelteken en levert hij, net als a/b, een breukstreep op.
+    case ':':
+      mq.typedText(APP.huidigVraag?.antwoordType === 'ratio' ? ':' : '/');
+      break;
     case 'MIXED': mq.cmd('\\frac'); break;
     case '+':     mq.typedText('+'); break;
     case '-':     mq.typedText('-'); break;
