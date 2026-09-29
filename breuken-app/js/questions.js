@@ -6845,71 +6845,127 @@ const _exCoefTeX = (c1, c2) =>
 /* Exponenten uit één noemerfamilie. Zonder die beperking levert 1/3 · 1/4 een
    twaalfdemachtswortel op — rekenkundig correct, maar geen oefenstof. */
 function _exNoemerPool() { return pick([[2], [3], [4], [2, 3], [2, 4]]); }
-function _exBreukExp(noemers, tekens) {
+function _exBreukExp(noemers, tekens, nMax) {
   const d = pick(noemers);
-  return _exBr(pick(tekens) * rand(1, 2 * d - 1), d);
+  const max = Math.max(1, Math.min(2 * d - 1, nMax || 99));
+  let e, tries = 0;
+  // Een exponent die tot een heel getal herleidt (4/2) hoort hier niet thuis.
+  do { e = _exBr(pick(tekens) * rand(1, max), d); } while (++tries < 20 && e.d === 1);
+  return e;
 }
 
-const _EX_LETTERS = ['x', 'a', 'n', 't', 'p'];
-const _EX_LETTERS2 = ['y', 'b', 'm', 'q'];
-const _EX_GETALLEN = [2, 3, 5];
+/* Geen e (grondtal van ln), geen i, geen v (die letter is de of-knop), en geen
+   l of o omdat die op 1 en 0 lijken. */
+const _EX_LETTERS = ['x', 'y', 'a', 'b', 'c', 'g', 'h', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'w', 'z'];
+const _EX_GETALLEN = [2, 3, 5, 7, 10];
+
+/* Hoogste macht die leesbaar blijft: 2^6 = 64, maar 10^6 = 1 000 000. De grens
+   ligt onder 1000, zodat er geen √1000 in een antwoord opduikt. */
+function _exMaxMacht(basis) {
+  let n = 1;
+  while (n < 6 && Math.pow(basis, n + 1) <= 500) n++;
+  return n;
+}
+
+/* Kiest een grondtal: meestal een letter, soms een getal. Bij een getal blijven
+   de exponenten klein, want die worden in de opgave uitgerekend. */
+function _exGrondtal(kansGetal) {
+  if (Math.random() < kansGetal) {
+    const g = pick(_EX_GETALLEN);
+    const max = _exMaxMacht(g);
+    return { basis: `${g}`, getal: true, nMax: Math.max(1, Math.floor(max / 2)), maxExp: max };
+  }
+  return { basis: pick(_EX_LETTERS), getal: false, nMax: 4, maxExp: 9 };
+}
 
 /* Bouwt de opgave als vraag-LaTeX plus het model van de uitkomst. `bron` is de
    schrijfwijze waarin de opgave op het scherm komt, `exp()` levert de
    exponenten waaruit de opgave wordt opgebouwd. */
-function _exOpgave({ v, bron, exp, coef = () => 1, tweeLetters = false }) {
-  const soort = pick(['enkel', 'enkel', 'product', 'quotient', 'macht']);
-  const r = M => _exRender(M, bron);
-
-  if (soort === 'product') {
-    const A = _exMon(coef(), [[v, exp()]]);
-    const B = _exMon(coef(), [[v, exp()]]);
-    const M = _exCombineer(A, B, 1);
-    return { M, vraagTeX: `${r(A)} \\cdot ${r(B)}`,
-      tussen: _exCoefTeX(A.c, B.c) + _exSomTeX(v, _exExp(A, v), _exExp(B, v), 1) };
+/* Eén factor van de opgave: een macht, soms zelf nog tot een macht verheven.
+   Die tweede laag maakt een opgave gecombineerd — $(2x^{-2})^{3} \cdot 4x^{5}$
+   vraagt eerst de machtsregel en pas daarna de productregel. */
+function _exFactor(opt, magMacht, expFn) {
+  const exp = expFn || opt.exp;
+  const A = _exMon(opt.coef(), [[opt.v, exp()]]);
+  const e = _exExp(A, opt.v);
+  // Een kale letter krijgt geen haakjes: (s)^{2} hoort gewoon s^{2} te zijn.
+  const kaal = A.c === 1 && e.n === 1 && e.d === 1;
+  if (!magMacht || kaal || Math.random() < 0.5) {
+    return { M: A, tex: _exRender(A, opt.bron) };
   }
-  if (soort === 'quotient') {
-    // Positieve exponenten in teller en noemer, anders krijg je een breuk in
-    // een breuk op het scherm. Het verschil mag daarna best negatief worden.
-    const pos = () => { const e = exp(); return e.n < 0 ? _exKeer(e, -1) : e; };
-    const A = _exMon(coef(), [[v, pos()]]);
-    const B = _exMon(1, [[v, pos()]]);
-    const M = _exCombineer(A, B, -1);
-    return { M, vraagTeX: `\\dfrac{${r(A)}}{${r(B)}}`,
-      tussen: (A.c === 1 ? '' : `${A.c}`) + _exSomTeX(v, _exExp(A, v), _exExp(B, v), -1) };
-  }
-  if (soort === 'macht') {
-    const k = pick([2, 3]);
-    // De coëfficiënt gaat mee in de macht, dus houd hem klein — en bij de
-    // "als macht van …"-doelen levert coef() altijd 1, zodat het antwoord
-    // één zuivere macht blijft.
-    const A = _exMon(Math.min(coef(), k === 3 ? 2 : 4), [[v, exp()]]);
-    const M = _exTotDeMacht(A, k);
-    return { M, vraagTeX: `\\left(${r(A)}\\right)^{${k}}`,
-      tussen: (A.c === 1 ? '' : `${A.c}^{${k}}`) + _exKeerTeX(v, _exExp(A, v), k) };
-  }
-  const delen = [[v, exp()]];
-  if (tweeLetters) delen.push([pick(_EX_LETTERS2), _exBr(rand(2, 3))]);
-  const M = _exMon(coef(), delen);
-  return { M, vraagTeX: r(M), tussen: null };
+  const k = pick([2, 3]);
+  // De coëfficiënt gaat mee in de macht, dus die moet klein blijven.
+  const B = _exMon(Math.min(A.c, k === 3 ? 2 : 4), A.delen);
+  return { M: _exTotDeMacht(B, k), tex: `\\left(${_exRender(B, opt.bron)}\\right)^{${k}}` };
 }
 
-/* Opgaven met een getal als grondtal: 1/8 als macht van 2, ⁴√8 idem. */
-function _exGetalOpgave(bron) {
-  const basis = pick(_EX_GETALLEN);
-  const maxN = basis === 2 ? 5 : 3;
-  let e, tries = 0;
-  do {
-    // Minstens de tweede macht: 1/5 als 5^{-1} schrijven is geen oefening.
-    const n = rand(2, maxN);
-    e = bron === 'geenNeg' ? _exBr(-n)
-      : bron === 'geenBreuk' ? _exBr(n, pick([2, 3, 4]))
-      : _exBr(-n, pick([2, 3]));
-    tries++;
-    // Valt de breuk weg (√(3²) = 3), dan is er niets meer om te schrijven.
-  } while (tries < 40 && bron !== 'geenNeg' && e.d === 1);
-  const M = _exMon(1, [[`${basis}`, e]]);
-  return { M, basis: `${basis}`, vraagTeX: _exRender(M, bron) };
+function _exOpgave(ruw) {
+  const opt = { coef: () => 1, tweeLetters: false, ...ruw };
+  const { v, bron, exp, coef, tweeLetters } = opt;
+  const soort = pick(opt.soorten ||
+    ['enkel', 'product', 'product', 'quotient', 'quotient', 'productBreuk', 'machtVanBreuk']);
+  // Positieve exponenten waar een negatieve een breuk in een breuk zou geven.
+  const pos = () => { const e = exp(); return e.n < 0 ? _exKeer(e, -1) : e; };
+  const alsMacht = f => _exRender(f.M, 'macht');
+  const enkelC = { ...opt, coef: () => 1 };
+
+  if (soort === 'product') {
+    const A = _exFactor(opt, true), B = _exFactor(opt, true);
+    const vraagTeX = `${A.tex} \\cdot ${B.tex}`;
+    const stappen = [];
+    const machten = `${alsMacht(A)} \\cdot ${alsMacht(B)}`;
+    if (machten !== vraagTeX) stappen.push(machten);
+    stappen.push(_exCoefTeX(A.M.c, B.M.c) + _exSomTeX(v, _exExp(A.M, v), _exExp(B.M, v), 1));
+    return { M: _exCombineer(A.M, B.M, 1), vraagTeX, stappen };
+  }
+  if (soort === 'quotient') {
+    const A = _exFactor(opt, true, pos), B = _exFactor(enkelC, true, pos);
+    const vraagTeX = `\\dfrac{${A.tex}}{${B.tex}}`;
+    const stappen = [];
+    const machten = `\\dfrac{${alsMacht(A)}}{${alsMacht(B)}}`;
+    if (machten !== vraagTeX) stappen.push(machten);
+    stappen.push((A.M.c === 1 ? '' : `${A.M.c}`) + _exSomTeX(v, _exExp(A.M, v), _exExp(B.M, v), -1));
+    return { M: _exCombineer(A.M, B.M, -1), vraagTeX, stappen };
+  }
+  if (soort === 'productBreuk') {
+    const A = _exFactor(enkelC, false, pos), B = _exFactor(enkelC, false, pos);
+    const C = _exFactor(enkelC, false, pos);
+    const boven = _exCombineer(A.M, B.M, 1);
+    return { M: _exCombineer(boven, C.M, -1),
+      vraagTeX: `\\dfrac{${A.tex} \\cdot ${B.tex}}{${C.tex}}`,
+      stappen: [`\\dfrac{${_exRender(boven, 'macht')}}{${alsMacht(C)}}`] };
+  }
+  if (soort === 'machtVanBreuk') {
+    const k = pick([2, 3]);
+    const A = _exFactor(enkelC, false, pos), B = _exFactor(enkelC, false, pos);
+    const binnen = _exCombineer(A.M, B.M, -1);
+    return { M: _exTotDeMacht(binnen, k),
+      vraagTeX: `\\left(\\dfrac{${A.tex}}{${B.tex}}\\right)^{${k}}`,
+      stappen: [`\\left(${_exRender(binnen, 'macht')}\\right)^{${k}}`,
+                _exKeerTeX(v, _exExp(binnen, v), k)] };
+  }
+  const delen = [[v, exp()]];
+  if (tweeLetters) delen.push([pick(_EX_LETTERS.filter(l => l !== v)), _exBr(rand(2, 3))]);
+  const M = _exMon(coef(), delen);
+  return { M, vraagTeX: _exRender(M, bron), stappen: [] };
+}
+
+/* Blijft de opgave binnen de perken? Een getal als grondtal mag niet
+   ontsporen (10^{6}), en de uitkomst moet aan de eis van het leerdoel voldoen. */
+function _exBruikbaar(opg, gt, eis) {
+  const e = _exExp(opg.M, gt.basis);
+  if (Math.abs(e.n) > gt.maxExp) return false;
+  if (gt.getal && /\d{4,}/.test(opg.vraagTeX)) return false;
+  return eis(e, opg);
+}
+
+/* De uitwerking is één keten: opgave = tussenstap = … = antwoord. Dubbele
+   schakels vallen weg, zodat er nooit tweemaal hetzelfde onder elkaar staat. */
+function _exKeten(opg, ...slot) {
+  const reeks = [opg.vraagTeX, ...opg.stappen, ...slot]
+    .filter((s, i, r) => s && s !== r[i - 1]);
+  if (reeks.length < 2) return `$${reeks[0]}$`;
+  return [`$${reeks[0]} = ${reeks[1]}$`, ...reeks.slice(2).map(s => `$= ${s}$`)].join('\n');
 }
 
 /* Bouwt het vraagobject voor de drie "schrijf als macht van …"-leerdoelen. */
@@ -6920,147 +6976,140 @@ function _exMachtVraag(id, opg, basis, hints) {
     vraag: `Schrijf als macht van $${basis}$.\n$${opg.vraagTeX}$`,
     antwoordType: 'algebra',
     antwoord: { expr: antwTeX, vars: _exIsGetal(basis) ? [] : [basis], vorm: 'exp-macht', basis },
-    data: {}, hints,
-    oplossing: [`$${opg.vraagTeX}${opg.tussen ? ` = ${opg.tussen}` : ''}$`, `$= ${antwTeX}$`].join('\n'),
+    data: {}, hints, oplossing: _exKeten(opg, antwTeX),
   };
 }
 
 /* Bouwt het vraagobject voor de drie "schrijf zonder …"-leerdoelen. */
 function _exZonderVraag(id, opdracht, opg, vars, doelvorm, verboden, hints) {
-  const machtTeX = _exRender(opg.M, 'macht');
   const antwTeX = _exRender(opg.M, doelvorm);
-  const keten = [`$${opg.vraagTeX}${opg.tussen ? ` = ${opg.tussen}` : ''}`
-               + (machtTeX === opg.vraagTeX ? '' : ` = ${machtTeX}`) + '$'];
-  if (antwTeX !== machtTeX) keten.push(`$= ${antwTeX}$`);
   return {
     id: uid(), leerdoel: id,
     vraag: `${opdracht}\n$${opg.vraagTeX}$`,
     antwoordType: 'algebra',
     antwoord: { expr: antwTeX, vars, vorm: 'exp-zonder', verboden },
-    data: {}, hints, oplossing: keten.join('\n'),
+    data: {}, hints,
+    oplossing: _exKeten(opg, _exRender(opg.M, 'macht'), antwTeX),
   };
 }
 
 /* ── EX.1a – zonder negatieve exponenten ─────────────────────────────────── */
 function genEX1a() {
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.25);
+  const v = gt.basis;
+  // Bij een getal als grondtal alleen negatieve exponenten: een positieve wordt
+  // in de opgave uitgerekend (2^{3} wordt 8) en dan valt er niets te herleiden.
+  const exp = () => _exBr((gt.getal ? -1 : pick([-1, -1, 1])) * rand(1, gt.nMax));
   let opg, tries = 0;
   do {
     opg = _exOpgave({
-      v, bron: 'macht', tweeLetters: Math.random() < 0.4,
-      exp: () => _exBr(pick([-4, -3, -2, -1, 1, 2, 3])),
-      coef: () => rand(2, 6),
+      v, bron: 'macht', exp,
+      coef: () => gt.getal ? 1 : rand(2, 6),
+      tweeLetters: !gt.getal && Math.random() < 0.3,
+      soorten: gt.getal ? ['enkel', 'product', 'product'] : undefined,
     });
-    tries++;
-  } while (tries < 40 && !opg.M.delen.some(([, e]) => e.n < 0));
-  const vars = opg.M.delen.map(([b]) => b);
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, (e, o) => o.M.delen.some(([, x]) => x.n < 0)));
+  const vars = opg.M.delen.map(([b]) => b).filter(b => !_exIsGetal(b));
   return _exZonderVraag('EX.1a', 'Schrijf zonder negatieve exponenten.', opg,
-    vars.length ? vars : [v], 'geenNeg', ['negatief'],
-    [`Een negatieve exponent betekent: onder de deelstreep. $${v}^{-p} = \\dfrac{1}{${v}^{p}}$.`,
+    vars, 'geenNeg', ['negatief'],
+    [`Een negatieve exponent betekent: onder de deelstreep. $${v}^{-p} = \dfrac{1}{${v}^{p}}$.`,
      `Werk eerst de rekenregels uit tot één macht van $${v}$, en zet die daarna pas onder de streep.`]);
 }
 
 /* ── EX.1b – als macht van … (vanuit negatieve exponenten) ───────────────── */
 function genEX1b() {
-  if (Math.random() < 0.3) {
-    const opg = _exGetalOpgave('geenNeg');
-    return _exMachtVraag('EX.1b', opg, opg.basis,
-      [`Schrijf het getal onder de streep eerst als macht van $${opg.basis}$.`,
-       `Onder de streep betekent een negatieve exponent: $\\dfrac{1}{${opg.basis}^{p}} = ${opg.basis}^{-p}$.`]);
-  }
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.4);
+  const v = gt.basis;
+  const exp = () => _exBr((gt.getal ? -1 : pick([-1, -1, 1])) * rand(1, gt.nMax));
   let opg, tries = 0;
   do {
-    opg = _exOpgave({ v, bron: 'geenNeg', exp: () => _exBr(pick([-4, -3, -2, -1, 1, 2, 3])) });
-    tries++;
-  } while (tries < 40 && _exExp(opg.M, v).n >= 0);
-  return _exMachtVraag('EX.1b', opg, v,
-    [`Alles onder de deelstreep gaat naar boven met een minteken in de exponent: $\\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`,
-     `Pas eerst de rekenregel toe en schrijf het antwoord als één macht van $${v}$.`]);
+    opg = _exOpgave({
+      v, bron: 'geenNeg', exp,
+      soorten: gt.getal ? ['enkel', 'product', 'product'] : undefined,
+    });
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n < 0));
+  return _exMachtVraag('EX.1b', opg, v, gt.getal
+    ? [`Schrijf de getallen eerst als macht van $${v}$.`,
+       `Onder de streep betekent een negatieve exponent: $\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`]
+    : [`Alles onder de deelstreep gaat naar boven met een minteken in de exponent: $\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`,
+       `Pas eerst de rekenregel toe en schrijf het antwoord als één macht van $${v}$.`]);
 }
 
 /* ── EX.1c – zonder gebroken exponenten ─────────────────────────────────── */
 function genEX1c() {
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.25);
+  const v = gt.basis;
   const noemers = _exNoemerPool();
+  const exp = () => _exBreukExp(noemers, [1], gt.nMax);
   let opg, tries = 0;
   do {
     opg = _exOpgave({
-      v, bron: 'macht', tweeLetters: Math.random() < 0.3,
-      exp: () => _exBreukExp(noemers, [1]),
-      coef: () => pick([1, 1, rand(2, 6)]),
+      v, bron: 'macht', exp,
+      coef: () => gt.getal ? 1 : pick([1, 1, rand(2, 6)]),
+      tweeLetters: !gt.getal && Math.random() < 0.25,
     });
-    tries++;
-  } while (tries < 40 && !opg.M.delen.some(([, e]) => e.d > 1 && e.n > 0));
-  const vars = opg.M.delen.map(([b]) => b);
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n > 0 && e.d > 1));
+  const vars = opg.M.delen.map(([b]) => b).filter(b => !_exIsGetal(b));
   return _exZonderVraag('EX.1c', 'Schrijf zonder gebroken exponenten.', opg,
-    vars.length ? vars : [v], 'geenBreuk', ['gebroken'],
-    ['De noemer van de exponent is de wortelexponent: $a^{\\frac{n}{d}} = \\sqrt[d]{a^{n}}$.',
-     `Reken de exponenten eerst uit tot één breuk; die breuk bepaalt daarna de wortel.`]);
+    vars, 'geenBreuk', ['gebroken'],
+    ['De noemer van de exponent is de wortelexponent: $a^{\frac{n}{d}} = \sqrt[d]{a^{n}}$.',
+     'Reken de exponenten eerst uit tot één breuk; die breuk bepaalt daarna de wortel.']);
 }
 
 /* ── EX.1d – als macht van … (vanuit wortels) ───────────────────────────── */
 function genEX1d() {
-  if (Math.random() < 0.3) {
-    const opg = _exGetalOpgave('geenBreuk');
-    return _exMachtVraag('EX.1d', opg, opg.basis,
-      [`Schrijf het getal onder de wortel eerst als macht van $${opg.basis}$.`,
-       `Een wortel is een gebroken exponent: $\\sqrt[d]{a^{n}} = a^{\\frac{n}{d}}$.`]);
-  }
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.4);
+  const v = gt.basis;
   const noemers = _exNoemerPool();
+  const exp = () => _exBreukExp(noemers, [1], gt.nMax);
   let opg, tries = 0;
   do {
-    opg = _exOpgave({ v, bron: 'geenBreuk', exp: () => _exBreukExp(noemers, [1]) });
-    tries++;
+    opg = _exOpgave({ v, bron: 'geenBreuk', exp });
     // De uitkomst moet een gebroken exponent houden; anders valt de wortel weg
     // en is "schrijf als macht van x" geen omschrijfopgave meer.
-  } while (tries < 40 && _exExp(opg.M, v).d === 1);
-  return _exMachtVraag('EX.1d', opg, v,
-    [`Een wortel is een gebroken exponent: $\\sqrt[d]{${v}^{n}} = ${v}^{\\frac{n}{d}}$.`,
-     'Schrijf elke wortel eerst als macht en pas daarna de rekenregel toe.']);
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n > 0 && e.d > 1));
+  return _exMachtVraag('EX.1d', opg, v, gt.getal
+    ? [`Schrijf het getal onder de wortel eerst als macht van $${v}$.`,
+       'Een wortel is een gebroken exponent: $\sqrt[d]{a^{n}} = a^{\frac{n}{d}}$.']
+    : [`Een wortel is een gebroken exponent: $\sqrt[d]{${v}^{n}} = ${v}^{\frac{n}{d}}$.`,
+       'Schrijf elke wortel eerst als macht en pas daarna de rekenregel toe.']);
 }
 
 /* ── EX.1e – zonder gebroken én zonder negatieve exponenten ─────────────── */
 function genEX1e() {
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.25);
+  const v = gt.basis;
   const noemers = _exNoemerPool();
+  const exp = () => (!gt.getal && Math.random() < 0.2)
+    ? _exBr(pick([-1, -2, 1]) * rand(1, 2))
+    : _exBreukExp(noemers, [-1, -1, 1], gt.nMax);
   let opg, tries = 0;
   do {
     opg = _exOpgave({
-      v, bron: 'macht', tweeLetters: Math.random() < 0.3,
-      exp: () => Math.random() < 0.2 ? _exBr(pick([-1, -2, 1])) : _exBreukExp(noemers, [-1, -1, 1]),
-      coef: () => pick([1, rand(2, 5)]),
+      v, bron: 'macht', exp,
+      coef: () => gt.getal ? 1 : pick([1, rand(2, 5)]),
+      tweeLetters: !gt.getal && Math.random() < 0.25,
     });
-    tries++;
-  } while (tries < 40 && !opg.M.delen.some(([, e]) => e.n < 0));
-  const vars = opg.M.delen.map(([b]) => b);
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, (e, o) => o.M.delen.some(([, x]) => x.n < 0)));
+  const vars = opg.M.delen.map(([b]) => b).filter(b => !_exIsGetal(b));
   return _exZonderVraag('EX.1e', 'Schrijf zonder gebroken en zonder negatieve exponenten.', opg,
-    vars.length ? vars : [v], 'geenBeide', ['negatief', 'gebroken'],
-    [`Twee stappen: het minteken haalt de macht onder de streep, de noemer van de exponent wordt de wortel.`,
+    vars, 'geenBeide', ['negatief', 'gebroken'],
+    ['Twee stappen: het minteken haalt de macht onder de streep, de noemer van de exponent wordt de wortel.',
      `Reken de exponenten eerst uit tot één macht van $${v}$; splits daarna pas.`]);
 }
 
 /* ── EX.1f – als macht van … (gemengd) ──────────────────────────────────── */
 function genEX1f() {
-  if (Math.random() < 0.3) {
-    const opg = _exGetalOpgave('geenBeide');
-    return _exMachtVraag('EX.1f', opg, opg.basis,
-      [`Schrijf het getal onder de wortel eerst als macht van $${opg.basis}$.`,
-       'Onder de streep geeft een minteken in de exponent, de wortel geeft de noemer.']);
-  }
-  const v = pick(_EX_LETTERS);
+  const gt = _exGrondtal(0.4);
+  const v = gt.basis;
   const noemers = _exNoemerPool();
+  const exp = () => _exBreukExp(noemers, [-1, -1, 1], gt.nMax);
   let opg, tries = 0;
   do {
-    opg = _exOpgave({
-      v, bron: 'geenBeide',
-      exp: () => Math.random() < 0.2 ? _exBr(pick([-2, 2])) : _exBreukExp(noemers, [-1, -1, 1]),
-    });
-    tries++;
-  } while (tries < 40 && (_exExp(opg.M, v).n >= 0 || _exExp(opg.M, v).d === 1));
+    opg = _exOpgave({ v, bron: 'geenBeide', exp });
+  } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n < 0 && e.d > 1));
   return _exMachtVraag('EX.1f', opg, v,
-    [`Onder de streep geeft een minteken in de exponent, de wortel geeft de noemer: $\\dfrac{1}{\\sqrt[d]{${v}^{n}}} = ${v}^{-\\frac{n}{d}}$.`,
+    [`Onder de streep geeft een minteken in de exponent, de wortel geeft de noemer: $\dfrac{1}{\sqrt[d]{${v}^{n}}} = ${v}^{-\frac{n}{d}}$.`,
      'Schrijf elk stuk eerst als macht en tel de exponenten daarna bij elkaar op.']);
 }
 
