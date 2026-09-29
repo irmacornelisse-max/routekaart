@@ -9,6 +9,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val="+">+</button>
       <button class="kbd-btn kbd-btn-del" data-val="DEL">⌫</button>
       <button class="kbd-btn kbd-btn-op" data-val="SQRT">√</button>
+      <button class="kbd-btn kbd-btn-op kbd-btn-macht" data-val="MACHT" aria-label="Macht">x<sup>n</sup></button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="4">4</button>
@@ -17,6 +18,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val="-">−</button>
       <button class="kbd-btn kbd-btn-op" data-val="NEXT">→</button>
       <button class="kbd-btn kbd-btn-op" data-val="NTHROOT">ⁿ√</button>
+      <button class="kbd-btn kbd-btn-op kbd-btn-macht" data-val="KWADRAAT" aria-label="Kwadraat">x<sup>2</sup></button>
     </div>
     <div class="kbd-row">
       <button class="kbd-btn" data-val="1">1</button>
@@ -25,9 +27,10 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val="TIMES">×</button>
       <button class="kbd-btn kbd-btn-op" data-val=":">:</button>
       <button class="kbd-btn kbd-btn-op" data-val="v">v</button>
+      <button class="kbd-btn kbd-btn-op" data-val="VORIGE" aria-label="Vorige regel kopiëren">↑</button>
     </div>
     <div class="kbd-row">
-      <button class="kbd-btn" data-val="0">0</button>
+      <button class="kbd-btn kbd-btn-breed" data-val="0">0</button>
       <button class="kbd-btn" data-val=",">,</button>
       <button class="kbd-btn kbd-btn-frac" data-val="FRAC">a/b</button>
       <button class="kbd-btn kbd-btn-mixed" data-val="MIXED">1 a/b</button>
@@ -35,7 +38,7 @@ function getKeyboardHTML() {
       <button class="kbd-btn kbd-btn-op" data-val="(">(</button>
     </div>
     <div class="kbd-row">
-      <button class="kbd-btn kbd-btn-op" data-val="=">=</button>
+      <button class="kbd-btn kbd-btn-op kbd-btn-breed" data-val="=">=</button>
       <button class="kbd-btn kbd-btn-op" data-val="<">&lt;</button>
       <button class="kbd-btn kbd-btn-op" data-val=">">&gt;</button>
       <button class="kbd-btn kbd-btn-op" data-val="LE">≤</button>
@@ -79,6 +82,15 @@ function handleKbdKey(val) {
     case 'GE':     mq.cmd('\\ge'); break;
     case 'SQRT':   mq.cmd('\\sqrt'); break;
     case 'NTHROOT': mq.cmd('\\nthroot'); break;
+    // De cursor blijft ín de exponent staan; met → stap je eruit. Bij het
+    // kwadraat doen we dat meteen zelf, want daar valt niets meer te typen.
+    case 'MACHT':    mq.cmd('^'); break;
+    case 'KWADRAAT': mq.cmd('^'); mq.typedText('2'); mq.keystroke('Right'); break;
+    case 'VORIGE': {
+      const vorige = APP.stappen?.length ? APP.stappen[APP.stappen.length - 1].latex : null;
+      if (vorige) mq.latex(vorige);
+      break;
+    }
 
     case '(':      mq.typedText('('); break;
     case ')':      mq.typedText(')'); break;

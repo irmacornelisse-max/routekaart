@@ -264,6 +264,17 @@ const TOC_HOOFDSTUKKEN = [
     ]
   },
   {
+    id: 'exponentieel', label: 'Exponentiële verbanden',
+    secties: [
+      {
+        id: 'exp-omschrijven', label: 'Machten omschrijven',
+        items: [
+          { label: 'Machten omschrijven', knoppen: [{l:'a',id:'EX.1a'},{l:'b',id:'EX.1b'},{l:'c',id:'EX.1c'},{l:'d',id:'EX.1d'},{l:'e',id:'EX.1e'},{l:'f',id:'EX.1f'}] },
+        ]
+      },
+    ]
+  },
+  {
     id: 'eenheden', label: 'Eenheden',
     secties: [
       {
@@ -1701,6 +1712,12 @@ function checkAntwoord(vraag, gegeven) {
     if (correct.vorm === 'constant') {
       return checkAlgebraConstant(raw, correct.expr, correct.vars);
     }
+    if (correct.vorm === 'exp-zonder') {
+      return checkExponentVorm(raw, correct.expr, correct.vars, correct.verboden);
+    }
+    if (correct.vorm === 'exp-macht') {
+      return checkExponentMacht(raw, correct.expr, correct.vars, correct.basis);
+    }
     return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
   }
 
@@ -2062,6 +2079,12 @@ function feedbackBoodschap(vraag, gegeven) {
     'K.D1a': 'Vul $a$, $b$ en $c$ in de abc-formule in: $v = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$. Rond af op 2 decimalen.',
     'K.E1a': 'Vul $a$, $b$ en $c$ in de abc-formule in. Vereenvoudig de wortel en de breuk volledig. Geef het exacte antwoord.',
     'K.F1a': 'Kijk eerst naar de vorm: staat er alleen $x^2$, is er een gemeenschappelijke factor $x$, of staat er $ax^2 + bx + c = 0$? Kies dan wortel trekken, ontbinden of de abc-formule. Let op de opdrachtregel: afronden of exact.',
+    'EX.1a': 'Een negatieve exponent hoort onder de deelstreep: $a^{-p} = \\frac{1}{a^{p}}$. Werk eerst de rekenregels uit tot één macht.',
+    'EX.1b': 'Alles onder de deelstreep gaat naar boven met een minteken in de exponent: $\\frac{1}{a^{p}} = a^{-p}$.',
+    'EX.1c': 'De noemer van de exponent is de wortelexponent: $a^{\\frac{n}{d}} = \\sqrt[d]{a^{n}}$.',
+    'EX.1d': 'Een wortel is een gebroken exponent: $\\sqrt[d]{a^{n}} = a^{\\frac{n}{d}}$. Tel daarna de exponenten op of trek ze af.',
+    'EX.1e': 'Twee stappen: het minteken haalt de macht onder de streep, de noemer van de exponent wordt de wortel.',
+    'EX.1f': 'Schrijf elk stuk eerst als macht: een wortel geeft de noemer van de exponent, onder de streep geeft een minteken.',
     'S.1a': 'Vergelijk de coëfficiënten van $x$ en van $y$. Zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als $(x, y)$.',
     'S.1b': 'Vermenigvuldig één of beide vergelijkingen met een getal zodat een coëfficiënt gelijk of tegengesteld wordt. Dan optellen of aftrekken. Geef het eindantwoord als $(x, y)$.',
     'S.1c': 'Vergelijking $(1)$ geeft $y$ of $x$ al vrij. Vul die uitdrukking direct in vergelijking $(2)$ in. Geef het eindantwoord als $(x, y)$.',

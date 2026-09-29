@@ -530,6 +530,84 @@ function checkAlgebraAntwoord(gegeven, verwacht, vars) {
   return isAlgebraVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
 }
 
+/* ── Exponentvormen ───────────────────────────────────────────────────────
+   Bij de EX-leerdoelen is de waarde niet het hele verhaal: "schrijf zonder
+   negatieve exponenten" gaat juist over de schrijfwijze. Deze helpers lezen
+   die schrijfwijze af. MathQuill zet één teken zonder accolades (x^2), meer
+   tekens mét (x^{12}), dus beide vormen moeten mee. */
+function leesExponenten(latex) {
+  const s = (latex || '').replace(/\\left|\\right/g, '');
+  const uit = [];
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '^') continue;
+    let inhoud;
+    if (s[i + 1] === '{') {
+      let diepte = 0, j = i + 1;
+      for (; j < s.length; j++) {
+        if (s[j] === '{') diepte++;
+        else if (s[j] === '}' && --diepte === 0) break;
+      }
+      inhoud = s.slice(i + 2, j);
+    } else {
+      inhoud = s.slice(i + 1, i + 2);
+    }
+    uit.push({ inhoud, basis: (s.slice(0, i).match(/([a-zA-Z0-9])\s*$/) || [])[1] || null });
+  }
+  return uit;
+}
+
+function heeftNegatieveExponent(latex) {
+  return leesExponenten(latex).some(e => /^\s*-/.test(e.inhoud) || /^\s*\\d?frac\{\s*-/.test(e.inhoud));
+}
+
+function heeftGebrokenExponent(latex) {
+  return leesExponenten(latex).some(e => /\\d?frac|\/|\d\s*[.,]\s*\d/.test(e.inhoud));
+}
+
+/* "Schrijf als macht van x": het antwoord moet precies één macht van dat
+   grondtal zijn — x^{-3}, 2^{\frac{3}{4}} — dus zonder coëfficiënt, wortel of
+   deelstreep eromheen. De exponent zelf mag wél een breuk zijn. */
+function isEnkeleMachtVan(latex, basis) {
+  const s = (latex || '').replace(/\\left|\\right/g, '').replace(/\s+/g, '');
+  const kop = `${basis}^`;
+  if (!s.startsWith(kop)) return false;
+  const rest = s.slice(kop.length);
+  if (!rest) return false;
+  if (rest[0] !== '{') return rest.length === 1;
+  let diepte = 0;
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '{') diepte++;
+    else if (rest[i] === '}' && --diepte === 0) return i === rest.length - 1;
+  }
+  return false;
+}
+
+/* Gelijk in waarde? Testwaarden zijn positief, zodat wortels en negatieve
+   machten gedefinieerd blijven. Relatieve marge, want x^{5} loopt hard op. */
+function _exWaardeGelijk(gegeven, verwacht, vars) {
+  for (const vals of [[2, 3, 5], [3, 5, 7], [5, 7, 11]]) {
+    const vv = {}; vars.forEach((v, i) => { vv[v] = vals[i % vals.length]; });
+    const g = _algEval(gegeven, vv), e = _algEval(verwacht, vv);
+    if (!isFinite(g) || !isFinite(e)) return false;
+    if (Math.abs(g - e) > 1e-6 * Math.max(1, Math.abs(e))) return false;
+  }
+  return true;
+}
+
+/* Klopt de waarde maar staat de verboden vorm er nog in, dan is de leerling
+   goed op weg en nog niet klaar: dat is een tussenstap, geen fout. */
+function checkExponentVorm(gegeven, verwacht, vars, verboden) {
+  if (!_exWaardeGelijk(gegeven, verwacht, vars)) return 'fout';
+  if (verboden.includes('negatief') && heeftNegatieveExponent(gegeven)) return 'tussenstap';
+  if (verboden.includes('gebroken') && heeftGebrokenExponent(gegeven)) return 'tussenstap';
+  return isAlgebraVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
+}
+
+function checkExponentMacht(gegeven, verwacht, vars, basis) {
+  if (!_exWaardeGelijk(gegeven, verwacht, vars)) return 'fout';
+  return isEnkeleMachtVan(gegeven, basis) ? 'goed' : 'tussenstap';
+}
+
 function isAlgebraGefactoriseerd(latex) {
   const s = (latex || '').trim();
   if (!s.includes('(')) return false;

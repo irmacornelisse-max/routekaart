@@ -142,6 +142,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | wortel-vergelijking | W.V1a, W.V1b |
 | gebroken-vergelijking | G.V1a, G.V1b, G.V2a, G.V2b, G.V2c, G.V2d, G.V2e, G.V2f |
 | modulus-vergelijking | MO.V1a, MO.V1b, MO.V1c, MO.V1d |
+| exp-omschrijven | EX.1a, EX.1b, EX.1c, EX.1d, EX.1e, EX.1f |
 
 ## Antwoordcontrole – twee dingen om te weten
 
@@ -149,6 +150,14 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   nulproductregel), maar nooit een waarde toelaten die geen oplossing is. Zie
   `_isGeldigeTussenstap` in `app.js`. Vreemde wortels worden gezocht via
   tekenwisseling plus bisectie, dus ook irrationale.
+- **Vorm in plaats van waarde (EX-doelen).** Bij "schrijf zonder negatieve
+  exponenten" is de waarde niet het hele antwoord; het gaat om de schrijfwijze.
+  Daarvoor zijn er twee `vorm`-waarden: `exp-zonder` (met `verboden: ['negatief',
+  'gebroken']`) en `exp-macht` (met `basis`). Klopt de waarde maar staat de
+  verboden vorm er nog, dan is het een **tussenstap**, geen fout — de leerling is
+  immers goed op weg. Alle zes de EX-generators bouwen opgave én antwoord uit
+  hetzelfde model (`_exRender` met een andere `vorm`), dus ze kunnen per
+  constructie niet uiteenlopen.
 - **`strikt` in het antwoordobject.** Zet je dat bij `vergelijking-mv`, dan wordt
   een rij kale `x = getal`-waarden als eindantwoord gelezen: het aantal moet dan
   precies kloppen. Zonder die vlag telt alleen dat elke oplossing gedekt is —

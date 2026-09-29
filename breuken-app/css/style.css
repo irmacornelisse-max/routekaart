@@ -423,7 +423,11 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 .kbd-btn-del   { background: #4A5568; font-size: .9rem; }
 .kbd-btn-clear { background: #4A5568; font-size: .8rem; }
 .kbd-btn-op    { background: #2C4A6E; font-size: 1.1rem; font-weight: 800; }
-.kbd-btn-zero  { flex: 2; }
+/* Zeven kolommen per rij. Rijen met zes toetsen vullen de zevende kolom met
+   één dubbelbrede toets, zodat alle kolommen onder elkaar blijven staan. */
+.kbd-btn-breed { flex: 2; }
+.kbd-btn-macht { font-size: 1rem; }
+.kbd-btn-macht sup { font-size: .65em; }
 
 /* ── Utility ─────────────────────────────────────────────────────────── */
 .text-center { text-align: center; }
