@@ -1732,8 +1732,57 @@ function _fracVereenvoudigd(s) {
   return true;
 }
 
+/* ── De exponent-val ──────────────────────────────────────────────────────
+   Wie 12x^5y^5 in één ruk typt, blijft na de 5 in de exponent staan en krijgt
+   12x^{5y^5}. Dat is echt fout, maar de gewone foutmelding wijst dan naar de
+   rekenregel terwijl het probleem de cursor is. Zoekt de eerste exponent met
+   een letter erin en geeft de basis terug, zodat de melding kan benoemen wat
+   waar terechtkwam. LaTeX-commando's (\sqrt, \frac) tellen niet als letters. */
+function _exponentMetLetter(latex) {
+  const s = (latex || '').replace(/\\left|\\right/g, '');
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '^') continue;
+    let inhoud;
+    if (s[i + 1] === '{') {
+      let diepte = 0, j = i + 1;
+      for (; j < s.length; j++) {
+        if (s[j] === '{') diepte++;
+        else if (s[j] === '}' && --diepte === 0) break;
+      }
+      inhoud = s.slice(i + 2, j);
+    } else {
+      inhoud = s.slice(i + 1, i + 2);
+    }
+    const letter = (inhoud.replace(/\\[a-zA-Z]+/g, ' ').match(/[a-zA-Z]/) || [])[0];
+    if (!letter) continue;
+    const basis = (s.slice(0, i).match(/([a-zA-Z])\s*$/) || [])[1] || null;
+    return { letter, basis };
+  }
+  return null;
+}
+
+/* Alleen melden als het verwachte antwoord zélf geen letter in een exponent
+   heeft — anders is zo'n exponent gewoon goed en zou de melding onzin zijn. */
+function _exponentValMelding(vraag, gegeven) {
+  const raw = typeof gegeven?.latex === 'string' ? gegeven.latex : '';
+  if (!raw.includes('^')) return null;
+  const verwacht = [vraag.antwoord?.expr, vraag.antwoord?.latex, vraag.oplossing]
+    .filter(s => typeof s === 'string').join(' ');
+  if (_exponentMetLetter(verwacht)) return null;
+  const val = _exponentMetLetter(raw);
+  if (!val) return null;
+  const waar = val.basis ? `in de macht van $${val.basis}$` : 'in een macht';
+  // Geen <strong> om de pijl: .feedback-text strong is een blok-element, dus
+  // die zou de zin middenin afbreken.
+  return `Er staat nog een letter in de exponent: je typte $${val.letter}$ ${waar}. `
+       + 'Druk op → om de exponent te verlaten voordat je verdergaat.';
+}
+
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
+  const exponentVal = _exponentValMelding(vraag, gegeven);
+  if (exponentVal) return exponentVal;
+
   if (vraag.antwoordType === 'grafiek') {
     const { puntA, puntB } = gegeven;
     const { m, b } = vraag.antwoord;

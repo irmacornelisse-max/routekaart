@@ -303,7 +303,9 @@ input.math-input-single:focus { outline: none; border-color: var(--primary); box
 }
 .feedback-icon { font-size: 1.3rem; flex-shrink: 0; }
 .feedback-text { flex: 1; }
-.feedback-text strong { display: block; margin-bottom: 4px; }
+/* Vetdruk in een foutmelding is nadruk middenin een zin ("rond af op
+   2 decimalen"), nooit een kopregel. Als blok-element brak het de zin. */
+.feedback-text strong { display: inline; }
 
 .hint-box {
   background: var(--amber-light); border: 1px solid #FFCC80;
