@@ -6808,26 +6808,52 @@ function _exFactorMacht(basis, e) {
   return `${basis}^{${_exExpTeX(e)}}`;
 }
 
-/* Dezelfde factor met een wortel in plaats van een gebroken exponent. */
-function _exFactorWortel(basis, e) {
-  const binnen = _exIsGetal(basis) ? `${Math.pow(+basis, e.n)}`
-               : e.n === 1 ? basis : `${basis}^{${e.n}}`;
-  return e.d === 2 ? `\\sqrt{${binnen}}` : `\\sqrt[${e.d}]{${binnen}}`;
+/* Dezelfde factor met een wortel in plaats van een gebroken exponent (e > 0),
+   meteen vereenvoudigd: wat als hele macht uit de wortel kan, komt ervóór.
+   Met n = q·d + r is a^{n/d} = a^q · ᵈ√(a^r), dus x^{5/3} = x∛(x²) en
+   5^{3/2} = 5√5. Omdat e een vereenvoudigde breuk is, is ggd(r, d) = 1 en
+   kan de wortelexponent niet verder omlaag. Geeft de delen los terug: een
+   getal voor de coëfficiënt, een letterdeel en de wortel, zodat de wortel
+   altijd achteraan komt (n³√c, niet √c·n³). */
+function _exWortelDelen(basis, e) {
+  const q = Math.floor(e.n / e.d), r = e.n % e.d;
+  if (_exIsGetal(basis)) {
+    return { getal: Math.pow(+basis, q), letter: '',
+             wortel: _mvWortel(e.d, `${Math.pow(+basis, r)}`) };
+  }
+  return { getal: 1, letter: q === 0 ? '' : q === 1 ? basis : `${basis}^{${q}}`,
+           wortel: _mvWortel(e.d, r === 1 ? basis : `${basis}^{${r}}`) };
 }
+
+/* Past er een hele macht uit een wortel? Dan krijgt de leerling daar een hint
+   over; x^{5/3} is iets anders dan x^{2/3}. */
+const _exHeeftBuiten = M => M.delen.some(([, e]) => e.d > 1 && Math.abs(e.n) > e.d);
 
 /* vorm: 'macht' (alles als macht) | 'geenNeg' | 'geenBreuk' | 'geenBeide' */
 function _exRender(M, vorm) {
   const negWeg   = vorm === 'geenNeg'   || vorm === 'geenBeide';
   const breukWeg = vorm === 'geenBreuk' || vorm === 'geenBeide';
-  const factor = (basis, e) =>
-    (breukWeg && e.d > 1 && e.n > 0) ? _exFactorWortel(basis, e) : _exFactorMacht(basis, e);
-  const boven = [], onder = [];
+  const boven = { c: M.c, delen: [], wortels: [] };
+  const onder = { c: 1,   delen: [], wortels: [] };
   M.delen.forEach(([basis, e]) => {
-    if (negWeg && e.n < 0) onder.push(factor(basis, _exKeer(e, -1)));
-    else boven.push(factor(basis, e));
+    const kant = (negWeg && e.n < 0) ? onder : boven;
+    const exp = kant === onder ? _exKeer(e, -1) : e;
+    if (breukWeg && exp.d > 1 && exp.n > 0) {
+      const w = _exWortelDelen(basis, exp);
+      kant.c *= w.getal;
+      if (w.letter) kant.delen.push(w.letter);
+      kant.wortels.push(w.wortel);
+    } else {
+      kant.delen.push(_exFactorMacht(basis, exp));
+    }
   });
-  const teller = (M.c === 1 && boven.length) ? boven.join('') : `${M.c}${boven.join('')}`;
-  return onder.length ? `\\dfrac{${teller}}{${onder.join('')}}` : teller;
+  const schrijf = k => {
+    const rest = [...k.delen, ...k.wortels].join('');
+    return (k.c === 1 && rest) ? rest : `${k.c}${rest}`;
+  };
+  const teller = schrijf(boven);
+  const heeftOnder = onder.delen.length || onder.wortels.length || onder.c !== 1;
+  return heeftOnder ? `\\dfrac{${teller}}{${schrijf(onder)}}` : teller;
 }
 
 /* De rekenregel zichtbaar in de uitwerking: x^{3 - 5}, x^{-2 \cdot 3}. */
@@ -7012,7 +7038,7 @@ function genEX1a() {
   const vars = opg.M.delen.map(([b]) => b).filter(b => !_exIsGetal(b));
   return _exZonderVraag('EX.1a', 'Schrijf zonder negatieve exponenten.', opg,
     vars, 'geenNeg', ['negatief'],
-    [`Een negatieve exponent betekent: onder de deelstreep. $${v}^{-p} = \dfrac{1}{${v}^{p}}$.`,
+    [`Een negatieve exponent betekent: onder de deelstreep. $${v}^{-p} = \\dfrac{1}{${v}^{p}}$.`,
      `Werk eerst de rekenregels uit tot één macht van $${v}$, en zet die daarna pas onder de streep.`]);
 }
 
@@ -7030,10 +7056,17 @@ function genEX1b() {
   } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n < 0));
   return _exMachtVraag('EX.1b', opg, v, gt.getal
     ? [`Schrijf de getallen eerst als macht van $${v}$.`,
-       `Onder de streep betekent een negatieve exponent: $\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`]
-    : [`Alles onder de deelstreep gaat naar boven met een minteken in de exponent: $\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`,
+       `Onder de streep betekent een negatieve exponent: $\\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`]
+    : [`Alles onder de deelstreep gaat naar boven met een minteken in de exponent: $\\dfrac{1}{${v}^{p}} = ${v}^{-p}$.`,
        `Pas eerst de rekenregel toe en schrijf het antwoord als één macht van $${v}$.`]);
 }
+
+/* Derde hint, alleen als er een hele macht uit de wortel kan. Het voorbeeld is
+   vast en algemeen, zodat de hint het antwoord niet verklapt. */
+const _EX_HINT_BUITEN = opg => _exHeeftBuiten(opg.M)
+  ? ['Is de teller van de exponent groter dan de noemer, haal dan de hele macht uit de wortel: '
+     + '$a^{\\frac{5}{3}} = \\sqrt[3]{a^{5}} = a\\sqrt[3]{a^{2}}$.']
+  : [];
 
 /* ── EX.1c – zonder gebroken exponenten ─────────────────────────────────── */
 function genEX1c() {
@@ -7052,8 +7085,9 @@ function genEX1c() {
   const vars = opg.M.delen.map(([b]) => b).filter(b => !_exIsGetal(b));
   return _exZonderVraag('EX.1c', 'Schrijf zonder gebroken exponenten.', opg,
     vars, 'geenBreuk', ['gebroken'],
-    ['De noemer van de exponent is de wortelexponent: $a^{\frac{n}{d}} = \sqrt[d]{a^{n}}$.',
-     'Reken de exponenten eerst uit tot één breuk; die breuk bepaalt daarna de wortel.']);
+    ['De noemer van de exponent is de wortelexponent: $a^{\\frac{n}{d}} = \\sqrt[d]{a^{n}}$.',
+     'Reken de exponenten eerst uit tot één breuk; die breuk bepaalt daarna de wortel.',
+     ..._EX_HINT_BUITEN(opg)]);
 }
 
 /* ── EX.1d – als macht van … (vanuit wortels) ───────────────────────────── */
@@ -7070,8 +7104,8 @@ function genEX1d() {
   } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n > 0 && e.d > 1));
   return _exMachtVraag('EX.1d', opg, v, gt.getal
     ? [`Schrijf het getal onder de wortel eerst als macht van $${v}$.`,
-       'Een wortel is een gebroken exponent: $\sqrt[d]{a^{n}} = a^{\frac{n}{d}}$.']
-    : [`Een wortel is een gebroken exponent: $\sqrt[d]{${v}^{n}} = ${v}^{\frac{n}{d}}$.`,
+       'Een wortel is een gebroken exponent: $\\sqrt[d]{a^{n}} = a^{\\frac{n}{d}}$.']
+    : [`Een wortel is een gebroken exponent: $\\sqrt[d]{${v}^{n}} = ${v}^{\\frac{n}{d}}$.`,
        'Schrijf elke wortel eerst als macht en pas daarna de rekenregel toe.']);
 }
 
@@ -7095,7 +7129,8 @@ function genEX1e() {
   return _exZonderVraag('EX.1e', 'Schrijf zonder gebroken en zonder negatieve exponenten.', opg,
     vars, 'geenBeide', ['negatief', 'gebroken'],
     ['Twee stappen: het minteken haalt de macht onder de streep, de noemer van de exponent wordt de wortel.',
-     `Reken de exponenten eerst uit tot één macht van $${v}$; splits daarna pas.`]);
+     `Reken de exponenten eerst uit tot één macht van $${v}$; splits daarna pas.`,
+     ..._EX_HINT_BUITEN(opg)]);
 }
 
 /* ── EX.1f – als macht van … (gemengd) ──────────────────────────────────── */
@@ -7109,7 +7144,7 @@ function genEX1f() {
     opg = _exOpgave({ v, bron: 'geenBeide', exp });
   } while (++tries < 60 && !_exBruikbaar(opg, gt, e => e.n < 0 && e.d > 1));
   return _exMachtVraag('EX.1f', opg, v,
-    [`Onder de streep geeft een minteken in de exponent, de wortel geeft de noemer: $\dfrac{1}{\sqrt[d]{${v}^{n}}} = ${v}^{-\frac{n}{d}}$.`,
+    [`Onder de streep geeft een minteken in de exponent, de wortel geeft de noemer: $\\dfrac{1}{\\sqrt[d]{${v}^{n}}} = ${v}^{-\\frac{n}{d}}$.`,
      'Schrijf elk stuk eerst als macht en tel de exponenten daarna bij elkaar op.']);
 }
 

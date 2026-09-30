@@ -596,13 +596,76 @@ function _exWaardeGelijk(gegeven, verwacht, vars) {
   return true;
 }
 
-/* Klopt de waarde maar staat de verboden vorm er nog in, dan is de leerling
-   goed op weg en nog niet klaar: dat is een tussenstap, geen fout. */
+/* Alle wortels in een antwoord als { index, inhoud, start, eind }.
+   MathQuill schrijft \sqrt{..} en \sqrt[n]{..}; \nthroot{n}{..} lezen we ook. */
+function leesWortels(latex) {
+  const s = latex || '';
+  const blok = i => {                       // s[i] === '{' → [inhoud, index na '}']
+    let diepte = 0;
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === '{') diepte++;
+      else if (s[j] === '}' && --diepte === 0) return [s.slice(i + 1, j), j + 1];
+    }
+    return [s.slice(i + 1), s.length];
+  };
+  const uit = [];
+  const re = /\\sqrt\s*(?:\[\s*(\d+)\s*\])?\s*\{|\\nthroot\s*\{\s*(\d+)\s*\}\s*\{/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const [inhoud, eind] = blok(m.index + m[0].length - 1);
+    uit.push({ index: +(m[1] || m[2] || 2), inhoud, start: m.index, eind });
+    re.lastIndex = eind;
+  }
+  return uit;
+}
+
+/* Kan deze wortel nog eenvoudiger? Een hele macht die eruit kan (√32 = 4√2,
+   ∛(x⁵) = x∛(x²)) of een wortelexponent die omlaag kan (⁴√4 = √2, ⁴√(x²) = √x).
+   Alleen een geheel getal of één letter met een macht wordt beoordeeld; een
+   andere inhoud laten we met rust. */
+function _wortelKanEenvoudiger(index, inhoud) {
+  const s = (inhoud || '').replace(/\s+/g, '');
+  if (/^\d+$/.test(s)) {
+    let rest = +s, deler = index;
+    for (let f = 2; f * f <= rest; f++) {
+      let e = 0;
+      while (rest % f === 0) { rest /= f; e++; }
+      if (!e) continue;
+      if (e >= index) return true;
+      deler = gcd(deler, e);
+    }
+    if (rest > 1) deler = 1;
+    return deler > 1;
+  }
+  const m = s.match(/^[a-zA-Z](?:\^\{?(\d+)\}?)?$/);
+  if (!m) return false;
+  const p = m[1] ? +m[1] : 1;
+  return p >= index || gcd(p, index) > 1;
+}
+
+const heeftOnvereenvoudigdeWortel = latex =>
+  leesWortels(latex).some(w => _wortelKanEenvoudiger(w.index, w.inhoud));
+
+/* Eindvorm bij de EX-leerdoelen. Letters ónder een wortel tellen niet als
+   herhaalde letter: x\sqrt[3]{x^{2}} is juist de eindvorm, geen x·x. Daarom
+   gaan de wortels eerst weg (een LaTeX-commando valt in de lettertelling weg)
+   voordat de gewone vereenvoudigingstoets draait. */
+function _exVereenvoudigd(latex) {
+  const s = latex || '';
+  let zonder = '', vanaf = 0;
+  for (const w of leesWortels(s)) { zonder += s.slice(vanaf, w.start) + '\\wortel '; vanaf = w.eind; }
+  zonder += s.slice(vanaf);
+  return isAlgebraVereenvoudigd(zonder) && !heeftOnvereenvoudigdeWortel(s);
+}
+
+/* Klopt de waarde maar staat de verboden vorm er nog in, of kan een wortel nog
+   eenvoudiger, dan is de leerling goed op weg en nog niet klaar: dat is een
+   tussenstap, geen fout. */
 function checkExponentVorm(gegeven, verwacht, vars, verboden) {
   if (!_exWaardeGelijk(gegeven, verwacht, vars)) return 'fout';
   if (verboden.includes('negatief') && heeftNegatieveExponent(gegeven)) return 'tussenstap';
   if (verboden.includes('gebroken') && heeftGebrokenExponent(gegeven)) return 'tussenstap';
-  return isAlgebraVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
+  return _exVereenvoudigd(gegeven) ? 'goed' : 'tussenstap';
 }
 
 function checkExponentMacht(gegeven, verwacht, vars, basis) {
