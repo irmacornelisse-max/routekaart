@@ -313,8 +313,14 @@ function _algTokenize(s, varVals) {
       } else if (cmd === 'cdot' || cmd === 'times') {
         tokens.push({ t: 'op', v: '*' });
       } else if (cmd === 'div')   { tokens.push({ t: 'op', v: '/' }); }
-      else if (cmd === 'left')   { if (i < s.length) { i++; if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({t:'lp'}); } }
-      else if (cmd === 'right')  { if (i < s.length) { i++; tokens.push({t:'rp'}); } }
+      // Een modulus is geen haakjespaar. Zonder dit onderscheid las de
+      // parser |3x + 18| als (3x + 18), en dan klopt een modulusstap voor
+      // de helft van de oplossingen niet.
+      else if (cmd === 'left')   { const teken = s[i]; i++;
+                                   if (needsMul) tokens.push({t:'op',v:'*'});
+                                   tokens.push({ t: teken === '|' ? 'abs' : 'lp' }); }
+      else if (cmd === 'right')  { const teken = s[i]; i++;
+                                   tokens.push({ t: teken === '|' ? 'absEnd' : 'rp' }); }
       else if (cmd === 'sqrt') {
         if (needsMul) tokens.push({t:'op',v:'*'});
         let rootIdx = 2;
@@ -363,6 +369,15 @@ function _algTokenize(s, varVals) {
     // door de sqrt-tak opgegeten.
     else if (ch === '(' || ch === '[') { if (needsMul) tokens.push({t:'op',v:'*'}); tokens.push({ t: 'lp' }); }
     else if (ch === ')' || ch === ']') tokens.push({ t: 'rp' });
+    // Een kale | opent of sluit, afhankelijk van wat ervoor staat.
+    else if (ch === '|') {
+      if (prev && (prev.t === 'n' || prev.t === 'v' || prev.t === 'rp' || prev.t === 'absEnd')) {
+        tokens.push({ t: 'absEnd' });
+      } else {
+        if (needsMul) tokens.push({ t: 'op', v: '*' });
+        tokens.push({ t: 'abs' });
+      }
+    }
   }
   return tokens;
 }
@@ -401,6 +416,7 @@ function _algEval(latex, varVals) {
     }
     function atom() {
       if (eat(t => t.t === 'lp')) { const v = expr(); eat(t => t.t === 'rp'); return v; }
+      if (eat(t => t.t === 'abs')) { const v = expr(); eat(t => t.t === 'absEnd'); return Math.abs(v); }
       const tok = eat(t => t.t === 'v' || t.t === 'n');
       if (tok) return tok.v;
       throw new Error('?');

@@ -1147,6 +1147,18 @@ function _heeftVreemdeWortel(links, rechts, variabele, isOplossing, bereik) {
   return false;
 }
 
+/* Ruwe graadschatting van links − rechts: bij een veelterm nadert f(2x)/f(x)
+   naar 2^graad. Precies genoeg om een losse tak van de nulproductregel
+   ($x - 3 = 0$) te onderscheiden van een regel die de hele vergelijking
+   herschrijft. Geeft null als er niets zinnigs te meten valt. */
+function _graadSchatting(links, rechts, variabele) {
+  const f = x => _zijdeWaarde(links, variabele, x) - _zijdeWaarde(rechts, variabele, x);
+  const a = f(23.5), b = f(47);
+  if (!isFinite(a) || !isFinite(b) || Math.abs(a) < 1e-6) return null;
+  const graad = Math.log2(Math.abs(b / a));
+  return isFinite(graad) ? graad : null;
+}
+
 function _isGeldigeTussenstap(stap, variabele, sols, tol) {
   const delen = stap.split('=');
   if (delen.length !== 2) return false;
@@ -1159,8 +1171,19 @@ function _isGeldigeTussenstap(stap, variabele, sols, tol) {
                            .test(stap.replace(/\\[a-zA-Z]+/g, ' '));
   if (!bevatVariabele) return _tussenstapKlopt(links, rechts, variabele, 0);
 
-  if (!sols.some(w => _tussenstapKlopt(links, rechts, variabele, w)))
-    return false;                                      // raakt geen enkele oplossing
+  const geraakt = sols.filter(w => _tussenstapKlopt(links, rechts, variabele, w));
+  if (!geraakt.length) return false;                   // raakt geen enkele oplossing
+
+  // Een stap die oplossingen kwijtraakt mag alleen een losse tak van de
+  // nulproductregel zijn, en die is eenvoudiger dan de vergelijking zelf. Een
+  // regel van dezelfde zwaarte hoort álle oplossingen te houden: raakt zo'n
+  // regel er een kwijt, dan is er onderweg iets misgegaan. Zo kwam
+  // $x^3 + 2x^2 + 15x = 0$ (tekenfout) er eerder nog doorheen omdat $x = 0$
+  // toevallig bleef kloppen.
+  if (geraakt.length < sols.length) {
+    const graad = _graadSchatting(links, rechts, variabele);
+    if (graad !== null && graad > sols.length - 0.5) return false;
+  }
 
   const marge = Math.max(tol, 1e-4);
   const isOplossing = (w) => sols.some(s => Math.abs(w - s) <= marge);
@@ -1185,6 +1208,48 @@ function _getalUitLatex(s) {
                     + parseInt(gemengd[3], 10) / parseInt(gemengd[4], 10));
   }
   return _algEval(s, {});
+}
+
+/* Een wortel die precies uitkomt hoort uitgerekend te worden: $\sqrt[4]{81}$
+   is $3$, dus "x = ⁴√81" is nog niet het eindantwoord. Een wortel die
+   irrationaal blijft ($\sqrt{13}$) is juist wél de exacte eindvorm en mag
+   blijven staan. Een nette waarde is een geheel getal of een breuk met een
+   kleine noemer; $\sqrt{12} = 3{,}46...$ valt daar niet onder. */
+function _netteWaarde(waarde) {
+  if (!isFinite(waarde)) return false;
+  for (let noemer = 1; noemer <= 12; noemer++) {
+    if (Math.abs(waarde * noemer - Math.round(waarde * noemer)) < 1e-9) return true;
+  }
+  return false;
+}
+
+function _onuitgerekendeWortel(expr) {
+  if (!/\\sqrt/.test(expr || '')) return false;
+  try { return _netteWaarde(_algEval(String(expr).trim(), {})); } catch { return false; }
+}
+
+/* Klopt de waarde, maar staat er nog een uitrekenbare wortel? Dan is het een
+   tussenstap in plaats van het eindantwoord. */
+function _eindOfTussen(...exprs) {
+  return exprs.some(e => _onuitgerekendeWortel(e)) ? 'tussenstap' : 'goed';
+}
+
+/* Zelfde vraag, maar dan over een hele antwoordregel met eventueel meerdere
+   takken: "x = ⁴√81 v x = -⁴√81". */
+function _bevatUitrekenbareWortel(latex) {
+  const s = (latex || '').replace(/\\quad/g, ' ').replace(/\\;/g, ' ');
+  return s.split(/\sv\s|\\pm/).some(tak => {
+    const m = tak.match(/=\s*([^=]+)$/);
+    return _onuitgerekendeWortel((m ? m[1] : tak).trim());
+  });
+}
+
+/* Een tussenstap waar alleen de wortel nog uitgerekend moet worden, verdient
+   een duidelijker duwtje dan "ga door". */
+function tussenstapBoodschap(gegeven) {
+  return _bevatUitrekenbareWortel(gegeven?.latex)
+    ? 'Goed, ga door! De wortel komt precies uit — reken hem nog uit.'
+    : 'Goed, ga door!';
 }
 
 /* Herkent de twee opschrijfregels die bij de abc-methode horen:
@@ -1339,7 +1404,7 @@ function checkAntwoord(vraag, gegeven) {
         if (isFinite(v1) && isFinite(v2) &&
             ((Math.abs(v1 - expected_pos) < 1e-6 && Math.abs(v2 - expected_neg) < 1e-6) ||
              (Math.abs(v1 - expected_neg) < 1e-6 && Math.abs(v2 - expected_pos) < 1e-6)))
-          return 'goed';
+          return _eindOfTussen(vMatch[1], vMatch[2]);
       } catch {}
       return 'fout';
     }
@@ -1349,7 +1414,7 @@ function checkAntwoord(vraag, gegeven) {
     if (pmMatch && hasNeg) {
       try {
         const val = _algEval(pmMatch[1].trim(), {});
-        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return 'goed';
+        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return _eindOfTussen(pmMatch[1]);
       } catch {}
       return 'fout';
     }
@@ -1361,7 +1426,7 @@ function checkAntwoord(vraag, gegeven) {
       if (hasNeg) return 'fout';
       try {
         const val = _algEval(eqMatch[1].trim(), {});
-        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return 'goed';
+        if (isFinite(val) && Math.abs(val - expected_pos) < 1e-6) return _eindOfTussen(eqMatch[1]);
       } catch {}
       return 'fout';
     }
@@ -1417,7 +1482,7 @@ function checkAntwoord(vraag, gegeven) {
     if (eqMatch) {
       try {
         const val = _algEval(eqMatch[1].trim(), {});
-        if (isFinite(val) && Math.abs(val - valid) < 1e-6) return 'goed';
+        if (isFinite(val) && Math.abs(val - valid) < 1e-6) return _eindOfTussen(eqMatch[1]);
       } catch {}
       return 'fout';
     }
@@ -1492,7 +1557,7 @@ function checkAntwoord(vraag, gegeven) {
       if (ok && parsed.length === sols.length) {
         const sp = [...parsed].sort((a, b) => a - b);
         const ss = [...sols].sort((a, b) => a - b);
-        if (sp.every((v, i) => Math.abs(v - ss[i]) < 1e-6)) return 'goed';
+        if (sp.every((v, i) => Math.abs(v - ss[i]) < 1e-6)) return _eindOfTussen(...xParts);
       }
     }
 
@@ -1540,6 +1605,7 @@ function checkAntwoord(vraag, gegeven) {
 
     const covered = sols.map(() => false);
     let vreemdeWortel = false;
+    let zwaarste = null;
     for (const seg of segments) {
       const eqParts = seg.split('=');
       if (eqParts.length !== 2) continue;
@@ -1550,12 +1616,18 @@ function checkAntwoord(vraag, gegeven) {
       }
       if (strikt && _heeftVreemdeWortel(links, rechts, 'x', isOplossing, _scanBereik(sols)))
         vreemdeWortel = true;
+      const graad = _graadSchatting(links, rechts, 'x');
+      if (graad !== null) zwaarste = Math.max(zwaarste ?? graad, graad);
     }
     if (covered.every(c => c)) return 'tussenstap';
     // Eén geval van een gevalsonderscheiding ("Geval 1: x(x + 6) = 0") dekt maar
     // een deel van de oplossingen. Dat mag, zolang die stap geen waarde toelaat
-    // die geen oplossing van de opgave is.
-    if (strikt && !vreemdeWortel && covered.some(c => c)) return 'tussenstap';
+    // die geen oplossing van de opgave is én de stap eenvoudiger is dan de
+    // vergelijking zelf. Een regel van dezelfde zwaarte die een oplossing
+    // kwijtraakt is een rekenfout, geen tak: $x^3 + 2x^2 + 15x = 0$ klopt
+    // toevallig nog voor $x = 0$, maar volgt niet uit de opgave.
+    const teZwaar = zwaarste !== null && zwaarste > sols.length - 0.5;
+    if (strikt && !vreemdeWortel && !teZwaar && covered.some(c => c)) return 'tussenstap';
     return 'fout';
   }
 
@@ -1579,7 +1651,7 @@ function checkAntwoord(vraag, gegeven) {
           const [s1, s2] = sols;
           if ((Math.abs(n1 - s1) <= tol && Math.abs(n2 - s2) <= tol) ||
               (Math.abs(n1 - s2) <= tol && Math.abs(n2 - s1) <= tol))
-            return 'goed';
+            return _eindOfTussen(vMatch[1], vMatch[2]);
         }
       } catch {}
       return 'fout';
@@ -2396,12 +2468,13 @@ function controleer(vraag) {
     if (ctrlBtn) ctrlBtn.disabled = true;
     toonNieuweVraagKnop();
   } else if (staat === 'tussenstap') {
+    const bericht = tussenstapBoodschap(gegeven);
     if (useStepList) {
       freezeActiveRow('tussenstap');
-      toonFeedback('tussenstap', 'Goed, ga door!');
+      toonFeedback('tussenstap', bericht);
       addNewActiveRow();
     } else {
-      toonFeedback('tussenstap', 'Goed, ga door!');
+      toonFeedback('tussenstap', bericht);
     }
   } else {
     APP.pogingen++;

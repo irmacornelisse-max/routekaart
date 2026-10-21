@@ -4144,7 +4144,7 @@ function genMV1a() {
 
   return {
     id: uid(), leerdoel: 'M.V1a',
-    vraag: `Los op: $x^{${n}} = ${inner}$`,
+    vraag: `Los exact op: $x^{${n}} = ${inner}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p: 0 },
     hints,
@@ -4258,7 +4258,7 @@ function genMV1b() {
 
   return {
     id: uid(), leerdoel: 'M.V1b',
-    vraag: `Los op: $${lhsTeX} = ${rhs}$`,
+    vraag: `Los exact op: $${lhsTeX} = ${rhs}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p: 0 },
     hints: [
@@ -4335,7 +4335,7 @@ function genMV1c() {
 
   return {
     id: uid(), leerdoel: 'M.V1c',
-    vraag: `Los op: $${lhsTeX} = ${c}$`,
+    vraag: `Los exact op: $${lhsTeX} = ${c}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p: 0 },
     hints: [
@@ -4401,7 +4401,7 @@ function genMV1d() {
 
   return {
     id: uid(), leerdoel: 'M.V1d',
-    vraag: `Los op: $${lhsTeX} = ${c}$`,
+    vraag: `Los exact op: $${lhsTeX} = ${c}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg, p },
     hints: [
@@ -4532,7 +4532,7 @@ function genMV2a() {
   const steps = v.steps[0] === `$${v.vraagTeX}$` ? v.steps : [`$${v.vraagTeX}$`, ...v.steps];
   return {
     id: uid(), leerdoel: 'M.V2a',
-    vraag: `Los op: $${v.vraagTeX}$`,
+    vraag: `Los exact op: $${v.vraagTeX}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: v.sols },
     hints: v.hints,
@@ -5170,7 +5170,7 @@ function genMV3a() {
 
   return {
     id: uid(), leerdoel: 'M.V3a',
-    vraag: `Los op: $(${termA})(${termB}) = 0$`,
+    vraag: `Los exact op: $(${termA})(${termB}) = 0$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [0, -a, sqrtK, -sqrtK] },
     hints: [
@@ -5211,7 +5211,7 @@ function genMV3b() {
 
   return {
     id: uid(), leerdoel: 'M.V3b',
-    vraag: `Los op: $(${Atex})^2 = (${Btex})^2$`,
+    vraag: `Los exact op: $(${Atex})^2 = (${Btex})^2$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [x1n / x1d, x2n / x2d] },
     hints: [
@@ -5241,7 +5241,7 @@ function genMV3c() {
     const fac = _mv3LinFacTeX(r);
     return {
       id: uid(), leerdoel: 'M.V3c',
-      vraag: `Los op: $x^2(${fac}) = ${b * b}(${fac})$`,
+      vraag: `Los exact op: $x^2(${fac}) = ${b * b}(${fac})$`,
       antwoordType: 'vergelijking-mv',
       antwoord: { sols: [r, b, -b] },
       hints: [
@@ -5269,7 +5269,7 @@ function genMV3c() {
     const fac = _mv3LinFacTeX(a);
     return {
       id: uid(), leerdoel: 'M.V3c',
-      vraag: `Los op: $2x(x^2 - ${a * a}) = ${c}(${fac})$`,
+      vraag: `Los exact op: $2x(x^2 - ${a * a}) = ${c}(${fac})$`,
       antwoordType: 'vergelijking-mv',
       antwoord: { sols: [a, p, q] },
       hints: [
@@ -5329,7 +5329,7 @@ function genMV3d() {
 
   return {
     id: uid(), leerdoel: 'M.V3d',
-    vraag: `Los op: $(${linear})^${n} = ${linear}$`,
+    vraag: `Los exact op: $(${linear})^${n} = ${linear}$`,
     antwoordType: 'vergelijking-mv',
     // u = ax + b; de tussenstappen rekenen in u
     antwoord: { sols, hulp: { letter: 'u', waarden: n === 3 ? [0, 1, -1] : [0, 1] } },
@@ -5446,7 +5446,7 @@ function genWV1a() {
                   () => _wv1aVormA(true)])();
   return {
     id: uid(), leerdoel: 'W.V1a',
-    vraag: `Los de vergelijking op.\n$${v.verg}$`,
+    vraag: `Los de vergelijking exact op.\n$${v.verg}$`,
     antwoordType: 'wortelverg',
     antwoord: { valid: v.x, extraneous: null },
     hints: [
@@ -5565,7 +5565,7 @@ function genWV1b() {
 
   return {
     id: uid(), leerdoel: 'W.V1b',
-    vraag: `Los de vergelijking op.\n$${v.verg}$`,
+    vraag: `Los de vergelijking exact op.\n$${v.verg}$`,
     antwoordType: 'wortelverg',
     antwoord: { valid: v.valid, extraneous: v.extraneous },
     hints: [
@@ -5647,7 +5647,7 @@ function genGV1a() {
 
   return {
     id: uid(), leerdoel: 'G.V1a',
-    vraag: `Los de vergelijking op.\n$${vraagTeX}$`,
+    vraag: `Los de vergelijking exact op.\n$${vraagTeX}$`,
     antwoordType: 'vergelijking',
     antwoord: { teller: xNum, noemer: xDen },
     hints,
@@ -5755,7 +5755,7 @@ function genGV1b() {
 
   return {
     id: uid(), leerdoel: 'G.V1b',
-    vraag: `Los de vergelijking op.\n$${vraagTeX}$`,
+    vraag: `Los de vergelijking exact op.\n$${vraagTeX}$`,
     antwoordType: 'machtsvergelijking',
     antwoord: { inner, n, hasNeg: n % 2 === 0, p: 0 },
     hints,
@@ -5787,7 +5787,7 @@ function genGV2a() {
     const noeVal = c * r + d;
     return {
       id: uid(), leerdoel: 'G.V2a',
-      vraag: `Los op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = 0$`,
+      vraag: `Los exact op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = 0$`,
       antwoordType: 'vergelijking',
       antwoord: { teller: r, noemer: 1 },
       hints: [
@@ -5809,7 +5809,7 @@ function genGV2a() {
   const bT = bq === 1 ? '' : `${bq}`;
   return {
     id: uid(), leerdoel: 'G.V2a',
-    vraag: `Los op.\n$\\dfrac{${aT}x^{2} - ${nv}}{${bT}x^{2} + ${cq}} = 0$`,
+    vraag: `Los exact op.\n$\\dfrac{${aT}x^{2} - ${nv}}{${bT}x^{2} + ${cq}} = 0$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [m, -m] },
     hints: [
@@ -5844,7 +5844,7 @@ function genGV2b() {
     } while (tries < 300);
     return {
       id: uid(), leerdoel: 'G.V2b',
-      vraag: `Los op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
+      vraag: `Los exact op.\n$\\dfrac{${_lt(a, b)}}{${_lt(c, d)}} = ${e}$`,
       antwoordType: 'vergelijking',
       antwoord: { teller: xVal, noemer: 1 },
       hints: [
@@ -5883,7 +5883,7 @@ function genGV2b() {
   const dTex = d > 0 ? ` + ${d}` : ` - ${Math.abs(d)}`;
   return {
     id: uid(), leerdoel: 'G.V2b',
-    vraag: `Los op.\n$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
+    vraag: `Los exact op.\n$\\dfrac{${aT}x^{2}${bTex}}{${cT}x^{2}${dTex}} = ${e}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [m, -m] },
     hints: [
@@ -5995,7 +5995,7 @@ function genGV2c() {
     if (steps[steps.length - 1] !== slot) steps.push(slot);
     return {
       id: uid(), leerdoel: 'G.V2c',
-      vraag: `Los op.\n$${vraagTeX}$`,
+      vraag: `Los exact op.\n$${vraagTeX}$`,
       antwoordType: 'vergelijking-mv',
       antwoord: { sols: [r] },
       hints: [
@@ -6021,7 +6021,7 @@ function genGV2c() {
 
   return {
     id: uid(), leerdoel: 'G.V2c',
-    vraag: `Los op.\n$${vraagTeX}$`,
+    vraag: `Los exact op.\n$${vraagTeX}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [r1, r2] },
     hints: [
@@ -6064,7 +6064,7 @@ function genGV2d() {
     const f2 = noeTex;
     return {
       id: uid(), leerdoel: 'G.V2d',
-      vraag: `Los op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+      vraag: `Los exact op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
       antwoordType: 'vergelijking',
       antwoord: { teller: r, noemer: 1 },
       hints: [
@@ -6106,7 +6106,7 @@ function genGV2d() {
   const g2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
   return {
     id: uid(), leerdoel: 'G.V2d',
-    vraag: `Los op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
+    vraag: `Los exact op.\n$\\dfrac{${aTex}}{${noeTex}} = \\dfrac{${_lt(b1, b2)}}{${noeTex}}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [r1, r2] },
     hints: [
@@ -6157,7 +6157,7 @@ function genGV2e() {
     const aTex = _lt(a, -a * r1);
     return {
       id: uid(), leerdoel: 'G.V2e',
-      vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+      vraag: `Los exact op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
       antwoordType: 'vergelijking-mv',
       antwoord: { sols: [r1, bc.r3] },
       hints: [
@@ -6183,7 +6183,7 @@ function genGV2e() {
     const aTex = `x^{2} - ${m * m}`;
     return {
       id: uid(), leerdoel: 'G.V2e',
-      vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+      vraag: `Los exact op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
       antwoordType: 'vergelijking-mv',
       antwoord: { sols: [m, -m, bc.r3] },
       hints: [
@@ -6219,7 +6219,7 @@ function genGV2e() {
   const f2 = r2 >= 0 ? `x - ${r2}` : `x + ${Math.abs(r2)}`;
   return {
     id: uid(), leerdoel: 'G.V2e',
-    vraag: `Los op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
+    vraag: `Los exact op.\n$\\dfrac{${aTex}}{${_lt(bc.b1, bc.b2)}} = \\dfrac{${aTex}}{${_lt(bc.c1, bc.c2)}}$`,
     antwoordType: 'vergelijking-mv',
     antwoord: { sols: [r1, r2, bc.r3] },
     hints: [
