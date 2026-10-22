@@ -7417,6 +7417,7 @@ const LEERDOELEN = [
   { id: 'MK.V1a', titel: 'Gelijkvormigheid: snavelfiguur',                   groep: 'Meetkunde', gen: genMKV1a },
   { id: 'MK.V1b', titel: 'Gelijkvormigheid: zandloperfiguur',                groep: 'Meetkunde', gen: genMKV1b },
   { id: 'MK.V1c', titel: 'Gelijkvormigheid: twee losse driehoeken',          groep: 'Meetkunde', gen: genMKV1c },
+  { id: 'MK.V1d', titel: 'Gelijkvormigheid: alle figuren door elkaar',       groep: 'Meetkunde', gen: genMKV1d },
 ];
 
 /* ── Herhaling voorkomen ──────────────────────────────────────────────────

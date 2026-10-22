@@ -152,7 +152,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | mk-pythagoras | MK.P1a, MK.P1b, MK.P2a, MK.P2b |
 | mk-goniometrie | MK.G1a, MK.G2a, MK.G2b |
 | mk-sinus-cosinusregel | MK.S1a, MK.S1b, MK.S1c, MK.C1a, MK.C1b |
-| mk-gelijkvormig | MK.V1a, MK.V1b, MK.V1c |
+| mk-gelijkvormig | MK.V1a, MK.V1b, MK.V1c, MK.V1d (d = a t/m c door elkaar) |
 
 ## Meetkunde (MK-doelen)
 

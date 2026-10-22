@@ -337,7 +337,7 @@ const TOC_HOOFDSTUKKEN = [
       {
         id: 'mk-gelijkvormig', label: 'Gelijkvormigheid',
         items: [
-          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.V1a'},{l:'b',id:'MK.V1b'},{l:'c',id:'MK.V1c'}] },
+          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.V1a'},{l:'b',id:'MK.V1b'},{l:'c',id:'MK.V1c'},{l:'d',id:'MK.V1d'}] },
         ]
       },
     ]
@@ -2292,6 +2292,7 @@ function feedbackBoodschap(vraag, gegeven) {
     'MK.V1a': 'Zet de overeenkomstige zijden van de kleine en de grote driehoek in een verhoudingstabel. Let op: de zijde van de grote driehoek is het hele stuk.',
     'MK.V1b': 'Zet de overeenkomstige zijden van beide driehoeken in een verhoudingstabel. Zijden op dezelfde lijn door het snijpunt horen bij elkaar.',
     'MK.V1c': 'Overeenkomstige zijden liggen tegenover gelijke hoeken. Bepaal de vermenigvuldigingsfactor.',
+    'MK.V1d': 'Zoek eerst de twee gelijkvormige driehoeken en welke zijden bij elkaar horen. Zet ze dan in een verhoudingstabel.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }

@@ -1242,6 +1242,9 @@ function genMKV1c() {
   }
 }
 
+/* MK.V1d: a t/m c door elkaar. */
+const genMKV1d = () => _mkDoorElkaar('MK.V1d', [genMKV1a, genMKV1b, genMKV1c]);
+
 /* ═══ Nakijken ════════════════════════════════════════════════════════════ */
 const MK_TOL = 5e-3;           // relatieve marge voor een tussenstap (afgeronde sinus e.d.)
 let _mkMelding = null;         // toelichting bij de laatste beoordeling
