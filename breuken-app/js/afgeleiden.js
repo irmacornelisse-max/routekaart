@@ -625,6 +625,75 @@ function _dMaakE1Mix() {
   return { f: _dLn(_dSom([groei(), _dConstante()]), pick([null, null, 2, 10])), hints: [_DH.ln, _DH.ketting] };
 }
 
+/* ── D.H1 – havo-route ──────────────────────────────────────────────────────
+   Zonder product- en quotiëntregel: een product werk je eerst uit, een breuk
+   of wortel is één term, en de kettingregel heeft alleen een lineaire
+   binnenfunctie ax + b.                                                     */
+const _DH_HAAKJES = 'Werk eerst de haakjes weg. Let op: $(a+b)^{2} = (a+b)(a+b)$, dus niet $a^{2}+b^{2}$.';
+const _DH_KETTING_LIN = 'Kettingregel: bij $f(x) = (ax+b)^{n}$ is $f\'(x) = n(ax+b)^{n-1} \\cdot a$. '
+  + 'Schrijf een wortel of breuk eerst als macht: $\\sqrt{u} = u^{\\frac{1}{2}}$, $\\dfrac{1}{u^{n}} = u^{-n}$.';
+
+/* Een product van veeltermen, opgelost door eerst de haakjes weg te werken.
+   De uitgewerkte vorm komt in de uitwerking als f(x) = …, de afgeleide
+   daarna term voor term. */
+function _dMaakH1b() {
+  const r = Math.random();
+  let A, B, tex = null;
+  if (r < 0.25) {
+    A = B = _dVeelterm([1, 0], 5);
+    tex = `(${A.tex})^{2}`;
+  } else if (r < 0.5) {
+    A = _dVeelterm([rand(1, 2)]); B = _dVeelterm(_dTweeMachten(0, 2));
+  } else {
+    A = _dVeelterm(_dTweeMachten(0, 2)); B = _dVeelterm(_dTweeMachten(0, 2));
+  }
+  const uit = _dXSom(_dCombineer(_dMaalSom(A.termen, B.termen)).map(m => ({ c: m.c, p: _dXMacht(m) })));
+  return { f: { ...uit, tex: tex || _dProductTeX(A, B), herschrijf: uit.tex }, hints: [_DH_HAAKJES, _DH.macht] };
+}
+
+/* Eén breuk a / (b·xⁿ), dus één term met een negatieve exponent. */
+function _dMaakH1c() {
+  const c = Math.random() < 0.4 ? _dQ(pick([1, 2, 3, 5]) * pick([1, 1, -1]), pick([2, 3, 4]))
+                                : _dQ(_randNietNul(-9, 9));
+  return { f: _dXSom([_dT(c, -rand(1, 4), 'terug')]), hints: [_DH.neg, _DH.macht] };
+}
+
+/* Eén wortelterm, dus één term met een gebroken exponent. */
+function _dMaakH1d() {
+  return { f: _dXSom([_dTermBreuk('terug')]), hints: [_DH.wortel, _DH.macht] };
+}
+
+/* Kettingregel met binnenfunctie ax + b. */
+function _dMaakH1e() {
+  const k = pick([_dQ(2), _dQ(3), _dQ(4), _dQ(5), _dQ(6), _dQ(-1), _dQ(-2), _dQ(-3),
+                  _dQ(1, 2), _dQ(1, 2), _dQ(-1, 2)]);
+  const c = Math.random() < 0.65 ? _D1 : _dQ(_randNietNul(-4, 4));
+  return { f: _dMacht(_dBinnen(['lin']), k, c), hints: [_DH_KETTING_LIN] };
+}
+
+/* Afgewisseld: één soort uit a tot en met e, of een som van twee soorten.
+   De delen van een som hebben altijd verschillende machten van x (hele,
+   negatieve en gebroken), dus er valt niets samen te nemen. */
+function _dMaakH1f() {
+  if (Math.random() < 0.5) {
+    return pick([() => _dMaakM1('a'), _dMaakH1b, _dMaakH1c, _dMaakH1d, _dMaakH1e])();
+  }
+  const soorten = {
+    veelterm: () => ({ f: _dVeelterm(_dTweeMachten(0, 3)), hints: [_DH.macht] }),
+    breuk: _dMaakH1c, wortel: _dMaakH1d, ketting: _dMaakH1e,
+  };
+  const [s1, s2] = shuffle(Object.keys(soorten)).slice(0, 2);
+  const a = soorten[s1](), b = soorten[s2]();
+  return { f: _dSom([a.f, b.f]), hints: [_DH.som, ...new Set([...a.hints, ...b.hints])] };
+}
+
+function genDH1a() { return _dVraag('D.H1a', () => _dMaakM1('a')); }
+function genDH1b() { return _dVraag('D.H1b', _dMaakH1b); }
+function genDH1c() { return _dVraag('D.H1c', _dMaakH1c); }
+function genDH1d() { return _dVraag('D.H1d', _dMaakH1d); }
+function genDH1e() { return _dVraag('D.H1e', _dMaakH1e); }
+function genDH1f() { return _dVraag('D.H1f', _dMaakH1f); }
+
 function genDE1a() { return _dVraag('D.E1a', () => _dMaakE1('e')); }
 function genDE1b() { return _dVraag('D.E1b', () => _dMaakE1('g')); }
 function genDE1c() { return _dVraag('D.E1c', () => _dMaakE1('ln')); }

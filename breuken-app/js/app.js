@@ -290,6 +290,12 @@ const TOC_HOOFDSTUKKEN = [
         ]
       },
       {
+        id: 'afg-havo', label: 'Havo: machten en kettingregel',
+        items: [
+          { label: 'Havo-route', knoppen: [{l:'a',id:'D.H1a'},{l:'b',id:'D.H1b'},{l:'c',id:'D.H1c'},{l:'d',id:'D.H1d'},{l:'e',id:'D.H1e'},{l:'f',id:'D.H1f'}] },
+        ]
+      },
+      {
         id: 'afg-exp-log', label: 'Exponentieel en logaritme',
         items: [
           { label: 'e, g, ln en log', knoppen: [{l:'a',id:'D.E1a'},{l:'b',id:'D.E1b'},{l:'c',id:'D.E1c'},{l:'d',id:'D.E1d'},{l:'e',id:'D.E1e'}] },
@@ -2198,6 +2204,12 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.R1c': 'Quotiëntregel: $f\'(x) = \\dfrac{N \\cdot T\' - T \\cdot N\'}{N^{2}}$, dus NAT min TAN. Let op het minteken in de teller.',
     'D.R1d': 'Kettingregel: differentieer de buitenste macht, laat de binnenfunctie staan, en vermenigvuldig met de afgeleide van de binnenfunctie.',
     'D.R1e': 'Kijk eerst naar de vorm: een product, een quotiënt of een samengestelde functie? Kies daarbij de regel.',
+    'D.H1a': 'Differentieer term voor term met $n \\cdot ax^{n-1}$. Een constante valt weg.',
+    'D.H1b': 'Werk eerst de haakjes weg. Differentieer daarna term voor term.',
+    'D.H1c': 'Schrijf de breuk eerst als macht van $x$ met een negatieve exponent: $\\dfrac{a}{bx^{n}} = \\dfrac{a}{b}x^{-n}$.',
+    'D.H1d': 'Schrijf de wortel eerst als macht van $x$ met een gebroken exponent: $\\sqrt[n]{x^{m}} = x^{\\frac{m}{n}}$.',
+    'D.H1e': 'Kettingregel: $(ax+b)^{n}$ geeft $n(ax+b)^{n-1} \\cdot a$. Vergeet de factor $a$ niet.',
+    'D.H1f': 'Kijk per term wat je eerst moet doen: haakjes wegwerken, als macht schrijven of de kettingregel gebruiken.',
     'D.E1a': 'De afgeleide van $e^{x}$ is $e^{x}$. Bij $e^{u}$ komt er $\\cdot u\'$ bij (kettingregel).',
     'D.E1b': 'De afgeleide van $g^{x}$ is $g^{x} \\cdot \\ln(g)$. Bij $g^{u}$ komt er $\\cdot u\'$ bij.',
     'D.E1c': 'De afgeleide van $\\ln(x)$ is $\\dfrac{1}{x}$. Bij $\\ln(u)$ wordt dat $\\dfrac{u\'}{u}$.',
