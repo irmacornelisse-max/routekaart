@@ -352,12 +352,13 @@ function _dProduct(A, B, uitwerken = false) {
   return { ...deel, d: buiten ? [buiten] : d, stappen: _dUniek(stappen) };
 }
 
-/* Quotiëntregel: (T / N)' = (T' · N − T · N') / N². De noemer blijft staan.
+/* Quotiëntregel: (T / N)' = (N · T' − T · N') / N², ezelsbruggetje NAT − TAN.
+   De noemer blijft staan.
    `bekendeTeller` is de vereenvoudigde teller, als de aanroeper die al kent. */
 function _dQuotient(T, N, uitwerken = false, bekendeTeller = null) {
   const tex = `\\dfrac{${T.tex}}{${N.tex}}`;
   const kwadraat = N.tex === 'x' ? 'x^{2}' : `(${N.tex})^{2}`;
-  const regel = `\\dfrac{${_dMaalTeX(_dHaak(_dLaatste(T), true), _dHaak(N.tex))} - ${_dMaalTeX(_dHaak(T.tex), _dHaak(_dLaatste(N)))}}{${kwadraat}}`;
+  const regel = `\\dfrac{${_dMaalTeX(_dHaak(N.tex, true), _dHaak(_dLaatste(T)))} - ${_dMaalTeX(_dHaak(T.tex), _dHaak(_dLaatste(N)))}}{${kwadraat}}`;
   const N2 = _dMaal(N.model, N.model);
   const deel = { soort: 'quotient', tex, model: _dGedeeld(T.model, N.model),
                  dom: [...T.dom, ...N.dom], nul: [...T.nul, ...N.nul, N.tex] };
@@ -428,7 +429,7 @@ const _DH = {
   neg:      'Schrijf een breuk eerst als macht van $x$: $\\dfrac{a}{x^{n}} = ax^{-n}$.',
   wortel:   'Schrijf een wortel eerst als macht van $x$: $\\sqrt[n]{x^{m}} = x^{\\frac{m}{n}}$.',
   product:  'Productregel: bij $f(x) = u \\cdot v$ is $f\'(x) = u\' \\cdot v + u \\cdot v\'$.',
-  quotient: 'Quotiëntregel: bij $f(x) = \\dfrac{T}{N}$ is $f\'(x) = \\dfrac{T\' \\cdot N - T \\cdot N\'}{N^{2}}$.',
+  quotient: 'Quotiëntregel: bij $f(x) = \\dfrac{T}{N}$ is $f\'(x) = \\dfrac{N \\cdot T\' - T \\cdot N\'}{N^{2}}$ (NAT min TAN).',
   ketting:  'Kettingregel: differentieer de buitenste functie, laat de binnenfunctie $u$ staan, en vermenigvuldig met $u\'$.',
   kettingMacht: 'Kettingregel: bij $f(x) = u^{n}$ is $f\'(x) = n \\cdot u^{n-1} \\cdot u\'$. Schrijf een wortel of breuk eerst als macht: $\\sqrt{u} = u^{\\frac{1}{2}}$, $\\dfrac{1}{u^{n}} = u^{-n}$.',
   e:   'De afgeleide van $e^{x}$ is $e^{x}$.',

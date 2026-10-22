@@ -2195,7 +2195,7 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.M1d': 'Schrijf eerst alles als macht van $x$. Differentieer dan term voor term met $n \\cdot ax^{n-1}$.',
     'D.R1a': 'Productregel: $f\'(x) = u\' \\cdot v + u \\cdot v\'$. Eerst de haakjes wegwerken mag ook.',
     'D.R1b': 'Productregel: $f\'(x) = u\' \\cdot v + u \\cdot v\'$. Schrijf de wortel of breuk als macht om $v\'$ te bepalen.',
-    'D.R1c': 'Quotiëntregel: $f\'(x) = \\dfrac{T\' \\cdot N - T \\cdot N\'}{N^{2}}$. Let op het minteken in de teller.',
+    'D.R1c': 'Quotiëntregel: $f\'(x) = \\dfrac{N \\cdot T\' - T \\cdot N\'}{N^{2}}$, dus NAT min TAN. Let op het minteken in de teller.',
     'D.R1d': 'Kettingregel: differentieer de buitenste macht, laat de binnenfunctie staan, en vermenigvuldig met de afgeleide van de binnenfunctie.',
     'D.R1e': 'Kijk eerst naar de vorm: een product, een quotiënt of een samengestelde functie? Kies daarbij de regel.',
     'D.E1a': 'De afgeleide van $e^{x}$ is $e^{x}$. Bij $e^{u}$ komt er $\\cdot u\'$ bij (kettingregel).',
