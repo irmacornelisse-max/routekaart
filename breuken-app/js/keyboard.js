@@ -1,7 +1,17 @@
 ﻿/* ── Math Keyboard ───────────────────────────────────────────────────── */
 
-function getKeyboardHTML() {
+/* Extra rij bij differentiëren. De ᵍlog-knop zet een macht zonder grondtal
+   neer: daarin typ je het grondtal, en met → komt er log( achter. */
+const KBD_RIJ_AFGELEIDE = `<div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="EMACHT" aria-label="e-macht">e<sup>x</sup></button>
+      <button class="kbd-btn kbd-btn-op" data-val="LN">ln</button>
+      <button class="kbd-btn kbd-btn-op" data-val="GLOG" aria-label="Logaritme met grondtal"><sup>g</sup>log</button>
+      <button class="kbd-btn kbd-btn-op" data-val="LOG">log</button>
+    </div>`;
+
+function getKeyboardHTML(metAfgeleide = false) {
   return `<div id="math-keyboard" class="math-keyboard">
+    ${metAfgeleide ? KBD_RIJ_AFGELEIDE : ''}
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>
       <button class="kbd-btn" data-val="8">8</button>
@@ -71,7 +81,11 @@ function handleKbdKey(val) {
   switch (val) {
     case 'DEL':   mq.keystroke('Backspace'); break;
     case 'CLR':   mq.latex(''); mq.focus(); break;
-    case 'NEXT':  mq.keystroke('Right'); break;
+    case 'NEXT':  mq.keystroke('Right'); sluitLogGrondtal(mq); break;
+    case 'EMACHT': mq.typedText('e'); mq.cmd('^'); break;
+    case 'LN':     mq.typedText('ln('); break;
+    case 'LOG':    mq.typedText('log('); break;
+    case 'GLOG':   mq.cmd('^'); APP.logGrondtal = true; break;
     case 'FRAC':  mq.typedText('/'); break;
     // Bij een verhouding hoort een echte dubbele punt (3 : 4). Overal elders is
     // deze toets het deelteken en levert hij, net als a/b, een breukstreep op.
@@ -101,6 +115,15 @@ function handleKbdKey(val) {
     case 'v':     mq.write('\\quad v\\quad'); break;
     default:      mq.typedText(val); break;
   }
+}
+
+/* Na de ᵍlog-knop staat de cursor in het grondtal. Stapt de leerling daar met
+   → uit, dan volgt log( vanzelf. Geeft true als dat gebeurde. */
+function sluitLogGrondtal(mq) {
+  if (!APP.logGrondtal) return false;
+  APP.logGrondtal = false;
+  mq.typedText('log(');
+  return true;
 }
 
 function initMathKeyboard() {

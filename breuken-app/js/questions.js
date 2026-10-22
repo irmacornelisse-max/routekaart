@@ -7364,6 +7364,22 @@ const LEERDOELEN = [
   { id: 'EX.1e', titel: 'Zonder gebroken en zonder negatieve exponenten',  groep: 'Exponentieel', gen: genEX1e },
   { id: 'EX.1f', titel: 'Als macht schrijven (gemengd)',                   groep: 'Exponentieel', gen: genEX1f },
 
+  /* ── D-doelen (Differentiëren; generators in afgeleiden.js) ─────────── */
+  { id: 'D.M1a', titel: 'Afgeleide: machtsfuncties zonder negatieve en gebroken machten', groep: 'Differentiëren', gen: genDM1a },
+  { id: 'D.M1b', titel: 'Afgeleide: machtsfuncties met negatieve machten',                groep: 'Differentiëren', gen: genDM1b },
+  { id: 'D.M1c', titel: 'Afgeleide: machtsfuncties met gebroken machten',                 groep: 'Differentiëren', gen: genDM1c },
+  { id: 'D.M1d', titel: 'Afgeleide: machtsfuncties gemengd',                              groep: 'Differentiëren', gen: genDM1d },
+  { id: 'D.R1a', titel: 'Productregel (haakjes wegwerken kan ook)',                       groep: 'Differentiëren', gen: genDR1a },
+  { id: 'D.R1b', titel: 'Productregel met een wortel of breuk',                           groep: 'Differentiëren', gen: genDR1b },
+  { id: 'D.R1c', titel: 'Quotiëntregel',                                                  groep: 'Differentiëren', gen: genDR1c },
+  { id: 'D.R1d', titel: 'Kettingregel',                                                   groep: 'Differentiëren', gen: genDR1d },
+  { id: 'D.R1e', titel: 'Product-, quotiënt- en kettingregel gemengd',                    groep: 'Differentiëren', gen: genDR1e },
+  { id: 'D.E1a', titel: 'Afgeleide met e^x',                                              groep: 'Differentiëren', gen: genDE1a },
+  { id: 'D.E1b', titel: 'Afgeleide met g^x',                                              groep: 'Differentiëren', gen: genDE1b },
+  { id: 'D.E1c', titel: 'Afgeleide met ln',                                               groep: 'Differentiëren', gen: genDE1c },
+  { id: 'D.E1d', titel: 'Afgeleide met log',                                              groep: 'Differentiëren', gen: genDE1d },
+  { id: 'D.E1e', titel: 'Afgeleide met e^x, g^x, ln en log gemengd',                      groep: 'Differentiëren', gen: genDE1e },
+
   /* ── S-doelen (Stelsels vergelijkingen) ─────────────────────────────── */
   { id: 'S.1a', titel: 'Stelsel – direct optellen of aftrekken',    groep: 'Lineair', gen: genStelselE },
   { id: 'S.1b', titel: 'Stelsel – eerst vermenigvuldigen',          groep: 'Lineair', gen: genStelselB },

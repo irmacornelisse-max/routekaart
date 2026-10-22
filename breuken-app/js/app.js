@@ -275,6 +275,29 @@ const TOC_HOOFDSTUKKEN = [
     ]
   },
   {
+    id: 'differentieren', label: 'Differentiëren',
+    secties: [
+      {
+        id: 'afg-machten', label: 'Machtsfuncties',
+        items: [
+          { label: 'Machtsfuncties', knoppen: [{l:'a',id:'D.M1a'},{l:'b',id:'D.M1b'},{l:'c',id:'D.M1c'},{l:'d',id:'D.M1d'}] },
+        ]
+      },
+      {
+        id: 'afg-regels', label: 'Product, quotiënt en ketting',
+        items: [
+          { label: 'Rekenregels', knoppen: [{l:'a',id:'D.R1a'},{l:'b',id:'D.R1b'},{l:'c',id:'D.R1c'},{l:'d',id:'D.R1d'},{l:'e',id:'D.R1e'}] },
+        ]
+      },
+      {
+        id: 'afg-exp-log', label: 'Exponentieel en logaritme',
+        items: [
+          { label: 'e, g, ln en log', knoppen: [{l:'a',id:'D.E1a'},{l:'b',id:'D.E1b'},{l:'c',id:'D.E1c'},{l:'d',id:'D.E1d'},{l:'e',id:'D.E1e'}] },
+        ]
+      },
+    ]
+  },
+  {
     id: 'eenheden', label: 'Eenheden',
     secties: [
       {
@@ -654,6 +677,7 @@ function renderOefenen(leerdoelId) {
   const type = vraag.antwoordType;
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'kruistabel' && type !== 'grafiek' && type !== 'formule-lijn';
   const needsKbd = useStepList || type === 'two-fracs' || type === 'kruistabel' || type === 'formule-lijn';
+  const isAfgeleide = vraag.antwoord?.vorm === 'afgeleide';
 
   let antwoordInhoud = '';
   if (type === 'formule-lijn') {
@@ -678,6 +702,8 @@ function renderOefenen(leerdoelId) {
       ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor meerdere oplossingen: getal <strong>v</strong> getal'
       : type === 'stelsel'
       ? ' &nbsp;·&nbsp; Eindantwoord als coördinaat: <em>(x, y)</em>'
+      : isAfgeleide
+      ? ' &nbsp;·&nbsp; <em>f\'(x) =</em> hoef je niet te typen &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
       : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}</div>`;
@@ -707,7 +733,7 @@ function renderOefenen(leerdoelId) {
         <div class="oefenen-antwoord">
           ${antwoordInhoud}
           <div id="feedback-zone"></div>
-          ${needsKbd ? getKeyboardHTML() : ''}
+          ${needsKbd ? getKeyboardHTML(isAfgeleide) : ''}
           <div class="actie-bar" id="actie-bar">
             <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
             <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
@@ -1790,6 +1816,9 @@ function checkAntwoord(vraag, gegeven) {
     if (correct.vorm === 'exp-macht') {
       return checkExponentMacht(raw, correct.expr, correct.vars, correct.basis);
     }
+    if (correct.vorm === 'afgeleide') {
+      return checkAfgeleide(raw, correct);
+    }
     return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
   }
 
@@ -2160,6 +2189,20 @@ function feedbackBoodschap(vraag, gegeven) {
     'S.1a': 'Vergelijk de coëfficiënten van $x$ en van $y$. Zijn ze gelijk? Dan aftrekken. Tegengesteld? Dan optellen. Geef het eindantwoord als $(x, y)$.',
     'S.1b': 'Vermenigvuldig één of beide vergelijkingen met een getal zodat een coëfficiënt gelijk of tegengesteld wordt. Dan optellen of aftrekken. Geef het eindantwoord als $(x, y)$.',
     'S.1c': 'Vergelijking $(1)$ geeft $y$ of $x$ al vrij. Vul die uitdrukking direct in vergelijking $(2)$ in. Geef het eindantwoord als $(x, y)$.',
+    'D.M1a': 'Differentieer term voor term met $n \\cdot ax^{n-1}$. Een constante valt weg.',
+    'D.M1b': 'Schrijf eerst elke breuk als macht van $x$ met een negatieve exponent, en differentieer dan.',
+    'D.M1c': 'Schrijf eerst elke wortel als macht van $x$ met een gebroken exponent, en differentieer dan.',
+    'D.M1d': 'Schrijf eerst alles als macht van $x$. Differentieer dan term voor term met $n \\cdot ax^{n-1}$.',
+    'D.R1a': 'Productregel: $f\'(x) = u\' \\cdot v + u \\cdot v\'$. Eerst de haakjes wegwerken mag ook.',
+    'D.R1b': 'Productregel: $f\'(x) = u\' \\cdot v + u \\cdot v\'$. Schrijf de wortel of breuk als macht om $v\'$ te bepalen.',
+    'D.R1c': 'Quotiëntregel: $f\'(x) = \\dfrac{T\' \\cdot N - T \\cdot N\'}{N^{2}}$. Let op het minteken in de teller.',
+    'D.R1d': 'Kettingregel: differentieer de buitenste macht, laat de binnenfunctie staan, en vermenigvuldig met de afgeleide van de binnenfunctie.',
+    'D.R1e': 'Kijk eerst naar de vorm: een product, een quotiënt of een samengestelde functie? Kies daarbij de regel.',
+    'D.E1a': 'De afgeleide van $e^{x}$ is $e^{x}$. Bij $e^{u}$ komt er $\\cdot u\'$ bij (kettingregel).',
+    'D.E1b': 'De afgeleide van $g^{x}$ is $g^{x} \\cdot \\ln(g)$. Bij $g^{u}$ komt er $\\cdot u\'$ bij.',
+    'D.E1c': 'De afgeleide van $\\ln(x)$ is $\\dfrac{1}{x}$. Bij $\\ln(u)$ wordt dat $\\dfrac{u\'}{u}$.',
+    'D.E1d': 'De afgeleide van ${}^{g}\\!\\log(x)$ is $\\dfrac{1}{x \\ln(g)}$. Bij ${}^{g}\\!\\log(u)$ komt er $\\cdot u\'$ bij.',
+    'D.E1e': 'Bepaal eerst welke regel je nodig hebt (som, product, quotiënt of ketting) en gebruik dan de afgeleiden van $e^{x}$, $g^{x}$, $\\ln(x)$ en ${}^{g}\\!\\log(x)$.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
@@ -2366,6 +2409,7 @@ function addNewActiveRow() {
 
   const el = rij.querySelector('.stap-mq-input');
   const MQ = MathQuill.getInterface(2);
+  APP.logGrondtal = false;
   const mq = MQ.MathField(el, {
     spaceBehavesLikeTab: true,
     autoCommands: 'sqrt',
@@ -2401,6 +2445,12 @@ function addNewActiveRow() {
         e.preventDefault();
         mq.keystroke('Right');
         sqrtPending = false;
+        return;
+      }
+      if (e.key === 'ArrowRight' && APP.logGrondtal) {
+        e.preventDefault();
+        mq.keystroke('Right');
+        sluitLogGrondtal(mq);
         return;
       }
       if (e.key === 'ArrowUp' && mq.latex() === '') {

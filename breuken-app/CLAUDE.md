@@ -32,6 +32,7 @@ breuken-app/
   favicon.svg
   css/style.css
   js/
+    afgeleiden.js  ← generators differentiëren (D-doelen); staat vóór questions.js in index.html
     questions.js   ← vraag-generators + LEERDOELEN
     app.js         ← TOC-structuur + feedback tips
     utils.js       ← algebra-evaluatie + validatie
@@ -143,6 +144,32 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | gebroken-vergelijking | G.V1a, G.V1b, G.V2a, G.V2b, G.V2c, G.V2d, G.V2e, G.V2f |
 | modulus-vergelijking | MO.V1a, MO.V1b, MO.V1c, MO.V1d |
 | exp-omschrijven | EX.1a, EX.1b, EX.1c, EX.1d, EX.1e, EX.1f |
+| afg-machten | D.M1a, D.M1b, D.M1c, D.M1d |
+| afg-regels | D.R1a, D.R1b, D.R1c, D.R1d, D.R1e |
+| afg-exp-log | D.E1a, D.E1b, D.E1c, D.E1d, D.E1e |
+
+## Differentiëren (D-doelen)
+
+- **Eén model.** `afgeleiden.js` bouwt elke functie uit "delen" (som van
+  x-machten, e^u, g^u, ln, log, macht van u, product, quotiënt). Elk deel kent
+  zijn afgeleide en de stappen van de uitwerking, dus opgave, antwoord en
+  uitwerking kunnen niet uiteenlopen.
+- **Antwoordcontrole** (`vorm: 'afgeleide'`, `checkAfgeleide` in utils.js):
+  elke juiste vorm van f'(x) is goed, herleiden hoeft niet. f(x) anders
+  opschrijven (als macht, haakjes weg) is een tussenstap. `f'(x) =` vooraan
+  mag. Getoetst op de punten `testX` uit de opgave: binnen het domein (wortels,
+  ln) en niet vlak bij een pool.
+- **Parser:** `_algEval` kent nu `e`, `\ln`, `\log` (grondtal 10) en
+  `\log_{g}`. Nederlandse notatie: een macht **zonder grondtal** vlak voor
+  `\log` is het grondtal (`{}^{2}\log`, of `^{2}\log` zoals MathQuill het
+  schrijft). Met iets ervoor is het een exponent: `x^{2}\log(x)` = x² · log x.
+  Een losse `e` is het getal e, tenzij `e` in `vars` staat.
+- **Toetsenbord:** bij D-doelen een extra rij (eˣ, ln, ᵍlog, log). Na ᵍlog
+  staat de cursor in het grondtal; met → komt er `log(` achter.
+- **Controleren na een wijziging:** genereer per leerdoel een paar honderd
+  opgaven en vergelijk de afgeleide met een numerieke afgeleide van f, en elke
+  uitwerkingsregel met f'. Node staat niet op deze pc; headless Edge met een
+  testpagina die de js-bestanden via `file:///` laadt werkt wel.
 
 ## Antwoordcontrole – twee dingen om te weten
 

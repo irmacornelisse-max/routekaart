@@ -272,7 +272,24 @@ function parseSingleFracFromLatex(latex) {
 
 /* ── Algebra Utilities ─────────────────────────────────────────────── */
 
+/* Logaritmen staan in de Nederlandse notatie met het grondtal linksboven:
+   ²log(x). In LaTeX is dat {}^{2}\log(x), en MathQuill schrijft ^{2}\log(x)
+   (een macht zonder grondtal). Zo'n macht zonder grondtal vlak voor \log is
+   het grondtal van de logaritme. Staat er wél iets vóór de macht, dan is het
+   gewoon een exponent: x^{2}\log(x) is x² · log(x). We herschrijven het
+   grondtal naar \log_{2}. */
+const _LOG_GRONDTAL = /\^\s*(?:\{([^{}]*)\}|(\d))\s*\\log(?![a-zA-Z])/.source;
+function _normaliseerLog(s) {
+  return s
+    .replace(/\\[!,;]/g, '')
+    .replace(/\\operatorname\{(ln|log)\}/g, '\\$1')
+    .replace(new RegExp(String.raw`\{\s*\}\s*` + _LOG_GRONDTAL, 'g'), (_, b1, b2) => `\\log_{${b1 ?? b2}}`)
+    .replace(new RegExp(String.raw`(^|[+\-(*=,{]|\\cdot|\\times)\s*` + _LOG_GRONDTAL, 'g'),
+             (_, voor, b1, b2) => `${voor}\\log_{${b1 ?? b2}}`);
+}
+
 function _algTokenize(s, varVals) {
+  s = _normaliseerLog(s);
   const tokens = [];
   let i = 0;
 
@@ -335,6 +352,14 @@ function _algTokenize(s, varVals) {
         const iv = _algEval(ab, varVals);
         tokens.push({ t: 'v', v: (iv < 0 && rootIdx % 2 === 1) ? -Math.pow(-iv, 1 / rootIdx) : Math.pow(Math.max(0, iv), 1 / rootIdx) });
       }
+      // ln en log zijn functies: het argument volgt pas in de parser.
+      // Zonder grondtal is log de briggse logaritme (grondtal 10).
+      else if (cmd === 'ln' || cmd === 'log') {
+        if (needsMul) tokens.push({ t: 'op', v: '*' });
+        let basis = cmd === 'ln' ? null : 10;
+        if (cmd === 'log' && s[i] === '_') { i++; basis = _algEval(readBlock(), varVals); }
+        tokens.push({ t: 'fn', basis });
+      }
       continue;
     }
 
@@ -353,7 +378,10 @@ function _algTokenize(s, varVals) {
         const vname = s[i++];
         if (!first || needsMul) tokens.push({ t: 'op', v: '*' });
         first = false;
-        tokens.push({ t: 'v', v: (varVals && varVals[vname] !== undefined) ? varVals[vname] : NaN });
+        // Een losse e is het grondtal van ln, tenzij e zelf een variabele is.
+        const waarde = (varVals && varVals[vname] !== undefined) ? varVals[vname]
+                     : vname === 'e' ? Math.E : NaN;
+        tokens.push({ t: 'v', v: waarde });
       }
       continue;
     }
@@ -417,6 +445,14 @@ function _algEval(latex, varVals) {
     function atom() {
       if (eat(t => t.t === 'lp')) { const v = expr(); eat(t => t.t === 'rp'); return v; }
       if (eat(t => t.t === 'abs')) { const v = expr(); eat(t => t.t === 'absEnd'); return Math.abs(v); }
+      /* ln(x)^{2} is (ln x)², maar ln x^{2} is ln(x²): met haakjes is het
+         argument alleen wat tussen de haakjes staat, zonder haakjes neemt de
+         functie de eerstvolgende macht mee. */
+      const fn = eat(t => t.t === 'fn');
+      if (fn) {
+        const arg = (pos < tokens.length && tokens[pos].t === 'lp') ? atom() : power();
+        return fn.basis === null ? Math.log(arg) : Math.log(arg) / Math.log(fn.basis);
+      }
       const tok = eat(t => t.t === 'v' || t.t === 'n');
       if (tok) return tok.v;
       throw new Error('?');
@@ -687,6 +723,44 @@ function checkExponentVorm(gegeven, verwacht, vars, verboden) {
 function checkExponentMacht(gegeven, verwacht, vars, basis) {
   if (!_exWaardeGelijk(gegeven, verwacht, vars)) return 'fout';
   return isEnkeleMachtVan(gegeven, basis) ? 'goed' : 'tussenstap';
+}
+
+/* ── Afgeleiden ───────────────────────────────────────────────────────────
+   Elke juiste vorm van f'(x) is goed: haakjes wegwerken of herleiden hoeft
+   niet. Schrijft de leerling eerst f(x) anders op (als macht, of met de
+   haakjes uitgewerkt), dan is dat een tussenstap. Een regel mag beginnen met
+   f'(x) = of f(x) =, en mag een keten A = B zijn; elk deel moet dan kloppen.
+
+   De testwaarden komen uit de opgave zelf (`testX`): die liggen binnen het
+   domein van f, zodat een wortel of ln nooit buiten zijn domein wordt
+   uitgerekend. De marge is relatief: e^{x^{2}} loopt hard op, en e^{-2x - 8}
+   is zo klein dat een vaste marge een fout antwoord zou doorlaten. */
+const _AFG_LHS = /^\s*[a-zA-Z]\s*('|\^\{?\\prime\}?)*\s*\(\s*x\s*\)\s*$/;
+
+function _afgWaardeGelijk(gegeven, verwacht, testX) {
+  let getoetst = 0;
+  for (const x of testX) {
+    const e = _algEval(verwacht, { x });
+    if (!isFinite(e)) continue;
+    const g = _algEval(gegeven, { x });
+    if (!isFinite(g) || Math.abs(g - e) > 1e-7 * Math.abs(e) + 1e-9) return false;
+    getoetst++;
+  }
+  return getoetst >= 3;
+}
+
+function checkAfgeleide(gegeven, correct) {
+  const delen = (gegeven || '').replace(/\\left\(/g, '(').replace(/\\right\)/g, ')').split('=');
+  let claim = null;                                 // 'afgeleide' | 'functie' | null
+  if (delen.length > 1 && _AFG_LHS.test(delen[0])) {
+    claim = /'|\\prime/.test(delen[0]) ? 'afgeleide' : 'functie';
+    delen.shift();
+  }
+  if (!delen.length || delen.some(d => !d.trim())) return 'fout';
+  const allemaal = doel => delen.every(d => _afgWaardeGelijk(d, doel, correct.testX));
+  if (claim !== 'functie' && allemaal(correct.expr)) return 'goed';
+  if (claim !== 'afgeleide' && allemaal(correct.functie)) return 'tussenstap';
+  return 'fout';
 }
 
 function isAlgebraGefactoriseerd(latex) {
