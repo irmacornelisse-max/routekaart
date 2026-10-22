@@ -33,6 +33,7 @@ breuken-app/
   css/style.css
   js/
     afgeleiden.js  ← generators differentiëren (D-doelen); staat vóór questions.js in index.html
+    meetkunde.js   ← generators, SVG-figuren en nakijken meetkunde (MK-doelen); ook vóór questions.js
     questions.js   ← vraag-generators + LEERDOELEN
     app.js         ← TOC-structuur + feedback tips
     utils.js       ← algebra-evaluatie + validatie
@@ -147,6 +148,35 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | afg-machten | D.M1a, D.M1b, D.M1c, D.M1d |
 | afg-regels | D.R1a, D.R1b, D.R1c, D.R1d, D.R1e |
 | afg-exp-log | D.E1a, D.E1b, D.E1c, D.E1d, D.E1e |
+| mk-omtrek-opp | MK.O1a–d, MK.A1a–d |
+| mk-pythagoras | MK.P1a, MK.P1b, MK.P2a, MK.P2b |
+| mk-goniometrie | MK.G1a, MK.G2a, MK.G2b |
+| mk-sinus-cosinusregel | MK.S1a, MK.S1b, MK.S1c, MK.C1a, MK.C1b |
+| mk-gelijkvormig | MK.V1a, MK.V1b, MK.V1c |
+
+## Meetkunde (MK-doelen)
+
+- **Figuur en antwoord uit één model.** Elke generator rekent coördinaten uit
+  en tekent daaruit de SVG (`_mkFiguur`), dus de figuur is op schaal en klopt
+  met het antwoord. SVG-labels krijgen zelf een komma (`_mkL`), want
+  `_kommaNotatie` werkt alleen binnen `$...$`.
+- **Afronden:** de opgave noemt het aantal decimalen (`dec`); alleen precies
+  die afronding is goed. Meer decimalen = tussenstap ("rond nog af"), net
+  verkeerd afgerond = fout met uitleg. `_mkVeilig` gooit waarden vlak bij een
+  afrondgrens weg. `dec: null` = exact getal; `exact: 'pi'` = antwoord als
+  getal maal π.
+- **Nakijken** (`antwoordType: 'meetkunde'`, `checkMeetkunde`): een regel is
+  een keten `deel = deel ≈ deel`. Zijden (`AB`), hoeken (`\angle A` of `A`) en
+  `r`/`d` worden vervangen door hun waarde uit `sets[i].g`; een kale kleine
+  letter of een woord vooraan is de gevraagde grootheid. Klopt de keten
+  (marge 0,5 %), dan is het een tussenstap. Meer `sets` = meer oplossingen
+  (MK.S1c); één ervan geven is een tussenstap.
+- **Parser:** `_algEval` kent nu `\pi` en `\sin`, `\cos`, `\tan` in graden,
+  plus de inverse (`\sin^{-1}`, `\arcsin`).
+- **Toetsenbord:** bij MK-doelen twee extra rijen (sin, cos, tan, π, ∠, °,
+  en de inverse). "pi" typen wordt π.
+- **Lokaal bekijken:** Node staat niet op deze pc; `.claude/launch.json` heeft
+  daarom ook een configuratie `breuken-app-python` (`python -m http.server`).
 
 ## Differentiëren (D-doelen)
 

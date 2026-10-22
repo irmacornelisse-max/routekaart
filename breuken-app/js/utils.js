@@ -360,6 +360,18 @@ function _algTokenize(s, varVals) {
         if (cmd === 'log' && s[i] === '_') { i++; basis = _algEval(readBlock(), varVals); }
         tokens.push({ t: 'fn', basis });
       }
+      else if (cmd === 'pi') {
+        if (needsMul) tokens.push({ t: 'op', v: '*' });
+        tokens.push({ t: 'v', v: Math.PI });
+      }
+      // Goniometrie rekent in graden, zoals op de rekenmachine in DEG-stand.
+      // De inverse schrijft MathQuill als \sin^{-1}; \arcsin mag ook.
+      else if (/^(?:arc)?(?:sin|cos|tan)$/.test(cmd)) {
+        if (needsMul) tokens.push({ t: 'op', v: '*' });
+        const inv = s.slice(i).match(/^\s*\^\s*(?:\{\s*-\s*1\s*\}|-\s*1)/);
+        if (inv) i += inv[0].length;
+        tokens.push({ t: 'fn', gonio: cmd.replace('arc', ''), inv: !!inv || cmd.startsWith('arc') });
+      }
       continue;
     }
 
@@ -451,6 +463,12 @@ function _algEval(latex, varVals) {
       const fn = eat(t => t.t === 'fn');
       if (fn) {
         const arg = (pos < tokens.length && tokens[pos].t === 'lp') ? atom() : power();
+        if (fn.gonio) {
+          const GRAAD = Math.PI / 180;
+          if (!fn.inv) return Math[fn.gonio](arg * GRAAD);
+          const inverse = { sin: Math.asin, cos: Math.acos, tan: Math.atan }[fn.gonio];
+          return inverse(arg) / GRAAD;
+        }
         return fn.basis === null ? Math.log(arg) : Math.log(arg) / Math.log(fn.basis);
       }
       const tok = eat(t => t.t === 'v' || t.t === 'n');

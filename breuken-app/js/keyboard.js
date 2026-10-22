@@ -9,9 +9,25 @@ const KBD_RIJ_AFGELEIDE = `<div class="kbd-row">
       <button class="kbd-btn kbd-btn-op" data-val="LOG">log</button>
     </div>`;
 
-function getKeyboardHTML(metAfgeleide = false) {
+/* Extra rij bij meetkunde: sin, cos, tan en hun inverse, π, ∠ en °. */
+const KBD_RIJ_MEETKUNDE = `<div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="SIN">sin</button>
+      <button class="kbd-btn kbd-btn-op" data-val="COS">cos</button>
+      <button class="kbd-btn kbd-btn-op" data-val="TAN">tan</button>
+      <button class="kbd-btn kbd-btn-op" data-val="PI" aria-label="pi">π</button>
+      <button class="kbd-btn kbd-btn-op" data-val="HOEK" aria-label="Hoek">∠</button>
+      <button class="kbd-btn kbd-btn-op" data-val="GRADEN" aria-label="Graden">°</button>
+    </div>
+    <div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="ASIN">sin<sup>−1</sup></button>
+      <button class="kbd-btn kbd-btn-op" data-val="ACOS">cos<sup>−1</sup></button>
+      <button class="kbd-btn kbd-btn-op" data-val="ATAN">tan<sup>−1</sup></button>
+    </div>`;
+
+function getKeyboardHTML(metAfgeleide = false, metMeetkunde = false) {
   return `<div id="math-keyboard" class="math-keyboard">
     ${metAfgeleide ? KBD_RIJ_AFGELEIDE : ''}
+    ${metMeetkunde ? KBD_RIJ_MEETKUNDE : ''}
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>
       <button class="kbd-btn" data-val="8">8</button>
@@ -86,6 +102,15 @@ function handleKbdKey(val) {
     case 'LN':     mq.typedText('ln('); break;
     case 'LOG':    mq.typedText('log('); break;
     case 'GLOG':   mq.cmd('^'); APP.logGrondtal = true; break;
+    case 'SIN': case 'COS': case 'TAN':
+      mq.typedText(`${val.toLowerCase()}(`); break;
+    // De inverse: sin, dan de exponent -1, uit de exponent stappen en haakje.
+    case 'ASIN': case 'ACOS': case 'ATAN':
+      mq.typedText(val.slice(1).toLowerCase()); mq.cmd('^'); mq.typedText('-1');
+      mq.keystroke('Right'); mq.typedText('('); break;
+    case 'PI':     mq.cmd('\\pi'); break;
+    case 'HOEK':   mq.cmd('\\angle'); break;
+    case 'GRADEN': mq.cmd('^'); mq.cmd('\\circ'); mq.keystroke('Right'); break;
     case 'FRAC':  mq.typedText('/'); break;
     // Bij een verhouding hoort een echte dubbele punt (3 : 4). Overal elders is
     // deze toets het deelteken en levert hij, net als a/b, een breukstreep op.

@@ -7390,6 +7390,31 @@ const LEERDOELEN = [
   { id: 'S.1a', titel: 'Stelsel – direct optellen of aftrekken',    groep: 'Lineair', gen: genStelselE },
   { id: 'S.1b', titel: 'Stelsel – eerst vermenigvuldigen',          groep: 'Lineair', gen: genStelselB },
   { id: 'S.1c', titel: 'Stelsel – één vergelijking in y=ax+b-vorm', groep: 'Lineair', gen: genStelselC },
+
+  /* ── MK-doelen (Meetkunde, generators in meetkunde.js) ───────────────── */
+  { id: 'MK.O1a', titel: 'Omtrek van een rechthoek',                         groep: 'Meetkunde', gen: genMKO1a },
+  { id: 'MK.O1b', titel: 'Omtrek van een driehoek',                          groep: 'Meetkunde', gen: genMKO1b },
+  { id: 'MK.O1c', titel: 'Omtrek van een cirkel, afgerond',                  groep: 'Meetkunde', gen: genMKO1c },
+  { id: 'MK.O1d', titel: 'Omtrek van een cirkel, exact in π',                groep: 'Meetkunde', gen: genMKO1d },
+  { id: 'MK.A1a', titel: 'Oppervlakte van een rechthoek',                    groep: 'Meetkunde', gen: genMKA1a },
+  { id: 'MK.A1b', titel: 'Oppervlakte van een driehoek',                     groep: 'Meetkunde', gen: genMKA1b },
+  { id: 'MK.A1c', titel: 'Oppervlakte van een cirkel, afgerond',             groep: 'Meetkunde', gen: genMKA1c },
+  { id: 'MK.A1d', titel: 'Oppervlakte van een cirkel, exact in π',           groep: 'Meetkunde', gen: genMKA1d },
+  { id: 'MK.P1a', titel: 'Pythagoras: schuine zijde berekenen',              groep: 'Meetkunde', gen: genMKP1a },
+  { id: 'MK.P1b', titel: 'Pythagoras: rechthoekszijde berekenen',            groep: 'Meetkunde', gen: genMKP1b },
+  { id: 'MK.P2a', titel: 'Pythagoras: afstand tussen twee punten',           groep: 'Meetkunde', gen: genMKP2a },
+  { id: 'MK.P2b', titel: 'Pythagoras: lichaamsdiagonaal van een balk',       groep: 'Meetkunde', gen: genMKP2b },
+  { id: 'MK.G1a', titel: 'Sin, cos, tan: hoek berekenen',                    groep: 'Meetkunde', gen: genMKG1a },
+  { id: 'MK.G2a', titel: 'Sin, cos, tan: zijde berekenen (in de teller)',    groep: 'Meetkunde', gen: genMKG2a },
+  { id: 'MK.G2b', titel: 'Sin, cos, tan: zijde berekenen (in de noemer)',    groep: 'Meetkunde', gen: genMKG2b },
+  { id: 'MK.S1a', titel: 'Sinusregel: zijde berekenen',                      groep: 'Meetkunde', gen: genMKS1a },
+  { id: 'MK.S1b', titel: 'Sinusregel: hoek berekenen',                       groep: 'Meetkunde', gen: genMKS1b },
+  { id: 'MK.S1c', titel: 'Sinusregel: twee mogelijke driehoeken',            groep: 'Meetkunde', gen: genMKS1c },
+  { id: 'MK.C1a', titel: 'Cosinusregel: zijde berekenen',                    groep: 'Meetkunde', gen: genMKC1a },
+  { id: 'MK.C1b', titel: 'Cosinusregel: hoek berekenen',                     groep: 'Meetkunde', gen: genMKC1b },
+  { id: 'MK.V1a', titel: 'Gelijkvormigheid: snavelfiguur',                   groep: 'Meetkunde', gen: genMKV1a },
+  { id: 'MK.V1b', titel: 'Gelijkvormigheid: zandloperfiguur',                groep: 'Meetkunde', gen: genMKV1b },
+  { id: 'MK.V1c', titel: 'Gelijkvormigheid: twee losse driehoeken',          groep: 'Meetkunde', gen: genMKV1c },
 ];
 
 /* ── Herhaling voorkomen ──────────────────────────────────────────────────

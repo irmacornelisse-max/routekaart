@@ -304,6 +304,45 @@ const TOC_HOOFDSTUKKEN = [
     ]
   },
   {
+    id: 'meetkunde', label: 'Meetkunde',
+    secties: [
+      {
+        id: 'mk-omtrek-opp', label: 'Omtrek en oppervlakte',
+        items: [
+          { label: 'Omtrek',      knoppen: [{l:'a',id:'MK.O1a'},{l:'b',id:'MK.O1b'},{l:'c',id:'MK.O1c'},{l:'d',id:'MK.O1d'}] },
+          { label: 'Oppervlakte', knoppen: [{l:'a',id:'MK.A1a'},{l:'b',id:'MK.A1b'},{l:'c',id:'MK.A1c'},{l:'d',id:'MK.A1d'}] },
+        ]
+      },
+      {
+        id: 'mk-pythagoras', label: 'Stelling van Pythagoras',
+        items: [
+          { label: 'Zijden berekenen',  knoppen: [{l:'a',id:'MK.P1a'},{l:'b',id:'MK.P1b'}] },
+          { label: 'Afstand berekenen', knoppen: [{l:'a',id:'MK.P2a'},{l:'b',id:'MK.P2b'}] },
+        ]
+      },
+      {
+        id: 'mk-goniometrie', label: 'Sinus, cosinus en tangens',
+        items: [
+          { label: 'Hoeken berekenen', knoppen: [{l:'a',id:'MK.G1a'}] },
+          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.G2a'},{l:'b',id:'MK.G2b'}] },
+        ]
+      },
+      {
+        id: 'mk-sinus-cosinusregel', label: 'Sinusregel en cosinusregel',
+        items: [
+          { label: 'Sinusregel',   knoppen: [{l:'a',id:'MK.S1a'},{l:'b',id:'MK.S1b'},{l:'c',id:'MK.S1c'}] },
+          { label: 'Cosinusregel', knoppen: [{l:'a',id:'MK.C1a'},{l:'b',id:'MK.C1b'}] },
+        ]
+      },
+      {
+        id: 'mk-gelijkvormig', label: 'Gelijkvormigheid',
+        items: [
+          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.V1a'},{l:'b',id:'MK.V1b'},{l:'c',id:'MK.V1c'}] },
+        ]
+      },
+    ]
+  },
+  {
     id: 'eenheden', label: 'Eenheden',
     secties: [
       {
@@ -684,6 +723,7 @@ function renderOefenen(leerdoelId) {
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'kruistabel' && type !== 'grafiek' && type !== 'formule-lijn';
   const needsKbd = useStepList || type === 'two-fracs' || type === 'kruistabel' || type === 'formule-lijn';
   const isAfgeleide = vraag.antwoord?.vorm === 'afgeleide';
+  const isMeetkunde = type === 'meetkunde';
 
   let antwoordInhoud = '';
   if (type === 'formule-lijn') {
@@ -708,6 +748,8 @@ function renderOefenen(leerdoelId) {
       ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor meerdere oplossingen: getal <strong>v</strong> getal'
       : type === 'stelsel'
       ? ' &nbsp;·&nbsp; Eindantwoord als coördinaat: <em>(x, y)</em>'
+      : isMeetkunde && vraag.antwoord.sets.length > 1
+      ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor meer waarden: getal <strong>v</strong> getal'
       : isAfgeleide
       ? ' &nbsp;·&nbsp; <em>f\'(x) =</em> hoef je niet te typen &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
       : '';
@@ -739,7 +781,7 @@ function renderOefenen(leerdoelId) {
         <div class="oefenen-antwoord">
           ${antwoordInhoud}
           <div id="feedback-zone"></div>
-          ${needsKbd ? getKeyboardHTML(isAfgeleide) : ''}
+          ${needsKbd ? getKeyboardHTML(isAfgeleide, isMeetkunde) : ''}
           <div class="actie-bar" id="actie-bar">
             <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
             <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
@@ -1279,6 +1321,10 @@ function _bevatUitrekenbareWortel(latex) {
 /* Een tussenstap waar alleen de wortel nog uitgerekend moet worden, verdient
    een duidelijker duwtje dan "ga door". */
 function tussenstapBoodschap(gegeven) {
+  if (APP.huidigVraag?.antwoordType === 'meetkunde') {
+    const melding = meetkundeTekst(APP.huidigVraag, 'tussenstap');
+    if (melding) return melding;
+  }
   return _bevatUitrekenbareWortel(gegeven?.latex)
     ? 'Goed, ga door! De wortel komt precies uit — reken hem nog uit.'
     : 'Goed, ga door!';
@@ -1828,6 +1874,8 @@ function checkAntwoord(vraag, gegeven) {
     return checkAlgebraAntwoord(raw, correct.expr, correct.vars);
   }
 
+  if (type === 'meetkunde') return checkMeetkunde(vraag, gegeven.latex);
+
   const rawLatex = gegeven.latex.replace(/\\%/g, '');
   const sv = evaluateLatex(rawLatex);
   if (sv === null || !isFinite(sv)) return 'fout';
@@ -1904,6 +1952,10 @@ function _exponentValMelding(vraag, gegeven) {
 
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
+  if (vraag.antwoordType === 'meetkunde') {
+    const melding = meetkundeTekst(vraag, 'fout');
+    if (melding) return melding;
+  }
   const exponentVal = _exponentValMelding(vraag, gegeven);
   if (exponentVal) return exponentVal;
 
@@ -2215,6 +2267,29 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.E1c': 'De afgeleide van $\\ln(x)$ is $\\dfrac{1}{x}$. Bij $\\ln(u)$ wordt dat $\\dfrac{u\'}{u}$.',
     'D.E1d': 'De afgeleide van ${}^{g}\\!\\log(x)$ is $\\dfrac{1}{x \\ln(g)}$. Bij ${}^{g}\\!\\log(u)$ komt er $\\cdot u\'$ bij.',
     'D.E1e': 'Bepaal eerst welke regel je nodig hebt (som, product, quotiënt of ketting) en gebruik dan de afgeleiden van $e^{x}$, $g^{x}$, $\\ln(x)$ en ${}^{g}\\!\\log(x)$.',
+    'MK.O1a': 'De omtrek is de lengte van de hele rand. Tel alle vier de zijden op.',
+    'MK.O1b': 'Tel de drie zijden van de driehoek op.',
+    'MK.O1c': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Kijk of het getekende lijnstuk een straal of een middellijn is.',
+    'MK.O1d': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Laat $\\pi$ staan in je antwoord.',
+    'MK.A1a': 'Oppervlakte van een rechthoek: lengte keer breedte.',
+    'MK.A1b': 'Oppervlakte van een driehoek: $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$. De hoogte staat loodrecht op de basis.',
+    'MK.A1c': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Is de middellijn gegeven? Halveer die dan eerst.',
+    'MK.A1d': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Laat $\\pi$ staan in je antwoord.',
+    'MK.P1a': 'De schuine zijde ligt tegenover de rechte hoek. Tel de kwadraten van de rechthoekszijden op en neem de wortel.',
+    'MK.P1b': 'De gevraagde zijde is een rechthoekszijde: het kwadraat van de schuine zijde min het andere kwadraat, dan de wortel.',
+    'MK.P2a': 'Bepaal het verschil in $x$ en in $y$. Dat zijn de rechthoekszijden; gebruik dan Pythagoras.',
+    'MK.P2b': 'Gebruik twee keer Pythagoras: eerst de diagonaal van het grondvlak, dan de lichaamsdiagonaal.',
+    'MK.G1a': 'Kies sin, cos of tan bij de twee gegeven zijden en gebruik de inverse. Staat je rekenmachine in graden?',
+    'MK.G2a': 'Kies de verhouding met de gegeven en de gevraagde zijde. De gevraagde zijde staat in de teller: vermenigvuldigen.',
+    'MK.G2b': 'Kies de verhouding met de gegeven en de gevraagde zijde. De gevraagde zijde staat in de noemer: delen.',
+    'MK.S1a': 'Sinusregel: elke zijde gedeeld door de sinus van de hoek ertegenover is even groot.',
+    'MK.S1b': 'Sinusregel: los eerst de sinus van de gevraagde hoek op en gebruik dan $\\sin^{-1}$.',
+    'MK.S1c': 'Bij $\\sin^{-1}$ krijg je alleen de scherpe hoek. Bedenk dat $\\sin(180^{\\circ} - x) = \\sin(x)$.',
+    'MK.C1a': 'Cosinusregel: $a^2 = b^2 + c^2 - 2bc \\cdot \\cos(\\angle A)$, met $a$ tegenover de gegeven hoek.',
+    'MK.C1b': 'Cosinusregel: vul de drie zijden in en los eerst de cosinus van de gevraagde hoek op.',
+    'MK.V1a': 'Zet de overeenkomstige zijden van de kleine en de grote driehoek in een verhoudingstabel. Let op: de zijde van de grote driehoek is het hele stuk.',
+    'MK.V1b': 'Zet de overeenkomstige zijden van beide driehoeken in een verhoudingstabel. Zijden op dezelfde lijn door het snijpunt horen bij elkaar.',
+    'MK.V1c': 'Overeenkomstige zijden liggen tegenover gelijke hoeken. Bepaal de vermenigvuldigingsfactor.',
   };
   return tips[vraag.leerdoel] || 'Controleer je berekening stap voor stap.';
 }
@@ -2424,7 +2499,8 @@ function addNewActiveRow() {
   APP.logGrondtal = false;
   const mq = MQ.MathField(el, {
     spaceBehavesLikeTab: true,
-    autoCommands: 'sqrt',
+    // Bij meetkunde wordt "pi" getypt als π.
+    autoCommands: APP.huidigVraag?.antwoordType === 'meetkunde' ? 'sqrt pi' : 'sqrt',
     handlers: { enter: () => document.getElementById('btn-controleer')?.click() }
   });
 
@@ -2437,6 +2513,7 @@ function addNewActiveRow() {
       const _needsV = (_kq?.antwoordType === 'machtsvergelijking' && _kq?.antwoord?.hasNeg)
                     || _kq?.antwoordType === 'kwadratisch'
                     || _kq?.antwoordType === 'vergelijking-mv'
+                    || (_kq?.antwoordType === 'meetkunde' && _kq?.antwoord?.sets?.length > 1)
                     || (_kq?.antwoordType === 'wortelverg' && _kq?.antwoord?.extraneous !== null);
       if (e.key === 'v' && _needsV) {
         e.preventDefault();
