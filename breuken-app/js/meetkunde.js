@@ -476,6 +476,16 @@ function genMKA1b() {
 const genMKA1c = () => _mkCirkelVraag('MK.A1c', 'oppervlakte', false);
 const genMKA1d = () => _mkCirkelVraag('MK.A1d', 'oppervlakte', true);
 
+/* MK.O1e en MK.A1e: a t/m d door elkaar. De opgave komt van een van de
+   vier generators en krijgt het e-leerdoel, zodat het resultaat daar telt. */
+function _mkDoorElkaar(leerdoel, generators) {
+  const v = pick(generators)();
+  v.leerdoel = leerdoel;
+  return v;
+}
+const genMKO1e = () => _mkDoorElkaar('MK.O1e', [genMKO1a, genMKO1b, genMKO1c, genMKO1d]);
+const genMKA1e = () => _mkDoorElkaar('MK.A1e', [genMKA1a, genMKA1b, genMKA1c, genMKA1d]);
+
 /* ═══ Rechthoekige driehoek (Pythagoras en goniometrie) ═══════════════════
    X = hoekpunt van de scherpe hoek waar het om draait, R = rechte hoek,
    Y = het derde hoekpunt. Aanliggend = XR, overstaand = YR, schuin = XY.   */
