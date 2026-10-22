@@ -413,7 +413,8 @@ function _dVraag(id, maak) {
     f.stappen.forEach((s, i) => regels.push(i === 0 ? `$f'(x) = ${s}$` : `$= ${s}$`));
     return {
       id: uid(), leerdoel: id,
-      vraag: `Bereken de afgeleide van $f(x) = ${f.tex}$.`,
+      // De formule staat op een eigen regel en breekt niet af (zie .vraag-formule).
+      vraag: `Bereken de afgeleide van<span class="vraag-formule">$f(x) = ${f.tex}$</span>`,
       antwoordType: 'algebra',
       antwoord: { expr, vars: ['x'], vorm: 'afgeleide', functie: f.tex, testX },
       data: {}, hints, oplossing: regels.join('\n'),
@@ -440,6 +441,7 @@ const _DH = {
 
 /* ── D.M1 – machtsfuncties ──────────────────────────────────────────────── */
 const _dVorm = () => (Math.random() < 0.55 ? 'terug' : 'macht');
+const _D_MAX_TERMEN = 3;
 
 function _dTermGeheel(p) {
   if (p >= 2 && Math.random() < 0.2) return _dT(_dQ(pick([1, 2, 3, 4, 5]) * pick([1, -1]), p), p);
@@ -480,6 +482,8 @@ function _dMaakM1(soort) {
       shuffle([0, 1, 2, 3, 4]).slice(0, rand(1, 2)).forEach(p => spec.push(_dTermGeheel(p)));
     }
     if (spec.length < 2 || !_dHeeftVerschillendeMachten(spec)) continue;
+    // Met breuken en wortels passen vier termen niet meer op één regel van een telefoon.
+    if (soort !== 'a' && spec.length > _D_MAX_TERMEN) continue;
     const hints = [];
     if (spec.some(t => t.p.n < 0 && t.vorm === 'terug')) hints.push(_DH.neg);
     if (spec.some(t => t.p.d > 1 && t.vorm === 'terug')) hints.push(_DH.wortel);
@@ -551,6 +555,8 @@ function _dMaakR1d() {
   const k = pick([_dQ(2), _dQ(3), _dQ(4), _dQ(5), _dQ(6), _dQ(3), _dQ(-1), _dQ(-2), _dQ(-3),
                   _dQ(1, 2), _dQ(1, 2), _dQ(1, 3), _dQ(2, 3), _dQ(3, 2), _dQ(-1, 2)]);
   const c = Math.random() < 0.65 ? _D1 : _dQ(_randNietNul(-4, 4));
+  // u^{3/2} staat er als u·√u: met drie termen in u past dat niet op één regel.
+  if (u.termen.length > 2 && Math.abs(_dQwaarde(k)) > 1 && k.d > 1) return _dMaakR1d();
   return { f: _dMacht(u, k, c), hints: [_DH.kettingMacht] };
 }
 
@@ -584,7 +590,12 @@ function _dMaakE1(soort) {
   const basisHint = _DH[soort];
   if (regel === 'som') {
     const B = _dBasis(soort, _dXalleen(), _dCoef());
-    const rest = _dMaakM1(pick(['a', 'b', 'c'])).f;
+    // Kort houden, zodat de hele functie op één regel past.
+    const rest = pick([
+      () => _dVeelterm(_dTweeMachten(0, 3)),
+      () => _dXSom([_dTermNeg(_dVorm())]),
+      () => _dXSom([_dTermBreuk(_dVorm())]),
+    ])();
     const delen = Math.random() < 0.5 ? [B, rest] : [rest, B];
     return { f: _dSom(delen), hints: [basisHint, _DH.som] };
   }

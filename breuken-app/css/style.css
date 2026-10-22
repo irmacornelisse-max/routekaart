@@ -208,6 +208,13 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: var(--text); white-space: pre-line;
 }
 .vraag-tekst .katex { font-size: 1.2em; }
+/* Een formule op een eigen regel die nooit halverwege afbreekt. Is hij toch
+   breder dan het kader (smalle telefoon), dan schuift hij in plaats van te
+   breken. */
+.vraag-formule {
+  display: block; white-space: nowrap; margin-top: 6px;
+  overflow-x: auto; overflow-y: hidden;
+}
 
 /* Answer inputs */
 .antwoord-sectie { margin-bottom: 16px; }
