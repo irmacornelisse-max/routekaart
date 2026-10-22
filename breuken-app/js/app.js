@@ -314,6 +314,12 @@ const TOC_HOOFDSTUKKEN = [
         ]
       },
       {
+        id: 'mk-gelijkvormig', label: 'Gelijkvormigheid',
+        items: [
+          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.V1a'},{l:'b',id:'MK.V1b'},{l:'c',id:'MK.V1c'},{l:'d',id:'MK.V1d'}] },
+        ]
+      },
+      {
         id: 'mk-pythagoras', label: 'Stelling van Pythagoras',
         items: [
           { label: 'Zijden berekenen',  knoppen: [{l:'a',id:'MK.P1a'},{l:'b',id:'MK.P1b'}] },
@@ -332,12 +338,6 @@ const TOC_HOOFDSTUKKEN = [
         items: [
           { label: 'Sinusregel',   knoppen: [{l:'a',id:'MK.S1a'},{l:'b',id:'MK.S1b'},{l:'c',id:'MK.S1c'}] },
           { label: 'Cosinusregel', knoppen: [{l:'a',id:'MK.C1a'},{l:'b',id:'MK.C1b'}] },
-        ]
-      },
-      {
-        id: 'mk-gelijkvormig', label: 'Gelijkvormigheid',
-        items: [
-          { label: 'Zijden berekenen', knoppen: [{l:'a',id:'MK.V1a'},{l:'b',id:'MK.V1b'},{l:'c',id:'MK.V1c'},{l:'d',id:'MK.V1d'}] },
         ]
       },
     ]

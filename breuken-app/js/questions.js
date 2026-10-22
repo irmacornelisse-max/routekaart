@@ -7402,6 +7402,10 @@ const LEERDOELEN = [
   { id: 'MK.A1c', titel: 'Oppervlakte van een cirkel, afgerond',             groep: 'Meetkunde', gen: genMKA1c },
   { id: 'MK.A1d', titel: 'Oppervlakte van een cirkel, exact in π',           groep: 'Meetkunde', gen: genMKA1d },
   { id: 'MK.A1e', titel: 'Oppervlakte: rechthoek, driehoek en cirkel door elkaar', groep: 'Meetkunde', gen: genMKA1e },
+  { id: 'MK.V1a', titel: 'Gelijkvormigheid: snavelfiguur',                   groep: 'Meetkunde', gen: genMKV1a },
+  { id: 'MK.V1b', titel: 'Gelijkvormigheid: zandloperfiguur',                groep: 'Meetkunde', gen: genMKV1b },
+  { id: 'MK.V1c', titel: 'Gelijkvormigheid: twee losse driehoeken',          groep: 'Meetkunde', gen: genMKV1c },
+  { id: 'MK.V1d', titel: 'Gelijkvormigheid: alle figuren door elkaar',       groep: 'Meetkunde', gen: genMKV1d },
   { id: 'MK.P1a', titel: 'Pythagoras: schuine zijde berekenen',             groep: 'Meetkunde', gen: genMKP1a },
   { id: 'MK.P1b', titel: 'Pythagoras: rechthoekszijde berekenen',            groep: 'Meetkunde', gen: genMKP1b },
   { id: 'MK.P2a', titel: 'Pythagoras: afstand tussen twee punten',           groep: 'Meetkunde', gen: genMKP2a },
@@ -7414,10 +7418,6 @@ const LEERDOELEN = [
   { id: 'MK.S1c', titel: 'Sinusregel: twee mogelijke driehoeken',            groep: 'Meetkunde', gen: genMKS1c },
   { id: 'MK.C1a', titel: 'Cosinusregel: zijde berekenen',                    groep: 'Meetkunde', gen: genMKC1a },
   { id: 'MK.C1b', titel: 'Cosinusregel: hoek berekenen',                     groep: 'Meetkunde', gen: genMKC1b },
-  { id: 'MK.V1a', titel: 'Gelijkvormigheid: snavelfiguur',                   groep: 'Meetkunde', gen: genMKV1a },
-  { id: 'MK.V1b', titel: 'Gelijkvormigheid: zandloperfiguur',                groep: 'Meetkunde', gen: genMKV1b },
-  { id: 'MK.V1c', titel: 'Gelijkvormigheid: twee losse driehoeken',          groep: 'Meetkunde', gen: genMKV1c },
-  { id: 'MK.V1d', titel: 'Gelijkvormigheid: alle figuren door elkaar',       groep: 'Meetkunde', gen: genMKV1d },
 ];
 
 /* ── Herhaling voorkomen ──────────────────────────────────────────────────
