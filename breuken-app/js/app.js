@@ -2003,8 +2003,16 @@ function feedbackBoodschap(vraag, gegeven) {
           return 'Klopt! Maar schrijf de breuk in de meest vereenvoudigde vorm.';
         }
       } catch {}
+      return 'Niet helemaal: deze waarde van $x$ is geen oplossing. Vul hem in de vergelijking in en controleer je berekening.';
     }
-    return 'Niet helemaal. Typ het antwoord als $x = ...$';
+    // Een tussenstap die niet klopt: de leerling mag wel tussenstappen geven,
+    // dus "typ het antwoord als x = ..." zette hen hier op het verkeerde been.
+    if (raw.split('=').length === 2) {
+      return 'Deze stap klopt niet: de vergelijking heeft nu een andere oplossing. '
+           + 'Kijk of je alles goed hebt overgenomen (staat elke $x$ er nog?) '
+           + 'en of je beide kanten op dezelfde manier hebt aangepast.';
+    }
+    return 'Niet helemaal. Typ een tussenstap als vergelijking met $=$, of het antwoord als $x = ...$';
   }
   if (vraag.antwoordType === 'machtsvergelijking') {
     const { n, hasNeg } = vraag.antwoord;
