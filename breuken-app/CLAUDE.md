@@ -34,6 +34,7 @@ breuken-app/
   js/
     afgeleiden.js  ← generators differentiëren (D-doelen); staat vóór questions.js in index.html
     meetkunde.js   ← generators, SVG-figuren en nakijken meetkunde (MK-doelen); ook vóór questions.js
+    logaritmen.js  ← exponentiële en logaritmische vergelijkingen (EV- en LOG-doelen); ook vóór questions.js
     questions.js   ← vraag-generators + LEERDOELEN
     app.js         ← TOC-structuur + feedback tips
     utils.js       ← algebra-evaluatie + validatie
@@ -145,6 +146,8 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | gebroken-vergelijking | G.V1a, G.V1b, G.V2a, G.V2b, G.V2c, G.V2d, G.V2e, G.V2f |
 | modulus-vergelijking | MO.V1a, MO.V1b, MO.V1c, MO.V1d |
 | exp-omschrijven | EX.1a, EX.1b, EX.1c, EX.1d, EX.1e, EX.1f |
+| exp-vergelijking | EV.1a, EV.1b, EV.1c, EV.1d, EV.2a, EV.2b |
+| logaritmen | LOG.1a, LOG.1b (uitrekenen, herleiden); LOG.2a–d (vergelijkingen: basis, lineair, kwadratisch, schijnoplossing) |
 | afg-machten | D.M1a, D.M1b, D.M1c, D.M1d |
 | afg-regels | D.R1a, D.R1b, D.R1c, D.R1d, D.R1e |
 | afg-exp-log | D.E1a, D.E1b, D.E1c, D.E1d, D.E1e |
@@ -200,6 +203,36 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   opgaven en vergelijk de afgeleide met een numerieke afgeleide van f, en elke
   uitwerkingsregel met f'. Node staat niet op deze pc; headless Edge met een
   testpagina die de js-bestanden via `file:///` laadt werkt wel.
+
+## Exponentieel en logaritmen (EV- en LOG-doelen)
+
+- **Namen.** De generators heten `genLogEV1a` en `genLOG1a`, want `genLG1a`
+  en `genLV1a` bestaan al (lineaire grafieken en vergelijkingen). Om dezelfde
+  reden heten de leerdoelen `LOG.*` en niet `LG.*`/`LV.*` (te dicht bij `L.G1a`).
+  Kies bij een nieuwe generator altijd een naam en controleer met grep.
+- **Eén model.** Elke generator kiest eerst de oplossing (of de u-waarden bij
+  substitutie) en bouwt opgave én uitwerking daaruit. Rekenen gaat met breuken
+  als `[teller, noemer]` (`_Q`, `_Qadd`, ...), zodat er nooit afrondfouten in
+  de opgave komen.
+- **Alleen ᵍlog** (grondtal 2, 3, 5, ...), geen log of ln: zo afgesproken met
+  Irma. Antwoorden zijn exact; elke juiste vorm is goed (`x = ²log(7) - 1` en
+  `x = log(7)/log(2) - 1`). Afgerond is fout.
+- **Nakijken.** Vergelijkingen via `vergelijking-mv` (EV.2b met `hulp: u`).
+  LOG.2d heeft `verworpen: [schijnoplossing]`: de regel `x = 2 v x = -4` is dan
+  een tussenstap met de melding "controleer", `x = -4` alleen is fout.
+  LOG.1a: `vorm: 'log-getal'` (`checkLogGetal`), alleen een kaal getal of
+  vereenvoudigde breuk is goed. LOG.1b: `vorm: 'een-log'` (`checkEenLog`),
+  precies één logaritme, ook met een ander grondtal.
+- **Nog uitrekenen.** `_uitrekenbareVorm` (app.js) maakt van een eindantwoord
+  met een nette wortel, logaritme of macht (`x = 2^{5}`, `x = 2^{\frac{1}{2}}`)
+  een tussenstap.
+- **Parser.** `3^{2}\log(x)` (zo typt MathQuill 3·²log x) en
+  `\frac{1}{2}^{2}\log(x)` worden gelezen als coëfficiënt maal logaritme.
+- **Toetsenbord.** Vragen met `logToetsen: true` krijgen een rij met alleen ᵍlog.
+- **Testen.** Per leerdoel een paar honderd opgaven genereren: elke oplossing
+  moet in de opgave kloppen, elke uitwerkingsregel moet `tussenstap` geven en
+  de slotregel `goed`; een oplossing + 1 en een afgerond antwoord moeten `fout`
+  geven.
 
 ## Antwoordcontrole – twee dingen om te weten
 

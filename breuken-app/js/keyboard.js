@@ -24,9 +24,14 @@ const KBD_RIJ_MEETKUNDE = `<div class="kbd-row">
       <button class="kbd-btn kbd-btn-op" data-val="ATAN">tan<sup>−1</sup></button>
     </div>`;
 
-function getKeyboardHTML(metAfgeleide = false, metMeetkunde = false) {
+/* Extra rij bij exponentiële en logaritmische vergelijkingen: alleen ᵍlog. */
+const KBD_RIJ_LOG = `<div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="GLOG" aria-label="Logaritme met grondtal"><sup>g</sup>log</button>
+    </div>`;
+
+function getKeyboardHTML(metAfgeleide = false, metMeetkunde = false, metLog = false) {
   return `<div id="math-keyboard" class="math-keyboard">
-    ${metAfgeleide ? KBD_RIJ_AFGELEIDE : ''}
+    ${metAfgeleide ? KBD_RIJ_AFGELEIDE : metLog ? KBD_RIJ_LOG : ''}
     ${metMeetkunde ? KBD_RIJ_MEETKUNDE : ''}
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>

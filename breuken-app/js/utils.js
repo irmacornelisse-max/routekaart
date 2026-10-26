@@ -284,6 +284,10 @@ function _normaliseerLog(s) {
     .replace(/\\[!,;]/g, '')
     .replace(/\\operatorname\{(ln|log)\}/g, '\\$1')
     .replace(new RegExp(String.raw`\{\s*\}\s*` + _LOG_GRONDTAL, 'g'), (_, b1, b2) => `\\log_{${b1 ?? b2}}`)
+    // 3·²log(x) zonder maalteken: MathQuill maakt daar 3^{2}\log(x) van. Een
+    // getal of breuk tot een getalmacht vlak voor log is altijd een coëfficiënt.
+    .replace(/(\d|\\d?frac\{[^{}]*\}\{[^{}]*\})\s*\^\s*(?:\{\s*(\d+)\s*\}|(\d))\s*\\log(?![a-zA-Z])/g,
+             (_, c, b1, b2) => `${c}\\cdot\\log_{${b1 ?? b2}}`)
     .replace(new RegExp(String.raw`(^|[+\-(*=,{]|\\cdot|\\times)\s*` + _LOG_GRONDTAL, 'g'),
              (_, voor, b1, b2) => `${voor}\\log_{${b1 ?? b2}}`);
 }
@@ -741,6 +745,67 @@ function checkExponentVorm(gegeven, verwacht, vars, verboden) {
 function checkExponentMacht(gegeven, verwacht, vars, basis) {
   if (!_exWaardeGelijk(gegeven, verwacht, vars)) return 'fout';
   return isEnkeleMachtVan(gegeven, basis) ? 'goed' : 'tussenstap';
+}
+
+/* ── Logaritmen ───────────────────────────────────────────────────────────
+   Een regel mag een keten zijn (²log(8) = ²log(2^3) = 3); elk deel moet dan
+   de goede waarde hebben. Het laatste deel bepaalt of de leerling klaar is. */
+function _ketenDelen(latex) {
+  const delen = (latex || '').replace(/\\left|\\right/g, '').split('=').map(d => d.trim());
+  return delen.some(d => !d) ? null : delen;
+}
+
+/* Een kaal getal: geheel, decimaal, vereenvoudigde breuk of gemengd getal. */
+function _isKaalGetal(latex) {
+  const s = (latex || '').replace(/\s+|\\[ ,;!]/g, '');
+  if (/^-?\d+([.,]\d+)?$/.test(s)) return true;
+  const breuk = s.match(/^-?\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  if (breuk) return +breuk[2] > 1 && gcd(+breuk[1], +breuk[2]) === 1;
+  const gemengd = s.match(/^-?\d+\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  return !!gemengd && +gemengd[1] < +gemengd[2] && gcd(+gemengd[1], +gemengd[2]) === 1;
+}
+
+/* Waarde van een kaal getal; een gemengd getal leest _algEval als product. */
+function _waardeKaalGetal(latex) {
+  const s = (latex || '').replace(/\s+/g, '');
+  const gemengd = s.match(/^(-?)(\d+)\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  if (!gemengd) return _algEval(s, {});
+  return (gemengd[1] ? -1 : 1) * (+gemengd[2] + gemengd[3] / gemengd[4]);
+}
+
+/* LG.1a: een logaritme uitrekenen. Goed = een kaal getal met de juiste
+   waarde; een juiste vorm die nog uitgerekend kan worden is een tussenstap. */
+function checkLogGetal(gegeven, waarde) {
+  const delen = _ketenDelen(gegeven);
+  if (!delen) return 'fout';
+  for (const d of delen) {
+    const w = _isKaalGetal(d) ? _waardeKaalGetal(d) : _algEval(d, {});
+    if (!isFinite(w) || Math.abs(w - waarde) > 1e-9) return 'fout';
+  }
+  return _isKaalGetal(delen[delen.length - 1]) ? 'goed' : 'tussenstap';
+}
+
+/* Is dit precies één logaritme, zonder getal ervoor of erachter? */
+function isEnkeleLogaritme(latex) {
+  const s = _normaliseerLog(latex || '').replace(/\\left|\\right/g, '').replace(/\s+/g, '');
+  if ((s.match(/\\log|\\ln/g) || []).length !== 1) return false;
+  const m = s.match(/^(?:\\log(?:_\{[^{}]+\})?|\\ln)\((.*)\)$/);
+  if (!m) return false;
+  // Het haakje na log moet het hele argument omsluiten: niet log(x)(x + 1).
+  let diepte = 0;
+  for (const ch of m[1]) {
+    if (ch === '(') diepte++;
+    else if (ch === ')' && --diepte < 0) return false;
+  }
+  return diepte === 0;
+}
+
+/* LG.2a: herleiden tot één logaritme. Elke juiste vorm met één logaritme is
+   goed, ook met een ander grondtal (⁴log(x³) = ²log(x√x)). */
+function checkEenLog(gegeven, verwacht, vars) {
+  const delen = _ketenDelen(gegeven);
+  if (!delen || !delen.every(d => _exWaardeGelijk(d, verwacht, vars))) return 'fout';
+  return isEnkeleLogaritme(delen[delen.length - 1]) ? 'goed' : 'tussenstap';
 }
 
 /* ── Afgeleiden ───────────────────────────────────────────────────────────

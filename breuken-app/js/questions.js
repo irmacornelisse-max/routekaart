@@ -7364,6 +7364,20 @@ const LEERDOELEN = [
   { id: 'EX.1e', titel: 'Zonder gebroken en zonder negatieve exponenten',  groep: 'Exponentieel', gen: genEX1e },
   { id: 'EX.1f', titel: 'Als macht schrijven (gemengd)',                   groep: 'Exponentieel', gen: genEX1f },
 
+  /* ── EV-, LG- en LV-doelen (generators in logaritmen.js) ─────────────── */
+  { id: 'EV.1a', titel: 'Exponentiële vergelijking: g^A = g^B',                 groep: 'Exponentieel', gen: genLogEV1a },
+  { id: 'EV.1b', titel: 'Exponentiële vergelijking: met +, −, × en :',          groep: 'Exponentieel', gen: genLogEV1b },
+  { id: 'EV.1c', titel: 'Exponentiële vergelijking: met de machtsregels',       groep: 'Exponentieel', gen: genLogEV1c },
+  { id: 'EV.1d', titel: 'Exponentiële vergelijking: met een logaritme',         groep: 'Exponentieel', gen: genLogEV1d },
+  { id: 'EV.2a', titel: 'Exponentiële vergelijking exact: met +, −, × en :',    groep: 'Exponentieel', gen: genLogEV2a },
+  { id: 'EV.2b', titel: 'Exponentiële vergelijking exact: substitutie',         groep: 'Exponentieel', gen: genLogEV2b },
+  { id: 'LOG.1a', titel: 'Logaritmen uitrekenen',                                groep: 'Exponentieel', gen: genLOG1a },
+  { id: 'LOG.1b', titel: 'Herleiden tot één logaritme',                          groep: 'Exponentieel', gen: genLOG1b },
+  { id: 'LOG.2a', titel: 'Logaritmische vergelijking: basis',                    groep: 'Exponentieel', gen: genLOG2a },
+  { id: 'LOG.2b', titel: 'Logaritmische vergelijking: lineair',                  groep: 'Exponentieel', gen: genLOG2b },
+  { id: 'LOG.2c', titel: 'Logaritmische vergelijking: kwadratisch',              groep: 'Exponentieel', gen: genLOG2c },
+  { id: 'LOG.2d', titel: 'Logaritmische vergelijking: met schijnoplossing',      groep: 'Exponentieel', gen: genLOG2d },
+
   /* ── D-doelen (Differentiëren; generators in afgeleiden.js) ─────────── */
   { id: 'D.M1a', titel: 'Afgeleide: machtsfuncties zonder negatieve en gebroken machten', groep: 'Differentiëren', gen: genDM1a },
   { id: 'D.M1b', titel: 'Afgeleide: machtsfuncties met negatieve machten',                groep: 'Differentiëren', gen: genDM1b },

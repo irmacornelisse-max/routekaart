@@ -272,6 +272,20 @@ const TOC_HOOFDSTUKKEN = [
           { label: 'Machten omschrijven', knoppen: [{l:'a',id:'EX.1a'},{l:'b',id:'EX.1b'},{l:'c',id:'EX.1c'},{l:'d',id:'EX.1d'},{l:'e',id:'EX.1e'},{l:'f',id:'EX.1f'}] },
         ]
       },
+      {
+        id: 'exp-vergelijking', label: 'Exponentiële vergelijkingen',
+        items: [
+          { label: 'Exponentiële vergelijkingen', knoppen: [{l:'a',id:'EV.1a'},{l:'b',id:'EV.1b'},{l:'c',id:'EV.1c'},{l:'d',id:'EV.1d'}] },
+          { label: 'Exact oplossen',              knoppen: [{l:'a',id:'EV.2a'},{l:'b',id:'EV.2b'}] },
+        ]
+      },
+      {
+        id: 'logaritmen', label: 'Logaritmen',
+        items: [
+          { label: 'Logaritmen',                   knoppen: [{l:'a',id:'LOG.1a'},{l:'b',id:'LOG.1b'}] },
+          { label: 'Logaritmische vergelijkingen', knoppen: [{l:'a',id:'LOG.2a'},{l:'b',id:'LOG.2b'},{l:'c',id:'LOG.2c'},{l:'d',id:'LOG.2d'}] },
+        ]
+      },
     ]
   },
   {
@@ -724,6 +738,8 @@ function renderOefenen(leerdoelId) {
   const needsKbd = useStepList || type === 'two-fracs' || type === 'kruistabel' || type === 'formule-lijn';
   const isAfgeleide = vraag.antwoord?.vorm === 'afgeleide';
   const isMeetkunde = type === 'meetkunde';
+  const isLog = !!vraag.logToetsen;
+  const logTip = ' &nbsp;·&nbsp; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>';
 
   let antwoordInhoud = '';
   if (type === 'formule-lijn') {
@@ -754,7 +770,7 @@ function renderOefenen(leerdoelId) {
       ? ' &nbsp;·&nbsp; <em>f\'(x) =</em> hoef je niet te typen &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
       : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
-    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}</div>`;
+    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}${isLog ? logTip : ''}</div>`;
   }
 
   const tijdLimiet = getTijdLimiet();
@@ -781,7 +797,7 @@ function renderOefenen(leerdoelId) {
         <div class="oefenen-antwoord">
           ${antwoordInhoud}
           <div id="feedback-zone"></div>
-          ${needsKbd ? getKeyboardHTML(isAfgeleide, isMeetkunde) : ''}
+          ${needsKbd ? getKeyboardHTML(isAfgeleide, isMeetkunde, isLog) : ''}
           <div class="actie-bar" id="actie-bar">
             <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
             <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
@@ -1297,37 +1313,70 @@ function _netteWaarde(waarde) {
   return false;
 }
 
-function _onuitgerekendeWortel(expr) {
-  if (!/\\sqrt/.test(expr || '')) return false;
-  try { return _netteWaarde(_algEval(String(expr).trim(), {})); } catch { return false; }
+/* Wat valt er in deze uitdrukking nog uit te rekenen? Een wortel, logaritme of
+   macht met een nette waarde ($\sqrt{16}$, ${}^{2}\log(8)$, $2^{-3}$) is
+   nog niet de eindvorm. Geeft 'wortel', 'logaritme', 'macht' of null. */
+function _uitrekenbareVorm(expr) {
+  const s = String(expr || '').split('=').pop().trim();   // "x = 2^{5}" → "2^{5}"
+  const soort = /\\log|\\ln/.test(s) ? 'logaritme' : /\\sqrt/.test(s) ? 'wortel' : /\^/.test(s) ? 'macht' : null;
+  if (!soort) return null;
+  // Een macht met een breuk als exponent ($2^{\frac{1}{2}}$) hoort als wortel.
+  if (soort === 'macht' && /\^\s*\{[^}]*\\frac/.test(s)) return soort;
+  let waarde;
+  try { waarde = _algEval(s, {}); } catch { return null; }
+  // Een logaritme of macht kan ook een kleine breuk opleveren: 5^{-2} = 1/25.
+  const rationaal = soort === 'wortel' ? _netteWaarde(waarde)
+    : isFinite(waarde) && Math.abs(waarde * 1000 - Math.round(waarde * 1000)) < 1e-9
+      || _netteWaarde(1 / waarde);
+  return rationaal ? soort : null;
 }
 
-/* Klopt de waarde, maar staat er nog een uitrekenbare wortel? Dan is het een
+/* Klopt de waarde, maar valt er nog iets uit te rekenen? Dan is het een
    tussenstap in plaats van het eindantwoord. */
 function _eindOfTussen(...exprs) {
-  return exprs.some(e => _onuitgerekendeWortel(e)) ? 'tussenstap' : 'goed';
+  return exprs.some(e => _uitrekenbareVorm(e)) ? 'tussenstap' : 'goed';
 }
 
 /* Zelfde vraag, maar dan over een hele antwoordregel met eventueel meerdere
-   takken: "x = ⁴√81 v x = -⁴√81". */
-function _bevatUitrekenbareWortel(latex) {
+   takken: "x = ⁴√81 v x = -⁴√81". Geeft de soort of null. */
+function _uitrekenbaarInRegel(latex) {
   const s = (latex || '').replace(/\\quad/g, ' ').replace(/\\;/g, ' ');
-  return s.split(/\sv\s|\\pm/).some(tak => {
+  for (const tak of s.split(/\sv\s|\\pm/)) {
     const m = tak.match(/=\s*([^=]+)$/);
-    return _onuitgerekendeWortel((m ? m[1] : tak).trim());
+    const soort = _uitrekenbareVorm((m ? m[1] : tak).trim());
+    if (soort) return soort;
+  }
+  return null;
+}
+
+/* Staan er in deze regel alleen kale x-waarden, waaronder een verworpen
+   schijnoplossing? Dan moet de leerling nog controleren. */
+function _bevatVerworpen(latex) {
+  const verworpen = APP.huidigVraag?.antwoord?.verworpen;
+  if (!verworpen) return false;
+  const s = (latex || '').replace(/\\quad/g, ' ').replace(/\\;/g, ' ');
+  return s.split(/\s*v\s*/).some(seg => {
+    const m = seg.trim().match(/^x\s*=\s*(.+)$/);
+    if (!m) return false;
+    const w = _algEval(m[1], {});
+    return verworpen.some(v => Math.abs(v - w) < 1e-6);
   });
 }
 
-/* Een tussenstap waar alleen de wortel nog uitgerekend moet worden, verdient
-   een duidelijker duwtje dan "ga door". */
+/* Een tussenstap waar alleen nog iets uitgerekend of gecontroleerd moet
+   worden, verdient een duidelijker duwtje dan "ga door". */
 function tussenstapBoodschap(gegeven) {
   if (APP.huidigVraag?.antwoordType === 'meetkunde') {
     const melding = meetkundeTekst(APP.huidigVraag, 'tussenstap');
     if (melding) return melding;
   }
-  return _bevatUitrekenbareWortel(gegeven?.latex)
-    ? 'Goed, ga door! De wortel komt precies uit — reken hem nog uit.'
-    : 'Goed, ga door!';
+  if (_bevatVerworpen(gegeven?.latex))
+    return 'Goed, ga door! Controleer nu of elke oplossing voldoet: het getal achter log moet positief zijn.';
+  const soort = _uitrekenbaarInRegel(gegeven?.latex);
+  if (soort === 'wortel') return 'Goed, ga door! De wortel komt precies uit — reken hem nog uit.';
+  if (soort === 'logaritme') return 'Goed, ga door! De logaritme komt precies uit. Reken hem nog uit.';
+  if (soort === 'macht') return 'Goed, ga door! Reken de macht nog uit, of schrijf hem als wortel.';
+  return 'Goed, ga door!';
 }
 
 /* Herkent de twee opschrijfregels die bij de abc-methode horen:
@@ -1679,7 +1728,18 @@ function checkAntwoord(vraag, gegeven) {
       const m = seg.trim().match(/^x\s*=\s*(.+)$/);
       return !!m && !/[a-zA-Z]/.test(m[1].replace(/\\[a-zA-Z]+/g, ''));
     };
-    if (strikt && segments.every(isKaleWaarde) && segments.length) return 'fout';
+    if (strikt && segments.every(isKaleWaarde) && segments.length) {
+      // Bij een schijnoplossing (LOG.2d) is "x = 2 v x = -4" nog geen fout: dat
+      // is de regel vóór de controle. Alle echte oplossingen moeten erin staan
+      // en elke andere waarde moet een verworpen schijnoplossing zijn.
+      const verworpen = correct.verworpen || [];
+      const waarden = segments.map(seg => _getalUitLatex(seg.trim().replace(/^x\s*=\s*/, '')));
+      const isVerworpen = (w) => verworpen.some(v => Math.abs(w - v) <= 1e-6);
+      if (verworpen.length && waarden.every(w => isOplossing(w) || isVerworpen(w))
+          && waarden.some(isVerworpen) && sols.every(s => waarden.some(w => Math.abs(w - s) <= 1e-6)))
+        return 'tussenstap';
+      return 'fout';
+    }
 
     const covered = sols.map(() => false);
     let vreemdeWortel = false;
@@ -1867,6 +1927,12 @@ function checkAntwoord(vraag, gegeven) {
     }
     if (correct.vorm === 'exp-macht') {
       return checkExponentMacht(raw, correct.expr, correct.vars, correct.basis);
+    }
+    if (correct.vorm === 'log-getal') {
+      return checkLogGetal(raw, correct.waarde);
+    }
+    if (correct.vorm === 'een-log') {
+      return checkEenLog(raw, correct.expr, correct.vars);
     }
     if (correct.vorm === 'afgeleide') {
       return checkAfgeleide(raw, correct);
@@ -2065,6 +2131,19 @@ function feedbackBoodschap(vraag, gegeven) {
   }
   if (vraag.antwoordType === 'vergelijking-mv') {
     const ld = vraag.leerdoel;
+    const expLogTips = {
+      'EV.1a': 'Als $g^{A} = g^{B}$, dan is $A = B$. Stel de exponenten gelijk en los de lineaire vergelijking op.',
+      'EV.1b': 'Maak eerst de macht vrij en schrijf het getal aan de andere kant als macht van hetzelfde grondtal.',
+      'EV.1c': 'Schrijf alles als macht van hetzelfde getal met $(g^{a})^{b} = g^{ab}$, $g^{a} \\cdot g^{b} = g^{a+b}$ en $\\frac{1}{g^{n}} = g^{-n}$.',
+      'EV.1d': 'Gebruik $g^{A} = N \\Leftrightarrow A = {}^{g}\\!\\log(N)$. Geef het exacte antwoord met de logaritme, niet afgerond.',
+      'EV.2a': 'Maak de macht vrij. Is het getal geen macht van het grondtal, gebruik dan een logaritme. Geef het exacte antwoord.',
+      'EV.2b': 'Stel $u = g^{x}$, los de kwadratische vergelijking in $u$ op en zet $u$ terug. $g^{x}$ is altijd positief. Geef alle oplossingen met de <strong>v</strong>-knop.',
+      'LOG.2a': '${}^{g}\\!\\log(A) = k$ betekent $A = g^{k}$. Maak eerst de logaritme vrij.',
+      'LOG.2b': 'Schrijf elke kant als één logaritme, werk de logaritmen weg en los de lineaire vergelijking op.',
+      'LOG.2c': 'Werk de logaritmen weg, ontbind de kwadratische vergelijking en geef beide oplossingen met de <strong>v</strong>-knop.',
+      'LOG.2d': 'Werk de logaritmen weg en los de kwadratische vergelijking op. Controleer elke oplossing: het getal achter log moet positief zijn.',
+    };
+    if (expLogTips[ld]) return expLogTips[ld];
     if (ld === 'M.V2a') return 'Breng alles naar één kant, haal $x$ eruit en ontbind de kwadratische factor. Geef alle oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'M.V2b') return 'Substitueer $u = x^2$, los de kwadratische vergelijking in $u$ op en neem dan de vierkantswortel. Geef alle oplossingen met de <strong>v</strong>-knop.';
     if (ld === 'M.V3a') return 'Nulpuntsregel: stel elke factor gelijk aan nul. Haal bij de eerste factor $x$ eruit; bij de tweede neem je de wortel. Geef alle oplossingen met de <strong>v</strong>-knop.';
@@ -2270,6 +2349,8 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.H1d': 'Schrijf de wortel eerst als macht van $x$ met een gebroken exponent: $\\sqrt[n]{x^{m}} = x^{\\frac{m}{n}}$.',
     'D.H1e': 'Kettingregel: $(ax+b)^{n}$ geeft $n(ax+b)^{n-1} \\cdot a$. Vergeet de factor $a$ niet.',
     'D.H1f': 'Kijk per term wat je eerst moet doen: haakjes wegwerken, als macht schrijven of de kettingregel gebruiken.',
+    'LOG.1a': 'Schrijf het getal als macht van het grondtal: ${}^{g}\\!\\log(g^{k}) = k$. Geef een getal of een vereenvoudigde breuk.',
+    'LOG.1b': 'Maak van elke term een logaritme met hetzelfde grondtal en neem ze samen: optellen wordt vermenigvuldigen, aftrekken wordt delen.',
     'D.E1a': 'De afgeleide van $e^{x}$ is $e^{x}$. Bij $e^{u}$ komt er $\\cdot u\'$ bij (kettingregel).',
     'D.E1b': 'De afgeleide van $g^{x}$ is $g^{x} \\cdot \\ln(g)$. Bij $g^{u}$ komt er $\\cdot u\'$ bij.',
     'D.E1c': 'De afgeleide van $\\ln(x)$ is $\\dfrac{1}{x}$. Bij $\\ln(u)$ wordt dat $\\dfrac{u\'}{u}$.',
