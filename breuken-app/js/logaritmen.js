@@ -181,11 +181,11 @@ function genLogEV1a() {
     const x = _Q(q2 - q1, p1 - p2);
     if (x[1] > 3) continue;
 
-    let links = `${g}^{${_lgLin(p1, q1)}}`, rechts = `${g}^{${_lgLin(p2, q2)}}`;
-    const begin = `${_lgLin(p1, q1)} = ${_lgLin(p2, q2)}`;
-    const { stappen } = _lgLosLineair(_Q(p1), _Q(q1), _Q(p2), _Q(q2));
-    if (Math.random() < 0.3) [links, rechts] = [rechts, links];
-    const opg = `${links} = ${rechts}`;
+    // Soms staat de eenvoudigste macht links; de uitwerking volgt dezelfde kanten.
+    const [L, R] = Math.random() < 0.3 ? [[p2, q2], [p1, q1]] : [[p1, q1], [p2, q2]];
+    const opg = `${g}^{${_lgLin(...L)}} = ${g}^{${_lgLin(...R)}}`;
+    const begin = `${_lgLin(...L)} = ${_lgLin(...R)}`;
+    const { stappen } = _lgLosLineair(_Q(L[0]), _Q(L[1]), _Q(R[0]), _Q(R[1]));
     return _lgVraag('EV.1a', `Los op: $${opg}$`, [_Qval(x)],
       ['Links en rechts staat een macht met hetzelfde grondtal. Als $g^{A} = g^{B}$, dan is $A = B$.',
        'Stel de exponenten aan elkaar gelijk en los de lineaire vergelijking op.'],
@@ -343,7 +343,7 @@ function genLogEV1d() {
   const { p, q } = _lgExponentVorm();
   const opg = `${g}^{${_lgLin(p, q)}} = ${N}`;
   const { stappen, x } = _lgMachtIsGetal(g, p, q, N);
-  return _lgVraag('EV.1d', `Los op met een logaritme: $${opg}$`, [x],
+  return _lgVraag('EV.1d', `Los exact op: $${opg}$`, [x],
     ['Het getal rechts is geen macht van het grondtal. Gebruik de definitie: $g^{A} = N$ betekent $A = {}^{g}\\!\\log(N)$.',
      'Los daarna de vergelijking in $x$ op. Laat de logaritme staan: het antwoord is exact.'],
     [opg, ...stappen]);
