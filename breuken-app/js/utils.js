@@ -384,6 +384,15 @@ function _algTokenize(s, varVals) {
       let n = '';
       while (i < s.length && /\d/.test(s[i])) n += s[i++];
       if (i < s.length && (s[i] === '.' || s[i] === ',')) { n += '.'; i++; while (i < s.length && /\d/.test(s[i])) n += s[i++]; }
+      // Een gemengd getal: een heel getal met direct daarachter een echte breuk
+      // van hele getallen, zoals 1\frac{1}{3} (ook in een exponent: x^{1\frac{1}{3}}).
+      // Dat is 1 + 1/3, geen 1 · 1/3. Andere breuken na een getal blijven een product.
+      const gemengd = !n.includes('.') && s.slice(i).match(/^\\d?frac\{(\d+)\}\{(\d+)\}/);
+      if (gemengd && +gemengd[1] < +gemengd[2]) {
+        i += gemengd[0].length;
+        tokens.push({ t: 'n', v: parseInt(n, 10) + gemengd[1] / gemengd[2] });
+        continue;
+      }
       tokens.push({ t: 'n', v: parseFloat(n) });
       continue;
     }
