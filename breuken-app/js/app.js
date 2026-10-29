@@ -2016,8 +2016,125 @@ function _exponentValMelding(vraag, gegeven) {
        + 'Druk op → om de exponent te verlaten voordat je verdergaat.';
 }
 
+/* Bij een afgeleide: staat er een staartje in een exponent dat erbuiten hoort?
+   Na 5/3 in een exponent haalt één → je uit de breuk, maar nog niet uit de
+   exponent, en dan wordt 3x^{5/3}-x+10 ongemerkt 3x^{5/3-x+10}. We halen per
+   exponent het deel na de eerste + of − eruit. Klopt het antwoord dan wél,
+   dan geven we dat staartje terug voor een gerichte melding. */
+function _afgStaartInExponent(raw, antwoord) {
+  const s = (raw || '').replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '^' || s[i + 1] !== '{') continue;
+    let diepte = 0, eind = -1, knip = -1;
+    for (let j = i + 1; j < s.length; j++) {
+      const ch = s[j];
+      if (ch === '{' || ch === '(') diepte++;
+      else if (ch === '}' || ch === ')') { if (--diepte === 0) { eind = j; break; } }
+      else if (diepte === 1 && knip < 0 && j > i + 2 && (ch === '+' || ch === '-')) knip = j;
+    }
+    if (eind < 0 || knip < 0) continue;
+    const staart = s.slice(knip, eind);
+    const hersteld = s.slice(0, knip) + '}' + staart + s.slice(eind + 1);
+    if (checkAfgeleide(hersteld, antwoord) !== 'fout') return staart.trim();
+  }
+  return null;
+}
+
+/* ── Kruislings vermenigvuldigen bij een gebroken vergelijking ─────────────
+   De tussenstapcontrole kijkt alleen naar de oplossingen. Bij 6/(2x−4) = −3
+   is de foute stap 6x = −3(2x−4) dan niet te onderscheiden van de goede
+   6 = −3(2x−4): beide geven x = 1. Daarom kijken we hier naar de vorm.
+
+   Uit A/B = C/D (of A/B = C) volgen de kruisproducten A·D en C·B. Staat in
+   een stap aan één kant precies zo'n kruisproduct (als functie, dus ook
+   uitgewerkt), dan moet aan de andere kant het andere kruisproduct staan.
+   We kijken alleen naar kruisproducten met een noemer waarin de variabele
+   zit: een losse teller A of een getal kan ook in een latere stap opduiken
+   (bijvoorbeeld x = 12/7), en dat mag geen melding geven.                 */
+const _KRUIS_TYPES = ['vergelijking', 'vergelijking-mv', 'machtsvergelijking', 'kwadratisch'];
+const _KRUIS_TESTWAARDEN = [-2.7, -1.3, 0.6, 1.9, 3.4, 5.1, 7.3];
+
+/* "\dfrac{A}{B}" (eventueel met minteken ervoor) als { A, B }, anders null. */
+function _breukZijde(tex) {
+  let s = (tex || '').trim(), teken = '';
+  if (s.startsWith('-')) { teken = '-'; s = s.slice(1).trim(); }
+  const kop = s.match(/^\\d?frac(?=\{)/);
+  if (!kop) return null;
+  const blok = i => {
+    if (s[i] !== '{') return null;
+    let d = 0;
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === '{') d++;
+      else if (s[j] === '}' && --d === 0) return [s.slice(i + 1, j), j + 1];
+    }
+    return null;
+  };
+  const teller = blok(kop[0].length);
+  const noemer = teller && blok(teller[1]);
+  if (!noemer || noemer[1] !== s.length) return null;
+  return { A: teken ? `-(${teller[0]})` : teller[0], B: noemer[0] };
+}
+
+function _kruislingsMelding(vraag, gegeven) {
+  if (!_KRUIS_TYPES.includes(vraag.antwoordType) || typeof gegeven?.latex !== 'string') return null;
+  const verg = ((vraag.vraag || '').match(/\$[^$]*=[^$]*\$/g) || []).pop();
+  if (!verg) return null;
+  const zijden = verg.slice(1, -1).split('=');
+  if (zijden.length !== 2) return null;
+  const links = _breukZijde(zijden[0]), rechts = _breukZijde(zijden[1]);
+  if (!links && !rechts) return null;
+  const v = (verg.replace(/\\[a-zA-Z]+/g, ' ').match(/[a-z]/) || [])[0];
+  if (!v) return null;
+
+  const stap = gegeven.latex.replace(/\\left|\\right/g, '').split('=');
+  if (stap.length !== 2) return null;
+
+  const L = links || { A: zijden[0], B: '1' }, R = rechts || { A: zijden[1], B: '1' };
+  const heeftVar = t => t.replace(/\\[a-zA-Z]+/g, ' ').includes(v);
+  // [kruisproduct, partner, noemer die erin zit]
+  const kruis = [[`(${R.A})(${L.B})`, `(${L.A})(${R.B})`, L.B],
+                 [`(${L.A})(${R.B})`, `(${R.A})(${L.B})`, R.B]];
+
+  const waarden = t => _KRUIS_TESTWAARDEN.map(x => _algEval(t, { [v]: x }));
+  const gelijk = (a, b) => {
+    const wa = waarden(a), wb = waarden(b);
+    let n = 0;
+    for (let i = 0; i < wa.length; i++) {
+      if (!isFinite(wa[i]) || !isFinite(wb[i])) continue;
+      if (Math.abs(wa[i] - wb[i]) > 1e-9 * Math.max(1, Math.abs(wb[i]))) return false;
+      n++;
+    }
+    return n >= 3;
+  };
+
+  // Een constant kruisproduct (bij A/B = 0 is C·B gewoon 0) zegt niets: zo'n
+  // getal kan in elke regel staan.
+  const constant = t => { const w = waarden(t).filter(isFinite); return w.every(y => Math.abs(y - w[0]) < 1e-9); };
+
+  for (const [prod, partner, noemer] of kruis) {
+    if (!heeftVar(noemer) || gelijk(prod, v) || constant(prod)) continue;
+    for (const [P, Q] of [[stap[0], stap[1]], [stap[1], stap[0]]]) {
+      if (gelijk(P, prod) && !gelijk(Q, partner)) {
+        return (links && rechts)
+          ? 'Deze stap klopt niet. Bij kruislings vermenigvuldigen is het: teller links maal noemer rechts = teller rechts maal noemer links.'
+          : 'Deze stap klopt niet. Vermenigvuldig je beide kanten met de noemer, dan blijft aan de andere kant alleen de teller over.';
+      }
+    }
+  }
+  return null;
+}
+
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
+  const kruislings = _kruislingsMelding(vraag, gegeven);
+  if (kruislings) return kruislings;
+  if (vraag.antwoord?.vorm === 'afgeleide') {
+    const staart = _afgStaartInExponent(gegeven?.latex, vraag.antwoord);
+    if (staart) {
+      return `Je zit nog in de exponent: $${staart}$ staat nu in de macht. `
+           + 'Druk na de exponent nog een keer op → voordat je verder typt.';
+    }
+  }
   if (vraag.antwoordType === 'meetkunde') {
     const melding = meetkundeTekst(vraag, 'fout');
     if (melding) return melding;
@@ -2681,7 +2798,10 @@ function controleer(vraag) {
     return;
   }
 
-  const staat = checkAntwoord(vraag, gegeven);
+  let staat = checkAntwoord(vraag, gegeven);
+  // Een verkeerde kruislingse stap kan toevallig dezelfde oplossing hebben;
+  // die keuren we hier alsnog af (zie _kruislingsMelding).
+  if (staat !== 'fout' && _kruislingsMelding(vraag, gegeven)) staat = 'fout';
   const type = vraag.antwoordType;
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'grafiek' && type !== 'formule-lijn';
 
