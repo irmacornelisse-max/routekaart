@@ -1419,6 +1419,15 @@ function _splitsTakken(stap) {
   return stap.split(/\s*v\s*(?=[^=]*=)/).map(s => s.trim()).filter(Boolean);
 }
 
+/* Bij $u^n = u$ is elke tak $u = $ getal. Staat de variabele links én rechts,
+   dan is de regel geen tak maar een rekenfout die toevallig een oplossing houdt:
+   $(4x - 1)^4$ lezen als $4(4x - 1)$ geeft $16x - 4 = 4x - 1$, en dat klopt altijd
+   voor $u = 0$. Antwoorden met `takMetConstante` keuren zo'n regel af. */
+function _letterAanBeideKanten(zijden, letter) {
+  const patroon = new RegExp(`(?<![a-zA-Z])${letter}(?![a-zA-Z])`);
+  return zijden.every(zijde => patroon.test(zijde));
+}
+
 /* ── Check answer ────────────────────────────────────────────────────────── */
 function checkAntwoord(vraag, gegeven) {
   const type = vraag.antwoordType;
@@ -1712,10 +1721,11 @@ function checkAntwoord(vraag, gegeven) {
       for (const seg of segments) {
         const delen = seg.split('=');
         if (delen.length !== 2) continue;
-        hulp.waarden.forEach((w, i) => {
-          if (_tussenstapKlopt(delen[0].trim(), delen[1].trim(), hulp.letter, w))
-            gedekt[i] = true;
-        });
+        const klopt = hulp.waarden.map(w =>
+          _tussenstapKlopt(delen[0].trim(), delen[1].trim(), hulp.letter, w));
+        if (correct.takMetConstante && !klopt.every(Boolean)
+            && _letterAanBeideKanten(delen, hulp.letter)) return 'fout';
+        klopt.forEach((k, i) => { if (k) gedekt[i] = true; });
       }
       return gedekt.some(Boolean) ? 'tussenstap' : 'fout';
     }
@@ -1749,9 +1759,10 @@ function checkAntwoord(vraag, gegeven) {
       if (eqParts.length !== 2) continue;
       const links = eqParts[0].trim(), rechts = eqParts[1].trim();
       if (!links || !rechts) continue;
-      for (let si = 0; si < sols.length; si++) {
-        if (_tussenstapKlopt(links, rechts, 'x', sols[si])) covered[si] = true;
-      }
+      const klopt = sols.map(s => _tussenstapKlopt(links, rechts, 'x', s));
+      if (correct.takMetConstante && !klopt.every(Boolean)
+          && _letterAanBeideKanten(eqParts, 'x')) return 'fout';
+      klopt.forEach((k, si) => { if (k) covered[si] = true; });
       if (strikt && _heeftVreemdeWortel(links, rechts, 'x', isOplossing, _scanBereik(sols)))
         vreemdeWortel = true;
       const graad = _graadSchatting(links, rechts, 'x');
@@ -2124,10 +2135,93 @@ function _kruislingsMelding(vraag, gegeven) {
   return null;
 }
 
+/* ── Macht gelezen als vermenigvuldiging ───────────────────────────────────
+   $(4x - 1)^4 = 4x - 1$ overtypen als $4(4x - 1) = 4x - 1$ houdt toevallig een
+   oplossing over, dus de gewone tussenstapcontrole laat die regel door. Daarom
+   vergelijken we de regel per zijde met de opgave waarin elke macht als
+   "keer de exponent" is gelezen. Per zijde, en niet het verschil van de zijden:
+   anders valt ook een echte tak van de nulproductregel eronder. */
+const _MACHT_TYPES = ['vergelijking', 'vergelijking-mv', 'machtsvergelijking', 'kwadratisch', 'wortelverg'];
+const _MACHT_TESTPUNTEN = [1.37, -2.41, 3.19, 0.73, 5.83, 11.29, -6.17];   // ruim, want log en wortels vallen soms weg
+const _MACHT_MIN_PUNTEN = 2;    // minder geldige punten zegt niets over de regel
+
+/* Vervangt x^{n} door (nx) en (...)^{n} door (n(...)), alleen bij een grondtal
+   met de variabele erin. Geeft null als er geen zo'n macht in staat. */
+function _machtAlsKeer(tex, letter) {
+  let s = tex.replace(/\\left/g, '').replace(/\\right/g, '');
+  const start = s;
+  s = s.replace(new RegExp(`(?<![a-zA-Z\\\\])${letter}\\^(?:\\{(\\d+)\\}|(\\d))`, 'g'),
+    (_, a, b) => `(${a || b}${letter})`);
+  const haakMacht = /\)\^(?:\{(\d+)\}|(\d))/g;
+  for (let m; (m = haakMacht.exec(s)); ) {
+    let diepte = 0, i = m.index;
+    for (; i >= 0; i--) {
+      if (s[i] === ')') diepte++;
+      if (s[i] === '(' && --diepte === 0) break;
+    }
+    if (i < 0) return null;
+    const grondtal = s.slice(i, m.index + 1);
+    if (!new RegExp(`(?<![a-zA-Z\\\\])${letter}(?![a-zA-Z])`).test(grondtal)) continue;
+    s = `${s.slice(0, i)}(${m[1] || m[2]}${grondtal})${s.slice(m.index + m[0].length)}`;
+    haakMacht.lastIndex = 0;
+  }
+  return s === start ? null : s;
+}
+
+function _zijdenGelijk(a, b, letter) {
+  let geldig = 0;
+  for (const w of _MACHT_TESTPUNTEN) {
+    const p = _zijdeWaarde(a, letter, w), q = _zijdeWaarde(b, letter, w);
+    if (!isFinite(p) || !isFinite(q)) continue;
+    if (Math.abs(p - q) > 1e-6) return false;
+    geldig++;
+  }
+  return geldig >= _MACHT_MIN_PUNTEN;
+}
+
+/* $x - 2 = 0$ kan een echte tak zijn van $x^2 - x - 2 = 0$, ook al komt de
+   verkeerde lezing daar toevallig op uit. Een regel met één x-term en
+   coëfficiënt 1 keuren we dus niet af. */
+function _isKaleTak(links, rechts, letter) {
+  const voorkomens = `${links} ${rechts}`.replace(/\\[a-zA-Z]+/g, ' ')
+    .match(new RegExp(`(?<![a-zA-Z])${letter}(?![a-zA-Z])`, 'g')) || [];
+  if (voorkomens.length !== 1) return false;
+  const f = w => _zijdeWaarde(links, letter, w) - _zijdeWaarde(rechts, letter, w);
+  return Math.abs(Math.abs(f(1) - f(0)) - 1) < 1e-9;
+}
+
+function _machtAlsKeerMelding(vraag, gegeven) {
+  if (!_MACHT_TYPES.includes(vraag.antwoordType) || typeof gegeven?.latex !== 'string') return null;
+  const verg = ((vraag.vraag || '').match(/\$[^$]*=[^$]*\$/g) || []).pop();
+  if (!verg) return null;
+  const zijden = verg.slice(1, -1).split('=');
+  if (zijden.length !== 2) return null;
+  const letter = vraag.antwoord?.v || 'x';
+  const links = _machtAlsKeer(zijden[0], letter) ?? zijden[0];
+  const rechts = _machtAlsKeer(zijden[1], letter) ?? zijden[1];
+  if (links === zijden[0] && rechts === zijden[1]) return null;
+
+  const regel = gegeven.latex.replace(/\\quad/g, ' ').replace(/\\;/g, ' ');
+  const raak = regel.split(/\s*v\s*/).some(seg => {
+    const delen = seg.split('=');
+    if (delen.length !== 2 || !delen[0].trim() || !delen[1].trim()) return false;
+    const [l, r] = delen.map(d => d.trim());
+    if (_isKaleTak(l, r, letter)) return false;
+    return (_zijdenGelijk(l, links, letter) && _zijdenGelijk(r, rechts, letter))
+        || (_zijdenGelijk(l, rechts, letter) && _zijdenGelijk(r, links, letter));
+  });
+  return raak
+    ? 'Let op: een macht is geen vermenigvuldiging met de exponent. '
+      + '$a^3$ betekent $a \\cdot a \\cdot a$, niet $3 \\cdot a$. Kijk nog eens naar de macht in de opgave.'
+    : null;
+}
+
 /* ── Specific feedback ───────────────────────────────────────────────────── */
 function feedbackBoodschap(vraag, gegeven) {
   const kruislings = _kruislingsMelding(vraag, gegeven);
   if (kruislings) return kruislings;
+  const machtFout = _machtAlsKeerMelding(vraag, gegeven);
+  if (machtFout) return machtFout;
   if (vraag.antwoord?.vorm === 'afgeleide') {
     const staart = _afgStaartInExponent(gegeven?.latex, vraag.antwoord);
     if (staart) {
@@ -2802,6 +2896,8 @@ function controleer(vraag) {
   // Een verkeerde kruislingse stap kan toevallig dezelfde oplossing hebben;
   // die keuren we hier alsnog af (zie _kruislingsMelding).
   if (staat !== 'fout' && _kruislingsMelding(vraag, gegeven)) staat = 'fout';
+  // Idem voor een macht die als vermenigvuldiging is gelezen.
+  if (staat !== 'fout' && _machtAlsKeerMelding(vraag, gegeven)) staat = 'fout';
   const type = vraag.antwoordType;
   const useStepList = type !== 'mc' && type !== 'drag' && type !== 'two-fracs' && type !== 'grafiek' && type !== 'formule-lijn';
 

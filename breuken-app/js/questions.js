@@ -5332,7 +5332,7 @@ function genMV3d() {
     vraag: `Los exact op: $(${linear})^${n} = ${linear}$`,
     antwoordType: 'vergelijking-mv',
     // u = ax + b; de tussenstappen rekenen in u
-    antwoord: { sols, hulp: { letter: 'u', waarden: n === 3 ? [0, 1, -1] : [0, 1] } },
+    antwoord: { sols, takMetConstante: true, hulp: { letter: 'u', waarden: n === 3 ? [0, 1, -1] : [0, 1] } },
     hints: [
       `Stel $u = ${linear}$. De vergelijking wordt $u^${n} = u$.`,
       `Breng $u$ naar links: $u^${n} - u = 0$. Haal $u$ eruit en gebruik de nulpuntsregel.`,

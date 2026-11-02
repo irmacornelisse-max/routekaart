@@ -240,6 +240,13 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   nulproductregel), maar nooit een waarde toelaten die geen oplossing is. Zie
   `_isGeldigeTussenstap` in `app.js`. Vreemde wortels worden gezocht via
   tekenwisseling plus bisectie, dus ook irrationale.
+- **Macht gelezen als vermenigvuldiging.** `_machtAlsKeerMelding` (app.js) keurt
+  een regel af die per zijde gelijk is aan de opgave met elke macht als "keer de
+  exponent" gelezen (`(4x - 1)^4` als `4(4x - 1)`); zo'n regel houdt soms toevallig
+  een oplossing over. Een regel met één x-term en coëfficiënt 1 (`x - 2 = 0`) blijft
+  goed, want dat kan een echte tak zijn. Vereenvoudigde vervolgregels (`-2x = 0`)
+  worden niet herkend. `takMetConstante` (M.V3d) is strenger: daar mag een regel die
+  een oplossing kwijtraakt de variabele niet aan beide kanten hebben.
 - **Vorm in plaats van waarde (EX-doelen).** Bij "schrijf zonder negatieve
   exponenten" is de waarde niet het hele antwoord; het gaat om de schrijfwijze.
   Daarvoor zijn er twee `vorm`-waarden: `exp-zonder` (met `verboden: ['negatief',
