@@ -278,7 +278,7 @@ function parseSingleFracFromLatex(latex) {
    het grondtal van de logaritme. Staat er wél iets vóór de macht, dan is het
    gewoon een exponent: x^{2}\log(x) is x² · log(x). We herschrijven het
    grondtal naar \log_{2}. */
-const _LOG_GRONDTAL = /\^\s*(?:\{([^{}]*)\}|(\d))\s*\\log(?![a-zA-Z])/.source;
+const _LOG_GRONDTAL = /\^\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\}|(\d))\s*\\log(?![a-zA-Z])/.source;
 function _normaliseerLog(s) {
   return s
     .replace(/\\[!,;]/g, '')
@@ -286,7 +286,7 @@ function _normaliseerLog(s) {
     .replace(new RegExp(String.raw`\{\s*\}\s*` + _LOG_GRONDTAL, 'g'), (_, b1, b2) => `\\log_{${b1 ?? b2}}`)
     // 3·²log(x) zonder maalteken: MathQuill maakt daar 3^{2}\log(x) van. Een
     // getal of breuk tot een getalmacht vlak voor log is altijd een coëfficiënt.
-    .replace(/(\d|\\d?frac\{[^{}]*\}\{[^{}]*\})\s*\^\s*(?:\{\s*(\d+)\s*\}|(\d))\s*\\log(?![a-zA-Z])/g,
+    .replace(/(\d|\\d?frac\{[^{}]*\}\{[^{}]*\})\s*\^\s*(?:\{\s*(\d+(?:[.,]\d+)?|\\d?frac\{\d+\}\{\d+\})\s*\}|(\d))\s*\\log(?![a-zA-Z])/g,
              (_, c, b1, b2) => `${c}\\cdot\\log_{${b1 ?? b2}}`)
     .replace(new RegExp(String.raw`(^|[+\-(*=,{]|\\cdot|\\times)\s*` + _LOG_GRONDTAL, 'g'),
              (_, voor, b1, b2) => `${voor}\\log_{${b1 ?? b2}}`);
@@ -794,11 +794,12 @@ function checkLogGetal(gegeven, waarde) {
   return _isKaalGetal(delen[delen.length - 1]) ? 'goed' : 'tussenstap';
 }
 
-/* Is dit precies één logaritme, zonder getal ervoor of erachter? */
+/* Is dit precies één logaritme, zonder getal ervoor of erachter? Geeft dan het
+   argument, anders false. */
 function isEnkeleLogaritme(latex) {
   const s = _normaliseerLog(latex || '').replace(/\\left|\\right/g, '').replace(/\s+/g, '');
   if ((s.match(/\\log|\\ln/g) || []).length !== 1) return false;
-  const m = s.match(/^(?:\\log(?:_\{[^{}]+\})?|\\ln)\((.*)\)$/);
+  const m = s.match(/^(?:\\log(?:_\{(?:[^{}]|\{[^{}]*\})+\})?|\\ln)\((.*)\)$/);
   if (!m) return false;
   // Het haakje na log moet het hele argument omsluiten: niet log(x)(x + 1).
   let diepte = 0;
@@ -806,15 +807,203 @@ function isEnkeleLogaritme(latex) {
     if (ch === '(') diepte++;
     else if (ch === ')' && --diepte < 0) return false;
   }
-  return diepte === 0;
+  return diepte === 0 ? m[1] : false;
+}
+
+/* Is het argument af? Zonder letters moet er één kaal getal staan; met letters
+   mag er geen getallenwerk meer staan: 5^{2}a, 3 \cdot 4a of \frac{6}{4}a. */
+function _logArgumentAf(arg, vars) {
+  if (!vars.length) return _isKaalGetal(arg);
+  if (/\d(?:\\cdot|\\times)\d|\d\^/.test(arg)) return false;
+  return [...arg.matchAll(/\\d?frac\{(\d+)\}\{(\d+)\}/g)].every(m => gcd(+m[1], +m[2]) === 1);
 }
 
 /* LG.2a: herleiden tot één logaritme. Elke juiste vorm met één logaritme is
    goed, ook met een ander grondtal (⁴log(x³) = ²log(x√x)). */
-function checkEenLog(gegeven, verwacht, vars) {
+function checkEenLog(gegeven, verwacht, vars, eenvoudig = false) {
   const delen = _ketenDelen(gegeven);
   if (!delen || !delen.every(d => _exWaardeGelijk(d, verwacht, vars))) return 'fout';
-  return isEnkeleLogaritme(delen[delen.length - 1]) ? 'goed' : 'tussenstap';
+  const arg = isEnkeleLogaritme(delen[delen.length - 1]);
+  if (arg === false) return 'tussenstap';
+  return !eenvoudig || _logArgumentAf(arg, vars) ? 'goed' : 'tussenstap';
+}
+
+/* LOG.3d: a + ᵍlog(b) met a zo groot mogelijk en b geheel. De volgorde mag
+   andersom. Een andere juiste vorm (2 + ²log(6)) is een tussenstap. */
+function checkLogAPlus(gegeven, correct) {
+  const delen = _ketenDelen(gegeven);
+  if (!delen || !delen.every(d => _exWaardeGelijk(d, correct.expr, []))) return 'fout';
+  const s = _normaliseerLog(delen[delen.length - 1]).replace(/\s+/g, '');
+  const log = String.raw`\\log(?:_\{(\d+)\})?\((\d+)\)`;
+  const voor = s.match(new RegExp(String.raw`^(\d+)\+${log}$`));
+  const achter = s.match(new RegExp(String.raw`^${log}\+(\d+)$`));
+  if (!voor && !achter) return 'tussenstap';
+  const [a, g, b] = voor ? voor.slice(1) : [achter[3], achter[1], achter[2]];
+  return +a === correct.a && +b === correct.b && +(g ?? 10) === correct.g ? 'goed' : 'tussenstap';
+}
+
+/* ── Formules omschrijven (LOG.4) ─────────────────────────────────────────
+   De doelformule staat in het antwoord als soort + getallen (zie logaritmen.js).
+   Een vergelijking is goed op weg als hij klopt voor paren (u, v) van de
+   formule en niet meer klopt als je u of v verandert. Staat v al vrij in de
+   gevraagde vorm, dan lezen we de getallen uit het antwoord af: precies
+   afgerond is goed, nog niet (of te precies) afgerond is een tussenstap, net
+   verkeerd afgerond is fout met uitleg. */
+const FM_MARGE_TUSSEN = 0.02;      // 10^{1,51} voor 10^{1,505}: een tussenstap met een afgeronde waarde mag
+const FM_MARGE_EXACT = 1e-6;
+const FM_MARGE_AFGEROND = 1e-9;
+const FM_MIN_SCHAAL = 1e-6;        // ondergrens, zodat 0 = 0 geen deling door nul geeft
+const FM_BREEDTE_AFRONDING = 0.5;  // in eenheden van de laatste decimaal
+const FM_BREEDTE_AFRONDFOUT = 5;
+let _fmMelding = null;
+
+function _fmWaarde(soort, par, u) {
+  return soort === 'log'
+    ? par.a + par.b * Math.log(par.c * u) / Math.log(par.h)
+    : par.a + par.b * Math.pow(par.G, par.c * u);
+}
+
+function _fmAfgerondePar(a) {
+  const par = { ...a.par };
+  for (const n of Object.keys(a.dec)) par[n] = _mkRond(par[n], a.dec[n]);
+  return par;
+}
+
+function _fmIsAfgerond(expr, a) {
+  const par = _fmAfgerondePar(a);
+  return a.testU.every(u => {
+    const w = _algEval(expr, { [a.u]: u }), e = _fmWaarde(a.soort, par, u);
+    return isFinite(w) && Math.abs(w - e) <= FM_MARGE_AFGEROND * Math.max(Math.abs(e), FM_MIN_SCHAAL);
+  });
+}
+
+/* Staat het er in de gevraagde vorm: één macht of één logaritme, en bij
+   v = b · g^u precies u als exponent? Zonder a staat er geen losse term. */
+function _fmHeeftVorm(expr, a) {
+  const s = _normaliseerLog(expr).replace(/\\left|\\right|\s+/g, '');
+  const aantal = re => (s.match(re) || []).length;
+  if (a.par.a === 0 && _fmHeeftLosseTerm(s)) return false;
+  if (a.soort === 'log') return aantal(/\\log|\\ln/g) === 1 && !s.includes('^');
+  if (aantal(/\^/g) !== 1 || /\\log|\\ln|\\sqrt/.test(s)) return false;
+  const i = s.indexOf('^') + 1;
+  let exp = s[i];
+  if (exp === '{') {
+    let diepte = 0, j = i;
+    do { if (s[j] === '{') diepte++; else if (s[j] === '}') diepte--; j++; } while (diepte && j < s.length);
+    exp = s.slice(i + 1, j - 1);
+  }
+  return a.par.c === 1 ? exp === a.u : exp.includes(a.u) && !/[+\-]/.test(exp);
+}
+
+function _fmHeeftLosseTerm(s) {
+  let buiten = s, vorige;
+  do { vorige = buiten; buiten = buiten.replace(/\([^()]*\)|\{[^{}]*\}/g, ''); } while (buiten !== vorige);
+  return /[+\-]/.test(buiten);
+}
+
+/* De getallen van de doelvorm, afgelezen uit het antwoord op twee testwaarden.
+   Geeft null als het antwoord niet in die vorm past (derde testwaarde). */
+function _fmLeesGetallen(expr, a) {
+  const [u1, u2] = a.testU;
+  const w = u => _algEval(expr, { [a.u]: u });
+  const par = { ...a.par };
+  if (a.soort === 'log') {
+    const L = u => Math.log(u) / Math.log(a.par.h);
+    par.b = (w(u2) - w(u1)) / (L(u2) - L(u1));
+    const los = w(u1) - par.b * L(u1);
+    if (a.par.c === 1) par.a = los;
+    else par.c = Math.pow(a.par.h, los / par.b);
+  } else {
+    const ln = u => Math.log(w(u) - a.par.a);
+    const helling = (ln(u2) - ln(u1)) / (u2 - u1);
+    par.b = Math.exp(ln(u1) - helling * u1);
+    if (a.par.c === 1) par.G = Math.exp(helling);
+    else par.c = helling / Math.log(a.par.G);
+  }
+  const passend = a.testU.every(u => {
+    const e = _fmWaarde(a.soort, par, u);
+    return isFinite(e) && Math.abs(w(u) - e) <= FM_MARGE_EXACT * Math.max(Math.abs(e), FM_MIN_SCHAAL);
+  });
+  return passend ? par : null;
+}
+
+/* Hoe ver wijkt het afgelezen getal af, in eenheden van de laatste decimaal?
+   Een getal dat niet afgerond hoeft, moet exact kloppen. */
+function _fmAfwijking(par, a) {
+  return Math.max(...['a', 'b', 'c', 'G'].filter(n => a.par[n] !== undefined).map(n => {
+    const verschil = Math.abs(par[n] - a.par[n]);
+    if (a.dec[n] !== undefined) return verschil * 10 ** a.dec[n];
+    return verschil <= FM_MARGE_EXACT * Math.max(Math.abs(a.par[n]), 1) ? 0 : Infinity;
+  }));
+}
+
+/* Is deze uitdrukking voor v gelijk aan de formule? Afgeronde tussenwaarden mogen. */
+function _fmIsFormule(expr, a) {
+  return a.testU.every(u => {
+    const w = _algEval(expr, { [a.u]: u }), e = _fmWaarde(a.soort, a.par, u);
+    return isFinite(w) && Math.abs(w - e) <= FM_MARGE_TUSSEN * Math.max(Math.abs(e), FM_MIN_SCHAAL);
+  });
+}
+
+function _fmVergelijkingKlopt(links, rechts, a) {
+  const klopt = (u, v) => {
+    const waarden = { [a.u]: u, [a.v]: v };
+    const l = _algEval(links, waarden), r = _algEval(rechts, waarden);
+    return isFinite(l) && isFinite(r)
+      && Math.abs(l - r) <= FM_MARGE_TUSSEN * Math.max(Math.abs(l), Math.abs(r), FM_MIN_SCHAAL);
+  };
+  // Een regel met de afgeronde getallen klopt exact bij de afgeronde formule.
+  // Dat telt ook: 5K = -7 + 4 · (10^{1,20})^x kan vlak bij nul procentueel ver
+  // van de exacte formule liggen.
+  return [a.par, _fmAfgerondePar(a)].some(par => {
+    const paren = a.testU.map(u => [u, _fmWaarde(a.soort, par, u)]);
+    return paren.every(([u, v]) => klopt(u, v))
+      && paren.some(([u, v]) => !klopt(u, 1.37 * v + 1))
+      && paren.some(([u, v]) => !klopt(25 * u + 50, v));   // grote stap: bij g = 1,019 verandert g^u traag
+  });
+}
+
+function checkFormuleOm(gegeven, a) {
+  _fmMelding = null;
+  const delen = _ketenDelen((gegeven || '').replace(/\\approx/g, '='));
+  if (!delen) return 'fout';
+  if (delen.length < 2) { _fmMelding = 'heel'; return 'fout'; }
+
+  const kaal = delen.map(d => d.replace(/\s+/g, ''));
+  const vrij = kaal[0] === a.v ? delen.slice(1)
+             : kaal.length === 2 && kaal[1] === a.v ? [delen[0]]
+             : null;
+  if (!vrij) {
+    for (let i = 0; i + 1 < delen.length; i++) {
+      if (!_fmVergelijkingKlopt(delen[i], delen[i + 1], a)) return 'fout';
+    }
+    return 'tussenstap';
+  }
+  const eind = vrij[vrij.length - 1];
+  if (!vrij.slice(0, -1).every(d => _fmIsFormule(d, a))) return 'fout';
+  const inVorm = _fmHeeftVorm(eind, a);
+  if (inVorm && _fmIsAfgerond(eind, a)) return 'goed';
+  const par = inVorm ? _fmLeesGetallen(eind, a) : null;
+  if (par) {
+    const afwijking = _fmAfwijking(par, a);
+    if (afwijking <= FM_BREEDTE_AFRONDING) { _fmMelding = 'vorm'; return 'tussenstap'; }
+    if (afwijking <= FM_BREEDTE_AFRONDFOUT) _fmMelding = 'afronding';
+    return 'fout';
+  }
+  if (_fmIsFormule(eind, a)) { _fmMelding = 'vorm'; return 'tussenstap'; }
+  return 'fout';
+}
+
+/* Toelichting bij een tussenstap of fout. Verklapt geen antwoordwaarden. */
+function formuleTekst(a) {
+  if (_fmMelding === 'vorm') {
+    return Object.keys(a.dec).length
+      ? 'Goed, ga door! Schrijf de formule nu in de gevraagde vorm en rond af zoals de opgave vraagt.'
+      : 'Goed, ga door! Schrijf de formule nu in de gevraagde vorm.';
+  }
+  if (_fmMelding === 'afronding') return 'Bijna goed, maar de afronding klopt niet. Reken met de onafgeronde waarden verder en rond pas aan het eind af.';
+  if (_fmMelding === 'heel') return `Schrijf de hele formule op, dus ook $${a.v} =$ of een andere vergelijking.`;
+  return null;
 }
 
 /* ── Afgeleiden ───────────────────────────────────────────────────────────

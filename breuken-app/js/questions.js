@@ -7373,10 +7373,18 @@ const LEERDOELEN = [
   { id: 'EV.2b', titel: 'Exponentiële vergelijking exact: substitutie',         groep: 'Exponentieel', gen: genLogEV2b },
   { id: 'LOG.1a', titel: 'Logaritmen uitrekenen',                                groep: 'Exponentieel', gen: genLOG1a },
   { id: 'LOG.1b', titel: 'Herleiden tot één logaritme',                          groep: 'Exponentieel', gen: genLOG1b },
+  { id: 'LOG.3a', titel: 'Logaritmen herleiden: getallen',                       groep: 'Exponentieel', gen: genLOG3a },
+  { id: 'LOG.3b', titel: 'Logaritmen herleiden: los getal of ander grondtal',    groep: 'Exponentieel', gen: genLOG3b },
+  { id: 'LOG.3c', titel: 'Logaritmen herleiden: met letters',                    groep: 'Exponentieel', gen: genLOG3c },
+  { id: 'LOG.3d', titel: 'Logaritmen herleiden: schrijven als a + ᵍlog(b)',      groep: 'Exponentieel', gen: genLOG3d },
   { id: 'LOG.2a', titel: 'Logaritmische vergelijking: basis',                    groep: 'Exponentieel', gen: genLOG2a },
   { id: 'LOG.2b', titel: 'Logaritmische vergelijking: lineair',                  groep: 'Exponentieel', gen: genLOG2b },
   { id: 'LOG.2c', titel: 'Logaritmische vergelijking: kwadratisch',              groep: 'Exponentieel', gen: genLOG2c },
   { id: 'LOG.2d', titel: 'Logaritmische vergelijking: met schijnoplossing',      groep: 'Exponentieel', gen: genLOG2d },
+  { id: 'LOG.4a', titel: 'Vergelijkingen omschrijven: exponentieel naar log',    groep: 'Exponentieel', gen: genLOG4a },
+  { id: 'LOG.4b', titel: 'Vergelijkingen omschrijven: log naar exponentieel',    groep: 'Exponentieel', gen: genLOG4b },
+  { id: 'LOG.4c', titel: 'Vergelijkingen omschrijven: naar log met grondtal 10', groep: 'Exponentieel', gen: genLOG4c },
+  { id: 'LOG.4d', titel: 'Vergelijkingen omschrijven: naar a + b keer een macht', groep: 'Exponentieel', gen: genLOG4d },
 
   /* ── D-doelen (Differentiëren; generators in afgeleiden.js) ─────────── */
   { id: 'D.M1a', titel: 'Afgeleide: machtsfuncties zonder negatieve en gebroken machten', groep: 'Differentiëren', gen: genDM1a },

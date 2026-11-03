@@ -29,9 +29,15 @@ const KBD_RIJ_LOG = `<div class="kbd-row">
       <button class="kbd-btn kbd-btn-op" data-val="GLOG" aria-label="Logaritme met grondtal"><sup>g</sup>log</button>
     </div>`;
 
+/* Bij logaritmen herleiden en formules omschrijven hoort ook log (grondtal 10). */
+const KBD_RIJ_LOG_10 = `<div class="kbd-row">
+      <button class="kbd-btn kbd-btn-op" data-val="GLOG" aria-label="Logaritme met grondtal"><sup>g</sup>log</button>
+      <button class="kbd-btn kbd-btn-op" data-val="LOG">log</button>
+    </div>`;
+
 function getKeyboardHTML(metAfgeleide = false, metMeetkunde = false, metLog = false) {
   return `<div id="math-keyboard" class="math-keyboard">
-    ${metAfgeleide ? KBD_RIJ_AFGELEIDE : metLog ? KBD_RIJ_LOG : ''}
+    ${metAfgeleide ? KBD_RIJ_AFGELEIDE : metLog === 'ook-log' ? KBD_RIJ_LOG_10 : metLog ? KBD_RIJ_LOG : ''}
     ${metMeetkunde ? KBD_RIJ_MEETKUNDE : ''}
     <div class="kbd-row">
       <button class="kbd-btn" data-val="7">7</button>
@@ -106,7 +112,7 @@ function handleKbdKey(val) {
     case 'EMACHT': mq.typedText('e'); mq.cmd('^'); break;
     case 'LN':     mq.typedText('ln('); break;
     case 'LOG':    mq.typedText('log('); break;
-    case 'GLOG':   mq.cmd('^'); APP.logGrondtal = true; break;
+    case 'GLOG':   mq.cmd('^'); APP.logGrondtal = _mqDiepte(mq) || true; break;
     case 'SIN': case 'COS': case 'TAN':
       mq.typedText(`${val.toLowerCase()}(`); break;
     // De inverse: sin, dan de exponent -1, uit de exponent stappen en haakje.
@@ -147,10 +153,23 @@ function handleKbdKey(val) {
   }
 }
 
+/* Hoe diep staat de cursor (aantal lagen boven de hoofdregel)? De publieke
+   MathQuill-interface kent dit niet. Zonder cursor geeft dit 0. */
+function _mqDiepte(mq) {
+  let blok = mq.__controller?.cursor?.parent, diepte = 0;
+  while (blok?.parent) { blok = blok.parent; diepte++; }
+  return diepte;
+}
+
+const KBD_MAX_STAPPEN_UIT_GRONDTAL = 6;
+
 /* Na de ᵍlog-knop staat de cursor in het grondtal. Stapt de leerling daar met
-   → uit, dan volgt log( vanzelf. Geeft true als dat gebeurde. */
+   → uit, dan volgt log( vanzelf. Geeft true als dat gebeurde. Bij een breuk als
+   grondtal (½log) brengt → de cursor eerst alleen uit de breuk; dan stappen we
+   hier nog verder, tot de cursor echt uit het grondtal is. */
 function sluitLogGrondtal(mq) {
   if (!APP.logGrondtal) return false;
+  for (let i = 0; i < KBD_MAX_STAPPEN_UIT_GRONDTAL && _mqDiepte(mq) >= APP.logGrondtal; i++) mq.keystroke('Right');
   APP.logGrondtal = false;
   mq.typedText('log(');
   return true;

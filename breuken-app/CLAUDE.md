@@ -147,7 +147,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | modulus-vergelijking | MO.V1a, MO.V1b, MO.V1c, MO.V1d |
 | exp-omschrijven | EX.1a, EX.1b, EX.1c, EX.1d, EX.1e, EX.1f |
 | exp-vergelijking | EV.1a, EV.1b, EV.1c, EV.1d, EV.2a, EV.2b |
-| logaritmen | LOG.1a, LOG.1b (uitrekenen, herleiden); LOG.2a–d (vergelijkingen: basis, lineair, kwadratisch, schijnoplossing) |
+| logaritmen | LOG.1a, LOG.1b (uitrekenen, herleiden); LOG.3a–d (logaritmen herleiden); LOG.2a–d (vergelijkingen: basis, lineair, kwadratisch, schijnoplossing); LOG.4a–d (vergelijkingen omschrijven) |
 | afg-machten | D.M1a, D.M1b, D.M1c, D.M1d |
 | afg-regels | D.R1a, D.R1b, D.R1c, D.R1d, D.R1e |
 | afg-exp-log | D.E1a, D.E1b, D.E1c, D.E1d, D.E1e |
@@ -216,19 +216,37 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   de opgave komen.
 - **Alleen ᵍlog** (grondtal 2, 3, 5, ...), geen log of ln: zo afgesproken met
   Irma. Antwoorden zijn exact; elke juiste vorm is goed (`x = ²log(7) - 1` en
-  `x = log(7)/log(2) - 1`). Afgerond is fout.
+  `x = log(7)/log(2) - 1`). Afgerond is fout. **Uitzondering:** LOG.3 en LOG.4
+  volgen de bron (VB Planner 106) en hebben ook log (grondtal 10), ½log, ⅓log en
+  grondtallen als 1,3, met `logToetsen: 'ook-log'` (extra log-knop).
 - **Nakijken.** Vergelijkingen via `vergelijking-mv` (EV.2b met `hulp: u`).
   LOG.2d heeft `verworpen: [schijnoplossing]`: de regel `x = 2 v x = -4` is dan
   een tussenstap met de melding "controleer", `x = -4` alleen is fout.
   LOG.1a: `vorm: 'log-getal'` (`checkLogGetal`), alleen een kaal getal of
   vereenvoudigde breuk is goed. LOG.1b: `vorm: 'een-log'` (`checkEenLog`),
   precies één logaritme, ook met een ander grondtal.
+- **LOG.3 herleiden.** LOG.3a–c: `vorm: 'een-log'` met `eenvoudig: true`, dus het
+  argument moet uitgerekend zijn: `⁵log(9 · ½)` en `³log(30/6)` zijn tussenstappen,
+  `⁵log(9/2)`, `⁵log(4½)` en `⁵log(4,5)` zijn goed. LOG.3d: `vorm: 'log-a-plus'`
+  (`checkLogAPlus`); alleen de precieze a en b zijn goed, ook andersom opgeschreven.
+  Andere juiste vormen zijn een tussenstap.
+- **LOG.4 omschrijven.** `vorm: 'formule-om'` (`checkFormuleOm`). De doelformule
+  staat als getallen in het antwoord: `exp` is v = a + b · G^(c·u), `log` is
+  v = a + b · ʰlog(c·u); `dec` zegt wat afgerond moet worden. Elke vergelijking
+  die klopt voor paren (u, v) is een tussenstap (marge 2 %, want tussendoor
+  afronden mag). Staat v vrij in de gevraagde vorm, dan worden de getallen uit
+  het antwoord afgelezen: precies afgerond is goed, te precies is een tussenstap,
+  tot 5 eenheden ernaast is fout met de melding "afronding", verder weg gewoon
+  fout. Een getal zonder `dec` moet exact kloppen.
 - **Nog uitrekenen.** `_uitrekenbareVorm` (app.js) maakt van een eindantwoord
   met een nette wortel, logaritme of macht (`x = 2^{5}`, `x = 2^{\frac{1}{2}}`)
   een tussenstap.
 - **Parser.** `3^{2}\log(x)` (zo typt MathQuill 3·²log x) en
   `\frac{1}{2}^{2}\log(x)` worden gelezen als coëfficiënt maal logaritme.
-- **Toetsenbord.** Vragen met `logToetsen: true` krijgen een rij met alleen ᵍlog.
+- **Toetsenbord.** Vragen met `logToetsen: true` krijgen een rij met alleen ᵍlog;
+  met `'ook-log'` komt log erbij. Een breuk als grondtal werkt: ᵍlog, `1/2`, →.
+  `sluitLogGrondtal` leest daarvoor de cursordiepte via `mq.__controller` (intern
+  in MathQuill 0.10.1, dus controleren bij een upgrade).
 - **Testen.** Per leerdoel een paar honderd opgaven genereren: elke oplossing
   moet in de opgave kloppen, elke uitwerkingsregel moet `tussenstap` geven en
   de slotregel `goed`; een oplossing + 1 en een afgerond antwoord moeten `fout`

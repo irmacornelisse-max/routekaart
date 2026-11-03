@@ -283,7 +283,9 @@ const TOC_HOOFDSTUKKEN = [
         id: 'logaritmen', label: 'Logaritmen',
         items: [
           { label: 'Logaritmen',                   knoppen: [{l:'a',id:'LOG.1a'},{l:'b',id:'LOG.1b'}] },
+          { label: 'Logaritmen herleiden',         knoppen: [{l:'a',id:'LOG.3a'},{l:'b',id:'LOG.3b'},{l:'c',id:'LOG.3c'},{l:'d',id:'LOG.3d'}] },
           { label: 'Logaritmische vergelijkingen', knoppen: [{l:'a',id:'LOG.2a'},{l:'b',id:'LOG.2b'},{l:'c',id:'LOG.2c'},{l:'d',id:'LOG.2d'}] },
+          { label: 'Vergelijkingen omschrijven',   knoppen: [{l:'a',id:'LOG.4a'},{l:'b',id:'LOG.4b'},{l:'c',id:'LOG.4c'},{l:'d',id:'LOG.4d'}] },
         ]
       },
     ]
@@ -740,6 +742,7 @@ function renderOefenen(leerdoelId) {
   const isMeetkunde = type === 'meetkunde';
   const isLog = !!vraag.logToetsen;
   const logTip = ' &nbsp;·&nbsp; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>';
+  const logTipBreuk = ' &nbsp;·&nbsp; bij <sup>1/2</sup>log typ je als grondtal <kbd>1</kbd><kbd>/</kbd><kbd>2</kbd>';
 
   let antwoordInhoud = '';
   if (type === 'formule-lijn') {
@@ -770,7 +773,7 @@ function renderOefenen(leerdoelId) {
       ? ' &nbsp;·&nbsp; <em>f\'(x) =</em> hoef je niet te typen &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
       : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
-    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}${isLog ? logTip : ''}</div>`;
+    <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}${isLog ? logTip : ''}${vraag.logToetsen === 'ook-log' ? logTipBreuk : ''}</div>`;
   }
 
   const tijdLimiet = getTijdLimiet();
@@ -797,7 +800,7 @@ function renderOefenen(leerdoelId) {
         <div class="oefenen-antwoord">
           ${antwoordInhoud}
           <div id="feedback-zone"></div>
-          ${needsKbd ? getKeyboardHTML(isAfgeleide, isMeetkunde, isLog) : ''}
+          ${needsKbd ? getKeyboardHTML(isAfgeleide, isMeetkunde, vraag.logToetsen) : ''}
           <div class="actie-bar" id="actie-bar">
             <button class="btn btn-outline btn-sm" id="btn-hint" aria-label="Toon hint">💡 Hint</button>
             <button class="btn btn-ghost btn-sm" id="btn-oplossing" aria-label="Toon uitgewerkte oplossing">📖 Oplossing</button>
@@ -1369,6 +1372,12 @@ function tussenstapBoodschap(gegeven) {
   if (APP.huidigVraag?.antwoordType === 'meetkunde') {
     const melding = meetkundeTekst(APP.huidigVraag, 'tussenstap');
     if (melding) return melding;
+  }
+  if (APP.huidigVraag?.antwoord?.vorm === 'formule-om') {
+    return formuleTekst(APP.huidigVraag.antwoord) ?? 'Goed, ga door!';
+  }
+  if (APP.huidigVraag?.antwoord?.vorm === 'log-a-plus') {
+    return 'Goed, ga door! Dit klopt, maar het is nog niet de gevraagde vorm. Kan $a$ nog groter, en is alles uitgerekend?';
   }
   if (_bevatVerworpen(gegeven?.latex))
     return 'Goed, ga door! Controleer nu of elke oplossing voldoet: het getal achter log moet positief zijn.';
@@ -1943,7 +1952,13 @@ function checkAntwoord(vraag, gegeven) {
       return checkLogGetal(raw, correct.waarde);
     }
     if (correct.vorm === 'een-log') {
-      return checkEenLog(raw, correct.expr, correct.vars);
+      return checkEenLog(raw, correct.expr, correct.vars, correct.eenvoudig);
+    }
+    if (correct.vorm === 'log-a-plus') {
+      return checkLogAPlus(raw, correct);
+    }
+    if (correct.vorm === 'formule-om') {
+      return checkFormuleOm(raw, correct);
     }
     if (correct.vorm === 'afgeleide') {
       return checkAfgeleide(raw, correct);
@@ -2231,6 +2246,10 @@ function feedbackBoodschap(vraag, gegeven) {
   }
   if (vraag.antwoordType === 'meetkunde') {
     const melding = meetkundeTekst(vraag, 'fout');
+    if (melding) return melding;
+  }
+  if (vraag.antwoord?.vorm === 'formule-om') {
+    const melding = formuleTekst(vraag.antwoord);
     if (melding) return melding;
   }
   const exponentVal = _exponentValMelding(vraag, gegeven);
@@ -2562,6 +2581,14 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.H1f': 'Kijk per term wat je eerst moet doen: haakjes wegwerken, als macht schrijven of de kettingregel gebruiken.',
     'LOG.1a': 'Schrijf het getal als macht van het grondtal: ${}^{g}\\!\\log(g^{k}) = k$. Geef een getal of een vereenvoudigde breuk.',
     'LOG.1b': 'Maak van elke term een logaritme met hetzelfde grondtal en neem ze samen: optellen wordt vermenigvuldigen, aftrekken wordt delen.',
+    'LOG.3a': 'Haal een getal voor de logaritme naar binnen en neem de logaritmen samen: optellen wordt vermenigvuldigen, aftrekken wordt delen. Reken het getal achter log helemaal uit.',
+    'LOG.3b': 'Schrijf een los getal als logaritme met hetzelfde grondtal: $k = {}^{g}\\!\\log(g^{k})$. Een logaritme met een ander grondtal reken je eerst uit.',
+    'LOG.3c': 'Maak van elke term een logaritme met hetzelfde grondtal: $p \\cdot {}^{g}\\!\\log(a) = {}^{g}\\!\\log(a^{p})$ en $k = {}^{g}\\!\\log(g^{k})$. Neem ze daarna samen.',
+    'LOG.3d': 'Schrijf het getal als product met een zo groot mogelijke macht van het grondtal, splits de logaritme en reken de macht uit.',
+    'LOG.4a': 'Maak de macht vrij, gebruik $g^{A} = B \\Leftrightarrow A = {}^{g}\\!\\log(B)$ en maak de gevraagde letter vrij. Rond pas aan het eind af.',
+    'LOG.4b': 'Maak de logaritme vrij, gebruik ${}^{g}\\!\\log(A) = B \\Leftrightarrow A = g^{B}$ en splits de macht. Rond pas aan het eind af.',
+    'LOG.4c': 'Maak de macht vrij en schrijf de logaritme om naar grondtal 10: ${}^{g}\\!\\log(a) = \\frac{\\log(a)}{\\log(g)}$. Rond pas aan het eind af.',
+    'LOG.4d': 'Maak de logaritme vrij en splits de macht. Een macht $g^{u}$ schrijf je met grondtal 10 als $(10^{\\log(g)})^{u}$. Rond pas aan het eind af.',
     'D.E1a': 'De afgeleide van $e^{x}$ is $e^{x}$. Bij $e^{u}$ komt er $\\cdot u\'$ bij (kettingregel).',
     'D.E1b': 'De afgeleide van $g^{x}$ is $g^{x} \\cdot \\ln(g)$. Bij $g^{u}$ komt er $\\cdot u\'$ bij.',
     'D.E1c': 'De afgeleide van $\\ln(x)$ is $\\dfrac{1}{x}$. Bij $\\ln(u)$ wordt dat $\\dfrac{u\'}{u}$.',

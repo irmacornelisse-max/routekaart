@@ -5,6 +5,9 @@
    LOG.1 logaritmen uitrekenen en herleiden tot één logaritme
    LOG.2 logaritmische vergelijkingen: basis, lineair, kwadratisch,
          schijnoplossing
+   LOG.3 logaritmen herleiden: getallen, los getal of ander grondtal, letters,
+         en schrijven als a + ᵍlog(b)
+   LOG.4 exponentiële en logaritmische formules omschrijven
 
    Elke generator kiest eerst de oplossing (of de waarden van u) en bouwt de
    opgave daaruit op. Opgave, antwoord en uitwerking komen zo uit hetzelfde
@@ -821,4 +824,544 @@ function genLOG2d() {
     ['Schrijf beide kanten als één logaritme met de rekenregels en werk de logaritmen weg.',
      'Je krijgt een kwadratische vergelijking. Controleer elke oplossing: het getal achter log moet positief zijn.'],
     regels, { verworpen: [schijn] });
+}
+
+/* ── LOG.3 – logaritmen herleiden ────────────────────────────────────────────
+   Het grondtal is een breuk [teller, noemer], want ½log hoort erbij; grondtal
+   10 schrijven we als log(..). Elke generator kiest eerst de termen en bouwt
+   daaruit opgave, antwoord en uitwerking. */
+const _lhLog  = (g, arg) => (_Qis(g, 10) ? `\\log(${arg})` : _lgLog(_Qtex(g), arg));
+const _lhLogA = (g, arg) => (_Qis(g, 10) ? `\\log(${arg})` : _lgLogA(_Qtex(g), arg));
+
+const _LH_GRONDTAL = [_Q(2), _Q(3), _Q(4), _Q(5), _Q(6), _Q(10), _Q(1, 2), _Q(1, 3)];
+const _LH_MAX_ARG = 5000;
+
+/* Grootste k waarbij g^k nog een handzaam getal is. */
+const _lhKmax = g => Math.max(1, Math.floor(Math.log(1000) / Math.abs(Math.log(_Qval(g)))));
+
+function _Qpow(a, n) {
+  if (n < 0) return _Qpow(_Q(a[1], a[0]), -n);
+  return _Q(Math.pow(a[0], n), Math.pow(a[1], n));
+}
+
+/* Is w een macht van g, ook met een breuk als exponent? Dan valt de logaritme
+   weg en is "herleid tot één logaritme" geen zinnige opgave. */
+function _lhIsMacht(g, w) {
+  const k = Math.log(w) / Math.log(_Qval(g));
+  return Math.abs(k * 12 - Math.round(k * 12)) < 1e-9;
+}
+
+const _lhArgOk = (g, C) => !_Qis(C, 1) && C[0] <= _LH_MAX_ARG && C[1] <= _LH_MAX_ARG && !_lhIsMacht(g, _Qval(C));
+
+/* Een term: p · ᵍlog(a), met a een breuk. Een negatieve p gaat in de exponent
+   (-2 · ⁴log(6) = ⁴log(6⁻²)); anders staat het teken voor de term. Bij p = ½
+   moet a een kwadraat zijn. */
+function _lhTerm(g, a, p = _Q(1), teken = 1) {
+  const log = _lhLog(g, _Qtex(a));
+  if (_Qis(p, 1)) return { opg: log, macht: _Qtex(a), arg: _Qtex(a), w: a, teken };
+  const w = p[1] === 2 ? _Q(Math.round(Math.sqrt(a[0])), Math.round(Math.sqrt(a[1]))) : _Qpow(a, p[0]);
+  return { opg: `${_Qtex(p)} \\cdot ${log}`, macht: _lgMacht(_Qtex(a), _Qtex(p)), arg: _Qtex(w), w, teken };
+}
+
+/* Een los getal k als logaritme: k = ᵍlog(g^k). */
+function _lhLos(g, k, teken = 1) {
+  const w = _Qpow(g, k);
+  return { opg: `${k}`, macht: k === 1 ? _Qtex(g) : _lgMacht(_Qtex(g), k), arg: _Qtex(w), w, teken };
+}
+
+/* De termen als som. In de opgave kan een teken anders zijn dan verderop:
+   + ½log(8) wordt - 3. */
+function _lhSom(termen, veld, opgave = false) {
+  return termen.map((t, i) => {
+    const teken = opgave && t.tekenOpg !== undefined ? t.tekenOpg : t.teken;
+    if (i === 0) return teken < 0 ? `-${veld(t)}` : veld(t);
+    return `${teken < 0 ? ' - ' : ' + '}${veld(t)}`;
+  }).join('');
+}
+
+/* De keten van opgave naar één logaritme. Elke tussenvorm staat erin zolang
+   hij verschilt van de vorige, zoals in de uitwerkingen van het boek. */
+function _lhKeten(g, termen, samen, eind) {
+  const delen = [
+    _lhSom(termen, t => t.opg, true),
+    _lhSom(termen, t => t.los ?? t.opg),
+    _lhSom(termen, t => _lhLog(g, t.macht)),
+    _lhSom(termen, t => _lhLog(g, t.arg)),
+    _lhLog(g, samen),
+    _lhLog(g, eind),
+  ];
+  return delen.filter((d, i) => i === 0 || d !== delen[i - 1]).join(' = ');
+}
+
+/* Twee termen samennemen: A · B of A/B als breuk binnen de logaritme. */
+function _lhSamen(t1, t2) {
+  const C = t2.teken < 0 ? _Qdiv(t1.w, t2.w) : _Qmul(t1.w, t2.w);
+  return { C, samen: t2.teken < 0 ? `\\frac{${t1.arg}}{${t2.arg}}` : `${t1.arg} \\cdot ${t2.arg}` };
+}
+
+const _LH_REGELS = 'Gebruik ${}^{g}\\!\\log(a) + {}^{g}\\!\\log(b) = {}^{g}\\!\\log(ab)$ en ${}^{g}\\!\\log(a) - {}^{g}\\!\\log(b) = {}^{g}\\!\\log(\\frac{a}{b})$.';
+
+function _lhVraag(id, g, termen, samen, eind, vars, hint1) {
+  return {
+    id: uid(), leerdoel: id,
+    vraag: `Herleid tot één logaritme: $${_lhSom(termen, t => t.opg, true)}$`,
+    antwoordType: 'algebra',
+    antwoord: { expr: _lhLogA(g, eind), vars, vorm: 'een-log', eenvoudig: true },
+    logToetsen: 'ook-log',
+    hints: [hint1, _LH_REGELS],
+    oplossing: `$${_lhKeten(g, termen, samen, eind)}$`,
+  };
+}
+
+/* ── LOG.3a – getallen, hetzelfde grondtal ──────────────────────────────── */
+function genLOG3a() {
+  for (;;) {
+    const g = pick(_LH_GRONDTAL);
+    const vorm = pick(['som', 'verschil', 'verschil', 'keerSom', 'keerVerschil', 'minKeer', 'half']);
+    let t1, t2;
+    if (vorm === 'som') {
+      t1 = _lhTerm(g, _Q(rand(2, 15))); t2 = _lhTerm(g, _Q(rand(2, 15)));
+    } else if (vorm === 'verschil') {
+      const b = rand(2, 12);
+      t1 = _lhTerm(g, _Q(Math.random() < 0.5 ? b * rand(2, 8) : rand(2, 40))); t2 = _lhTerm(g, _Q(b), _Q(1), -1);
+    } else if (vorm === 'keerSom') {
+      const p = rand(2, 3);
+      t1 = _lhTerm(g, _Q(rand(2, p === 2 ? 7 : 4)), _Q(p));
+      t2 = _lhTerm(g, Math.random() < 0.5 ? _Q(1, rand(2, 5)) : _Q(rand(2, 12)));
+    } else if (vorm === 'keerVerschil') {
+      const p = rand(2, 4);
+      t1 = _lhTerm(g, _Q(rand(2, 50))); t2 = _lhTerm(g, _Q(rand(2, p === 2 ? 7 : 3)), _Q(p), -1);
+    } else if (vorm === 'minKeer') {
+      const p = rand(2, 3), a = rand(2, p === 2 ? 6 : 3);
+      t1 = _lhTerm(g, _Q(a), _Q(-p)); t2 = _lhTerm(g, _Q(a * rand(2, 6)));
+    } else {
+      const s = rand(2, 9);
+      t1 = _lhTerm(g, _Q(s * s), _Q(1, 2)); t2 = _lhTerm(g, _Q(rand(2, 15)), _Q(1), pick([-1, 1]));
+    }
+    const { C, samen } = _lhSamen(t1, t2);
+    if (!_lhArgOk(g, C) || t1.opg === t2.opg) continue;
+    return _lhVraag('LOG.3a', g, [t1, t2], samen, _Qtex(C), [],
+      'Haal eerst een getal voor de logaritme naar binnen: $p \\cdot {}^{g}\\!\\log(a) = {}^{g}\\!\\log(a^{p})$.');
+  }
+}
+
+/* ── LOG.3b – met een los getal of een ander grondtal ───────────────────── */
+function genLOG3b() {
+  for (;;) {
+    const g = pick(_LH_GRONDTAL);
+    const vorm = pick(['plus', 'min', 'achter', 'ander', 'ander', 'half']);
+    const kmax = Math.min(_lhKmax(g), 4);
+    let t1, t2;
+
+    if (vorm === 'plus') {
+      t1 = _lhLos(g, rand(1, kmax)); t2 = _lhTerm(g, _Q(rand(2, 12)));
+    } else if (vorm === 'min') {
+      t1 = _lhLos(g, rand(1, kmax)); t2 = _lhTerm(g, _Q(rand(2, 20)), _Q(1), -1);
+    } else if (vorm === 'achter') {
+      t2 = _lhLos(g, rand(1, kmax), -1);
+      t1 = _lhTerm(g, Math.random() < 0.5 && t2.w[1] === 1 ? _Q(t2.w[0] * rand(2, 9)) : _Q(rand(2, 80)));
+    } else {
+      // De tweede logaritme komt precies uit, in een ander grondtal.
+      const h = pick([_Q(2), _Q(3), _Q(5), _Q(10), _Q(1, 2)].filter(x => x[0] !== g[0] || x[1] !== g[1]));
+      const m = rand(1, Math.min(3, _lhKmax(h)));
+      const breuk = h[1] > 1;                            // ½log(8) = -3
+      const tekenOpg = pick([-1, 1]);
+      const teken = breuk ? -tekenOpg : tekenOpg;
+      t2 = { ..._lhLos(g, m, teken), tekenOpg, opg: _lhLog(h, Math.pow(Math.max(h[0], h[1]), m)), los: `${m}` };
+      if (vorm === 'ander') {
+        t1 = _lhTerm(g, _Q(rand(2, 60)));
+      } else {
+        const s = rand(2, 7);
+        t1 = _lhTerm(g, _Q(s * s), _Q(1, 2));
+      }
+    }
+    const { C, samen } = _lhSamen(t1, t2);
+    if (!_lhArgOk(g, C)) continue;
+    return _lhVraag('LOG.3b', g, [t1, t2], samen, _Qtex(C), [],
+      'Schrijf een los getal als logaritme met het goede grondtal: $k = {}^{g}\\!\\log(g^{k})$. Staat er een logaritme met een ander grondtal, reken die dan eerst uit.');
+  }
+}
+
+/* ── LOG.3c – met letters ───────────────────────────────────────────────── */
+
+/* Een term met een letter, en de macht of wortel die daaruit komt. */
+function _lhLetter(g, v, p = 1, teken = 1) {
+  const log = _lhLog(g, v);
+  if (p === 1) return { opg: log, macht: v, arg: v, teken };
+  if (p === 0.5) return { opg: `\\frac{1}{2} \\cdot ${log}`, macht: `${v}^{\\frac{1}{2}}`, arg: `\\sqrt{${v}}`, teken };
+  return { opg: `${p} \\cdot ${log}`, macht: `${v}^{${p}}`, arg: `${v}^{${p}}`, teken };
+}
+
+function genLOG3c() {
+  const [v1, v2] = pick([['a', 'b'], ['a', 'b'], ['x', 'y'], ['p', 'q']]);
+  const g = pick([_Q(2), _Q(3), _Q(5), _Q(6), _Q(10)]);
+  const vorm = pick(['plusKeer', 'keerMin', 'losPlus', 'losMin', 'achterLos', 'half']);
+  const k = rand(1, Math.min(3, _lhKmax(g)));
+  const gk = Math.pow(g[0], k);
+  let termen, samen, eind, vars = [v1, v2];
+
+  if (vorm === 'plusKeer') {
+    const p = rand(2, 5);
+    termen = [_lhLetter(g, v1), _lhLetter(g, v2, p)];
+    samen = `${v1} \\cdot ${v2}^{${p}}`; eind = `${v1}${v2}^{${p}}`;
+  } else if (vorm === 'keerMin') {
+    const p = rand(2, 5), q = rand(2, 3);
+    termen = [_lhLetter(g, v1, p), _lhLetter(g, v2, q, -1)];
+    samen = eind = `\\frac{${v1}^{${p}}}{${v2}^{${q}}}`;
+  } else if (vorm === 'half') {
+    const p = rand(2, 4);
+    termen = [_lhLetter(g, v2, p), _lhLetter(g, v1, 0.5)];
+    samen = `${v2}^{${p}} \\cdot \\sqrt{${v1}}`; eind = `${v2}^{${p}}\\sqrt{${v1}}`;
+  } else {
+    vars = [v1];
+    const los = teken => ({ opg: `${k}`, macht: k === 1 ? `${gk}` : `${g[0]}^{${k}}`, arg: `${gk}`, teken });
+    if (vorm === 'losPlus') {
+      termen = [los(1), _lhLetter(g, v1)];
+      samen = `${gk} \\cdot ${v1}`; eind = `${gk}${v1}`;
+    } else if (vorm === 'losMin') {
+      termen = [los(1), _lhLetter(g, v1, 1, -1)];
+      samen = eind = `\\frac{${gk}}{${v1}}`;
+    } else {
+      termen = [_lhLetter(g, v1), los(-1)];
+      samen = eind = `\\frac{${v1}}{${gk}}`;
+    }
+  }
+  return _lhVraag('LOG.3c', g, termen, samen, eind, vars,
+    'Haal een getal voor de logaritme naar binnen: $p \\cdot {}^{g}\\!\\log(a) = {}^{g}\\!\\log(a^{p})$. Een los getal schrijf je als ${}^{g}\\!\\log(g^{k})$.');
+}
+
+/* ── LOG.3d – schrijven als a + ᵍlog(b) ─────────────────────────────────────
+   N = g^k · b met b niet deelbaar door g, zodat a echt zo groot mogelijk is. */
+function genLOG3d() {
+  const g = pick([2, 3, 5, 10]);
+  const G = _Q(g);
+  const L = arg => _lhLog(G, arg);
+  const vorm = pick(['kaal', 'kaal', 'keer', 'achter', 'voor']);
+  const kMax = { 2: 6, 3: 4, 5: 3, 10: 3 }[g];
+  const k = rand(vorm === 'achter' ? 2 : 1, vorm === 'keer' ? Math.min(kMax, 4) : kMax);
+  const gk = Math.pow(g, k);
+  const kandidaten = [2, 3, 5, 6, 7, 9, 11, 12, 13, 15, 16, 25].filter(n => n % g !== 0);
+  const b = pick(vorm === 'keer' ? kandidaten.filter(n => n <= 5) : kandidaten);
+  const N = gk * b;
+  const product = L(`${gk} \\cdot ${b}`);
+  const splits = `${L(gk)} + ${L(b)}`;
+  let opg, a, bEind = b, keten;
+
+  if (vorm === 'keer') {
+    const p = rand(2, b === 2 ? 4 : 3);
+    a = p * k; bEind = Math.pow(b, p);
+    opg = `${p} \\cdot ${L(N)}`;
+    keten = [opg, `${p} \\cdot ${product}`, `${p} \\cdot (${splits})`, `${p} \\cdot (${k} + ${L(b)})`,
+             `${a} + ${p} \\cdot ${L(b)}`, `${a} + ${L(`${b}^{${p}}`)}`, `${a} + ${L(bEind)}`];
+  } else if (vorm === 'achter') {
+    const m = rand(1, k - 1);
+    a = k - m;
+    opg = `${L(N)} - ${m}`;
+    keten = [opg, `${product} - ${m}`, `${splits} - ${m}`, `${k} + ${L(b)} - ${m}`, `${a} + ${L(b)}`];
+  } else if (vorm === 'voor') {
+    const m = rand(1, 9);
+    a = m + k;
+    opg = `${m} + ${L(N)}`;
+    keten = [opg, `${m} + ${product}`, `${m} + ${splits}`, `${m} + ${k} + ${L(b)}`, `${a} + ${L(b)}`];
+  } else {
+    a = k;
+    opg = L(N);
+    keten = [opg, product, splits, `${a} + ${L(b)}`];
+  }
+  return {
+    id: uid(), leerdoel: 'LOG.3d',
+    vraag: `Schrijf $${opg}$ in de vorm $a + ${L('b')}$ met $a$ een zo groot mogelijk geheel getal en $b$ geheel.`,
+    antwoordType: 'algebra',
+    antwoord: { vorm: 'log-a-plus', expr: `${a} + ${_lhLogA(G, bEind)}`, vars: [], a, b: bEind, g },
+    logToetsen: 'ook-log',
+    hints: [
+      'Schrijf het getal achter log als een product met een zo groot mogelijke macht van het grondtal.',
+      'Splits daarna met ${}^{g}\\!\\log(pq) = {}^{g}\\!\\log(p) + {}^{g}\\!\\log(q)$ en reken de macht van het grondtal uit. Staat er een getal voor de logaritme, haal dat aan het eind naar binnen.',
+    ],
+    oplossing: `$${keten.join(' = ')}$`,
+  };
+}
+
+/* ── LOG.4 – exponentiële en logaritmische formules omschrijven ─────────────
+   De doelformule is altijd een van deze twee:
+     exp: v = a + b · G^(c·u)
+     log: v = a + b · ʰlog(c·u)
+   De getallen a, b, c en G staan exact in `par`; `dec` zegt welke afgerond
+   moeten worden. checkFormuleOm (utils.js) rekent daarmee na. */
+const _FM_LETTERS = [['N', 't'], ['y', 'x'], ['P', 't'], ['M', 'n'], ['K', 'x'], ['H', 't'], ['W', 'q']];
+
+/* Past dit getal exact in hoogstens drie decimalen? Anders moet het afgerond. */
+const _fmEindig = x => Math.abs(x * 1000 - Math.round(x * 1000)) < 1e-9;
+
+const _FM_DEC_WOORD = { 2: 'twee', 3: 'drie' };
+function _fmRondTekst(namen, dec) {
+  if (!namen.length) return '';
+  return ` Rond ${[...namen].sort().map(n => `$${n}$`).join(' en ')} af op ${_FM_DEC_WOORD[dec]} decimalen.`;
+}
+
+/* Is elke af te ronden waarde veilig, dus niet vlak bij een afrondgrens? */
+const _fmVeilig = (par, dec) => Object.keys(dec).every(n => _mkVeilig(par[n], dec[n]));
+
+/* c · tex als som: [[c, tex], ...], met c een breuk. Lege tex = alleen c. */
+function _fmSom(termen) {
+  let s = '';
+  for (const [c, tex] of termen) {
+    if (_Qis(c, 0)) continue;
+    const abs = _Q(Math.abs(c[0]), c[1]);
+    const inhoud = !tex ? _Qtex(abs) : _Qis(abs, 1) ? tex : `${_Qtex(abs)} \\cdot ${tex}`;
+    s += s ? (c[0] < 0 ? ` - ${inhoud}` : ` + ${inhoud}`) : (c[0] < 0 ? `-${inhoud}` : inhoud);
+  }
+  return s || '0';
+}
+
+/* a·v + b als exponent of argument; a mag een decimaal getal zijn (0.1q - 3). */
+function _fmLin(a, b, v) {
+  const voor = a === 1 ? v : `${a}${v}`;
+  return b === 0 ? voor : `${voor} ${b < 0 ? '-' : '+'} ${Math.abs(b)}`;
+}
+
+/* a + b · rest in de doelvorm, met de afgeronde waarden. */
+function _fmDoel(a, b, rest, dec) {
+  const bTex = Math.abs(b - 1) < 1e-12 ? rest : `${_mkT(b, dec.b)} \\cdot ${rest}`;
+  if (a === 0) return bTex;
+  return `${_mkT(a, dec.a)} + ${bTex}`;
+}
+
+function _fmVraag(id, opg, vormTex, rondTekst, a, hints, regels) {
+  return {
+    id: uid(), leerdoel: id,
+    vraag: `${opg} de vorm $${vormTex}$.${rondTekst}`,
+    antwoordType: 'algebra',
+    antwoord: { vorm: 'formule-om', vars: [a.u, a.v], ...a },
+    logToetsen: 'ook-log',
+    hints,
+    oplossing: regels.filter((r, i) => i === 0 || r !== regels[i - 1])
+      .map(r => (r.startsWith('Dus') ? r : `$${r}$`)).join('\n'),
+  };
+}
+
+const _FM_HINTS_EXP = [
+  'Maak eerst de macht vrij. Gebruik dan $g^{A} = B \\Leftrightarrow A = {}^{g}\\!\\log(B)$.',
+  'Maak de gevraagde letter vrij en splits de logaritme met de rekenregels. Rond pas aan het eind af.',
+];
+const _FM_HINTS_LOG = [
+  'Maak eerst de logaritme vrij. Gebruik dan ${}^{g}\\!\\log(A) = B \\Leftrightarrow A = g^{B}$.',
+  'Splits de macht met $g^{p + q} = g^{p} \\cdot g^{q}$ en $g^{pq} = (g^{p})^{q}$. Rond pas aan het eind af.',
+];
+
+/* u = A · g^E: de eerste regels van elke uitwerking. */
+function _fmExpBegin(u, A, g, E) {
+  return [`${u} = ${A} \\cdot ${g}^{${E}}`, `${A} \\cdot ${g}^{${E}} = ${u}`, `${g}^{${E}} = \\frac{1}{${A}}${u}`];
+}
+
+/* ── LOG.4a – exponentieel naar logaritme ───────────────────────────────── */
+function genLOG4a() {
+  for (;;) {
+    const [u, v] = pick(_FM_LETTERS);
+    const g = pick([2, 3, 5]);
+    const A = rand(2, 60), p = rand(1, 4), q = pick([-1, 1]) * rand(1, 5);
+    if (_lgExponent(g, A) !== null) continue;
+    const E = _fmLin(p, q, v);
+    const begin = _fmExpBegin(u, A, g, E);
+    const eenA = `\\frac{1}{${A}}`;
+    const links = _fmLin(p, 0, v);
+    const b = 1 / p;
+    const bVorm = p === 1 ? '' : 'b \\cdot ';
+
+    if (Math.random() < 0.5) {
+      // v = a + b · ᵍlog(u)
+      const a = (-q - Math.log(A) / Math.log(g)) / p;
+      const dec = { a: 2 };
+      if (!_fmEindig(b)) dec.b = 2;
+      const par = { a, b, c: 1, h: g };
+      if (!_fmVeilig(par, dec) || Math.abs(a) < 0.05) continue;
+      const doel = _fmDoel(a, b, _lgLog(g, u), dec);
+      return _fmVraag('LOG.4a', `Werk de formule $${begin[0]}$ om tot`, `${v} = a + ${bVorm}${_lgLog(g, u)}`,
+        _fmRondTekst(Object.keys(dec), 2),
+        { soort: 'log', u, v, par, dec, testU: [A, 5 * A, 20 * A] }, _FM_HINTS_EXP,
+        [...begin, `${E} = ${_lgLog(g, `${eenA}${u}`)}`,
+         `${links} = ${_fmSom([[_Q(-q), ''], [_Q(1), _lgLog(g, eenA)], [_Q(1), _lgLog(g, u)]])}`,
+         `${v} = ${_fmSom([[_Q(-q, p), ''], [_Q(1, p), _lgLog(g, eenA)], [_Q(1, p), _lgLog(g, u)]])}`,
+         `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+    }
+
+    // v = b · ᵍlog(c·u)
+    const c = Math.pow(g, -q) / A;
+    const cQ = q < 0 ? _Q(Math.pow(g, -q), A) : _Q(1, A * Math.pow(g, q));
+    const dec = {};
+    if (Math.abs(c - _mkRond(c, 2)) > 1e-9) dec.c = 2;
+    if (!_fmEindig(b)) dec.b = 2;
+    const par = { a: 0, b, c, h: g };
+    if (!_fmVeilig(par, dec) || c < 0.1 || c > 100) continue;
+    const logC = _lgLog(g, `${_Qtex(cQ)}${u}`);
+    const doel = _fmDoel(0, b, _lgLog(g, `${_mkT(c, dec.c)}${u}`), dec);
+    const benader = Object.keys(dec).length ? '\\approx' : '=';
+    return _fmVraag('LOG.4a', `Herleid de formule $${begin[0]}$ tot`, `${v} = ${bVorm}${_lgLog(g, `c${u}`)}`,
+      _fmRondTekst(Object.keys(dec), 2),
+      { soort: 'log', u, v, par, dec, testU: [A, 5 * A, 20 * A] }, _FM_HINTS_EXP,
+      [...begin, `${E} = ${_lgLog(g, `${eenA}${u}`)}`,
+       `${links} = ${_fmSom([[_Q(-q), ''], [_Q(1), _lgLog(g, `${eenA}${u}`)]])}`,
+       `${links} = ${_lgLog(g, _lgGetal(g, _Q(-q)))} + ${_lgLog(g, `${eenA}${u}`)}`,
+       `${links} = ${logC}`,
+       `${v} = ${_fmSom([[_Q(1, p), logC]])}`, `${v} ${benader} ${doel}`, `Dus $${v} = ${doel}$.`]);
+  }
+}
+
+/* ── LOG.4b – logaritme naar exponentieel ───────────────────────────────── */
+const _lgMachtKaal = (g, k) => (k === 1 ? `${g}` : `${g}^{${k}}`);
+
+function genLOG4b() {
+  for (;;) {
+    const [v, u] = pick(_FM_LETTERS);     // v staat in de logaritme, u is de uitkomst
+    if (Math.random() < 0.5) {
+      // u = A · log(v) + B  →  v = b · 10^(c·u)
+      const A = pick([2, 3, 4, 5, 6]), B = pick([-1, 1]) * rand(1, 9);
+      if (B % A === 0) continue;
+      const b = Math.pow(10, -B / A), c = 1 / A;
+      const dec = { b: 2 };
+      if (!_fmEindig(c)) dec.c = 2;
+      const par = { a: 0, b, c, G: 10 };
+      if (!_fmVeilig(par, dec) || b < 0.1 || b > 2000) continue;
+      const opg = `${u} = ${A} \\cdot \\log(${v})${B < 0 ? ' - ' : ' + '}${Math.abs(B)}`;
+      const teken = B < 0 ? '+' : '-';
+      const cT = _Qtex(_Q(1, A)), rest = _Qtex(_Q(Math.abs(B), A));
+      const doel = _fmDoel(0, b, `10^{${_mkT(c, dec.c)}${u}}`, dec);
+      return _fmVraag('LOG.4b', `Werk de formule $${opg}$ om tot`,
+        `${v} = b \\cdot 10^{c${u}}`, _fmRondTekst(Object.keys(dec), 2),
+        { soort: 'exp', u, v, par, dec, testU: [1, 2, 3] }, _FM_HINTS_LOG,
+        [opg, `${A} \\cdot \\log(${v}) = ${u} ${teken} ${Math.abs(B)}`,
+         `\\log(${v}) = ${cT}${u} ${teken} ${rest}`,
+         `${v} = 10^{${cT}${u} ${teken} ${rest}}`,
+         `${v} = 10^{${cT}${u}} \\cdot 10^{${B < 0 ? '' : '-'}${rest}}`,
+         `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+    }
+
+    // u = B ± r · ᵍlog(C·v)  →  v = b · G^u, exact
+    const g = pick([2, 3, 5]);
+    const m = pick([1, 2, 2, 3]), s = pick([-1, -1, 1]);
+    const B = rand(1, 3), C = pick([2, 3, 4, 5, 6].filter(n => n % g !== 0));
+    const macht = s * m;
+    if (Math.abs(macht * B) > 4 || Math.pow(g, m) > 125) continue;
+    const G = _Qpow(_Q(g), macht), b = _Qdiv(_Qpow(_Q(g), -macht * B), _Q(C));
+    if (_Qis(b, 1)) continue;
+    const r = m === 1 ? '' : `${_Qtex(_Q(1, m))} \\cdot `;
+    const L = _lgLog(g, `${C}${v}`);
+    const rechts = `${B} ${s < 0 ? '-' : '+'} ${r}${L}`;
+    const binnen = macht === -1 ? `${B} - ${u}` : _fmSom([[_Q(macht), u], [_Q(-macht * B), '']]);
+    const machtU = macht === 1 ? `${g}^{${u}}` : `(${g}^{${macht}})^{${u}}`;
+    const doel = `${_Qtex(b)} \\cdot ${_lgMacht(_Qtex(G), u)}`;
+    return _fmVraag('LOG.4b', `Herleid de formule $${u} = ${rechts}$ tot`, `${v} = b \\cdot g^{${u}}`, '',
+      { soort: 'exp', u, v, par: { a: 0, b: _Qval(b), c: 1, G: _Qval(G) }, dec: {}, testU: [1, 2, 3] }, _FM_HINTS_LOG,
+      [`${u} = ${rechts}`,
+       `${r}${L} = ${s < 0 ? `${B} - ${u}` : `${u} - ${B}`}`,
+       `${L} = ${binnen}`,
+       `${C}${v} = ${g}^{${binnen}}`,
+       `${v} = ${_Qtex(_Q(1, C))} \\cdot ${_lgMachtKaal(g, -macht * B)} \\cdot ${machtU}`,
+       `${v} = ${doel}`, `Dus $${v} = ${doel}$.`]);
+  }
+}
+
+/* ── LOG.4c – exponentieel naar log met grondtal 10 ─────────────────────── */
+function genLOG4c() {
+  for (;;) {
+    const [u, v] = pick(_FM_LETTERS);
+    if (Math.random() < 0.5) {
+      // u = A · h^(p·v + q)  →  v = a + b · log(u)
+      const h = pick([1.2, 1.3, 1.5, 2, 3, 5]);
+      const A = rand(2, 40), p = rand(2, 5), q = pick([-1, 1]) * rand(1, 5);
+      const a = (-q - Math.log(A) / Math.log(h)) / p, b = 1 / (p * Math.log10(h));
+      const dec = { a: 2, b: 2 };
+      const par = { a, b, c: 1, h: 10 };
+      if (!_fmVeilig(par, dec) || Math.abs(a) < 0.05) continue;
+      const E = _fmLin(p, q, v);
+      const eenA = `\\frac{1}{${A}}`;
+      const voor = `${-q} + ${_lgLog(h, eenA)}`;
+      const doel = _fmDoel(a, b, `\\log(${u})`, dec);
+      return _fmVraag('LOG.4c', `Herleid de formule $${u} = ${A} \\cdot ${h}^{${E}}$ tot`, `${v} = a + b \\cdot \\log(${u})`,
+        _fmRondTekst(['a', 'b'], 2),
+        { soort: 'log', u, v, par, dec, testU: [A, 5 * A, 20 * A] }, _FM_HINTS_EXP,
+        [..._fmExpBegin(u, A, h, E), `${E} = ${_lgLog(h, `${eenA}${u}`)}`,
+         `${p}${v} = ${voor} + ${_lgLog(h, u)}`,
+         `${p}${v} = ${voor} + \\frac{\\log(${u})}{\\log(${h})}`,
+         `${v} = \\frac{${voor}}{${p}} + \\frac{\\log(${u})}{${p} \\cdot \\log(${h})}`,
+         `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+    }
+
+    // u = A · g^(r·v − s)  →  v = b · log(c·u), c is exact
+    const g = pick([2, 3, 5]), r = pick([0.1, 0.2, 0.5]), s = rand(1, 4);
+    const A = pick([2, 4, 5, 8, 10, 20, 25, 40, 50]);
+    const c = Math.pow(g, s) / A;
+    const b = 1 / (r * Math.log10(g));
+    const dec = { b: 2 };
+    const par = { a: 0, b, c, h: 10 };
+    if (!_fmEindig(c) || c < 0.1 || c === 1 || !_fmVeilig(par, dec)) continue;
+    const E = _fmLin(r, -s, v);
+    const eenA = `\\frac{1}{${A}}`;
+    const cu = `${_mkT(c)}${u}`;
+    const doel = _fmDoel(0, b, `\\log(${cu})`, dec);
+    return _fmVraag('LOG.4c', `Werk de formule $${u} = ${A} \\cdot ${g}^{${E}}$ om tot`, `${v} = b \\cdot \\log(c${u})`,
+      _fmRondTekst(['b'], 2),
+      { soort: 'log', u, v, par, dec, testU: [A, 5 * A, 20 * A] }, _FM_HINTS_EXP,
+      [..._fmExpBegin(u, A, g, E), `${E} = ${_lgLog(g, `${eenA}${u}`)}`,
+       `${r}${v} = ${s} + ${_lgLog(g, `${eenA}${u}`)}`,
+       `${r}${v} = ${_lgLog(g, Math.pow(g, s))} + ${_lgLog(g, `${eenA}${u}`)}`,
+       `${r}${v} = ${_lgLog(g, cu)}`,
+       `${r}${v} = \\frac{\\log(${cu})}{\\log(${g})}`,
+       `${v} = \\frac{${Math.round(1 / r)} \\cdot \\log(${cu})}{\\log(${g})}`,
+       `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+  }
+}
+
+/* ── LOG.4d – logaritme naar a + b · 10^(c·u) of a + b · g^u ────────────── */
+function genLOG4d() {
+  for (;;) {
+    const [v, u] = pick(_FM_LETTERS);
+    const P = pick([2, 3, 4, 5]), Q0 = pick([-1, 1]) * rand(1, 9);
+    if (gcd(P, Math.abs(Q0)) !== 1 && P !== Math.abs(Q0)) continue;
+    const a = -Q0 / P;
+    const arg = _fmLin(P, Q0, v);
+
+    if (Math.random() < 0.5) {
+      // ᵍlog(P·v + Q) = r·u + s  →  v = a + b · 10^(c·u), a en b exact
+      const g = pick([2, 3, 5]), r = rand(2, 4), s = rand(1, 3);
+      const Gr = Math.pow(g, r), gs = Math.pow(g, s);
+      const b = gs / P, c = r * Math.log10(g);
+      const dec = { c: 2 };
+      const par = { a, b, c, G: 10 };
+      if (Gr > 200 || !_fmEindig(a) || !_fmEindig(b) || !_fmVeilig(par, dec)) continue;
+      const E = _fmLin(r, s, u);
+      const cT = _mkT(c, 2);
+      const doel = _fmDoel(a, b, `10^{${cT}${u}}`, dec);
+      const som = tex => _fmSom([[_Q(-Q0), ''], [_Q(gs), tex]]);
+      return _fmVraag('LOG.4d', `Schrijf de formule $${_lgLog(g, arg)} = ${E}$ in`, `${v} = a + b \\cdot 10^{c${u}}`,
+        _fmRondTekst(['c'], 2),
+        { soort: 'exp', u, v, par, dec, testU: [0.2, 0.5, 1] }, _FM_HINTS_LOG,
+        [`${_lgLog(g, arg)} = ${E}`, `${arg} = ${g}^{${E}}`,
+         `${P}${v} = ${som(`${Gr}^{${u}}`)}`,
+         `${P}${v} = ${som(`(10^{\\log(${Gr})})^{${u}}`)}`,
+         `${P}${v} \\approx ${som(`(10^{${cT}})^{${u}}`)}`,
+         `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+    }
+
+    // u = A · log(P·v + Q) + B  →  v = a + b · g^u, b en g afgerond
+    const A = pick([2, 4, 5, 10, 25, 50, 100, 125]);
+    const B = pick([-1, 1]) * rand(1, Math.min(20, A));
+    if (B % A === 0 || !_fmEindig(a)) continue;
+    const c0 = -B / A, G = Math.pow(10, 1 / A), b = Math.pow(10, c0) / P;
+    const dec = { b: 3, G: 3 };
+    const par = { a, b, c: 1, G };
+    if (!_fmVeilig(par, dec) || b < 0.1 || b > 100) continue;
+    const cT = _mkT(1 / A), rT = _mkT(Math.abs(c0));
+    const teken = B < 0 ? '+' : '-';
+    const doel = _fmDoel(a, b, `${_mkT(G, 3)}^{${u}}`, dec);
+    const opg = `${u} = ${A} \\cdot \\log(${arg})${B < 0 ? ' - ' : ' + '}${Math.abs(B)}`;
+    return _fmVraag('LOG.4d', `Schrijf de formule $${opg}$ in`, `${v} = a + b \\cdot g^{${u}}`,
+      _fmRondTekst(['b', 'g'], 3),
+      { soort: 'exp', u, v, par, dec, testU: [1, 2, 3] }, _FM_HINTS_LOG,
+      [opg, `${A} \\cdot \\log(${arg}) = ${u} ${teken} ${Math.abs(B)}`,
+       `\\log(${arg}) = ${cT}${u} ${teken} ${rT}`,
+       `${arg} = 10^{${cT}${u} ${teken} ${rT}}`,
+       `${P}${v} = ${_fmSom([[_Q(-Q0), '']])} + (10^{${cT}})^{${u}} \\cdot 10^{${c0 < 0 ? '-' : ''}${rT}}`,
+       `${v} \\approx ${doel}`, `Dus $${v} = ${doel}$.`]);
+  }
 }
