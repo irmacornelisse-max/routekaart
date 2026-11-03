@@ -198,7 +198,8 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   schrijft). Met iets ervoor is het een exponent: `x^{2}\log(x)` = x² · log x.
   Een losse `e` is het getal e, tenzij `e` in `vars` staat.
 - **Toetsenbord:** bij D-doelen een extra rij (eˣ, ln, ᵍlog, log). Na ᵍlog
-  staat de cursor in het grondtal; met → komt er `log(` achter.
+  staat `log(` er meteen en de cursor in het lege grondtal ervoor; met → spring
+  je naar binnen de haakjes.
 - **Controleren na een wijziging:** genereer per leerdoel een paar honderd
   opgaven en vergelijk de afgeleide met een numerieke afgeleide van f, en elke
   uitwerkingsregel met f'. Node staat niet op deze pc; headless Edge met een
@@ -245,7 +246,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   `\frac{1}{2}^{2}\log(x)` worden gelezen als coëfficiënt maal logaritme.
 - **Toetsenbord.** Vragen met `logToetsen: true` krijgen een rij met alleen ᵍlog;
   met `'ook-log'` komt log erbij. Een breuk als grondtal werkt: ᵍlog, `1/2`, →.
-  `sluitLogGrondtal` leest daarvoor de cursordiepte via `mq.__controller` (intern
+  `stapUitLogGrondtal` leest daarvoor de cursordiepte via `mq.__controller` (intern
   in MathQuill 0.10.1, dus controleren bij een upgrade).
 - **Testen.** Per leerdoel een paar honderd opgaven genereren: elke oplossing
   moet in de opgave kloppen, elke uitwerkingsregel moet `tussenstap` geven en

@@ -2866,17 +2866,19 @@ function addNewActiveRow() {
         sqrtPending = false;
         return;
       }
-      if (e.key === 'ArrowRight' && APP.logGrondtal) {
-        e.preventDefault();
-        mq.keystroke('Right');
-        sluitLogGrondtal(mq);
-        return;
-      }
       if (e.key === 'ArrowUp' && mq.latex() === '') {
         const prev = APP.stappen.length ? APP.stappen[APP.stappen.length - 1].latex : null;
         if (prev) { mq.latex(prev); e.preventDefault(); e.stopPropagation(); }
       }
     });
+    // In de capture-fase: dit moet vóór MathQuill's eigen pijltoets gebeuren,
+    // anders staat de cursor al buiten het grondtal.
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' && stapUitLogGrondtal(mq)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
   }
 
   APP.mqField1 = mq;

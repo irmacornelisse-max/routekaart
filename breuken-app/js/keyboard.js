@@ -1,7 +1,7 @@
 ﻿/* ── Math Keyboard ───────────────────────────────────────────────────── */
 
-/* Extra rij bij differentiëren. De ᵍlog-knop zet een macht zonder grondtal
-   neer: daarin typ je het grondtal, en met → komt er log( achter. */
+/* Extra rij bij differentiëren. De ᵍlog-knop zet log( neer met een leeg grondtal
+   ervoor: daarin typ je het grondtal, en met → spring je naar binnen de haakjes. */
 const KBD_RIJ_AFGELEIDE = `<div class="kbd-row">
       <button class="kbd-btn kbd-btn-op" data-val="EMACHT" aria-label="e-macht">e<sup>x</sup></button>
       <button class="kbd-btn kbd-btn-op" data-val="LN">ln</button>
@@ -108,11 +108,11 @@ function handleKbdKey(val) {
   switch (val) {
     case 'DEL':   mq.keystroke('Backspace'); break;
     case 'CLR':   mq.latex(''); mq.focus(); break;
-    case 'NEXT':  mq.keystroke('Right'); sluitLogGrondtal(mq); break;
+    case 'NEXT':  if (!stapUitLogGrondtal(mq)) mq.keystroke('Right'); break;
     case 'EMACHT': mq.typedText('e'); mq.cmd('^'); break;
     case 'LN':     mq.typedText('ln('); break;
     case 'LOG':    mq.typedText('log('); break;
-    case 'GLOG':   mq.cmd('^'); APP.logGrondtal = _mqDiepte(mq) || true; break;
+    case 'GLOG':   zetLogMetGrondtal(mq); break;
     case 'SIN': case 'COS': case 'TAN':
       mq.typedText(`${val.toLowerCase()}(`); break;
     // De inverse: sin, dan de exponent -1, uit de exponent stappen en haakje.
@@ -161,17 +161,28 @@ function _mqDiepte(mq) {
   return diepte;
 }
 
-const KBD_MAX_STAPPEN_UIT_GRONDTAL = 6;
+const KBD_MAX_STAPPEN_UIT_GRONDTAL = 10;
+const KBD_STAPPEN_LOG_ARGUMENT = 4;     // de letters l, o, g en het haakje
 
-/* Na de ᵍlog-knop staat de cursor in het grondtal. Stapt de leerling daar met
-   → uit, dan volgt log( vanzelf. Geeft true als dat gebeurde. Bij een breuk als
-   grondtal (½log) brengt → de cursor eerst alleen uit de breuk; dan stappen we
-   hier nog verder, tot de cursor echt uit het grondtal is. */
-function sluitLogGrondtal(mq) {
-  if (!APP.logGrondtal) return false;
-  for (let i = 0; i < KBD_MAX_STAPPEN_UIT_GRONDTAL && _mqDiepte(mq) >= APP.logGrondtal; i++) mq.keystroke('Right');
-  APP.logGrondtal = false;
+/* De ᵍlog-knop zet meteen log( neer, met de cursor in het lege grondtal ervoor. */
+function zetLogMetGrondtal(mq) {
   mq.typedText('log(');
+  for (let i = 0; i < KBD_STAPPEN_LOG_ARGUMENT; i++) mq.keystroke('Left');
+  mq.cmd('^');
+  APP.logGrondtal = _mqDiepte(mq) || true;
+}
+
+/* → vanuit het grondtal springt in één keer naar binnen de haakjes van log(.
+   Bij een breuk als grondtal (½log) zijn er meer stappen nodig om eruit te
+   komen. Geeft false als de cursor niet (meer) in het grondtal stond, bijvoorbeeld
+   na een muisklik; dan is → gewoon één stap naar rechts. */
+function stapUitLogGrondtal(mq) {
+  if (!APP.logGrondtal) return false;
+  const diepte = APP.logGrondtal;
+  APP.logGrondtal = false;
+  if (_mqDiepte(mq) < diepte) return false;
+  for (let i = 0; i < KBD_MAX_STAPPEN_UIT_GRONDTAL && _mqDiepte(mq) >= diepte; i++) mq.keystroke('Right');
+  for (let i = 0; i < KBD_STAPPEN_LOG_ARGUMENT; i++) mq.keystroke('Right');
   return true;
 }
 
