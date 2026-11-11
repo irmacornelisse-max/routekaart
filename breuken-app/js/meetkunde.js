@@ -726,8 +726,12 @@ function _mkA1eGelijkbenig() {
   const been = s * k;
   const [A, B, C] = pick(MK_NAMEN);
   const P = _mkTransformeer({ [A]: [-half, 0], [B]: [half, 0], [C]: [0, h], H: [0, 0] });
+  // H ligt midden op AB, precies waar de maat van AB staat. De letter H gaat
+  // daarom de driehoek in, tussen HA en HC (het rechte-hoekteken zit bij HB).
+  const uA = _mkV.een(_mkV.min(P[A], P.H)), uC = _mkV.een(_mkV.min(P[C], P.H));
   const svg = _mkFiguur({
     punten: P, namen: [A, B, C, 'H'],
+    naamRef: { H: _mkV.min(P.H, _mkV.plus(uA, uC)) },
     lijnen: [[A, B], [B, C], [C, A], [C, 'H', MK_HULPLIJN]],
     hoeken: [{ bij: 'H', van: C, naar: B, recht: true }],
     zijden: [{ van: A, naar: B, tekst: _mkL(2 * half) }, { van: B, naar: C, tekst: _mkL(been) }, { van: C, naar: A, tekst: _mkL(been) }],
