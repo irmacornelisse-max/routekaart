@@ -151,7 +151,7 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 | afg-machten | D.M1a, D.M1b, D.M1c, D.M1d |
 | afg-regels | D.R1a, D.R1b, D.R1c, D.R1d, D.R1e |
 | afg-exp-log | D.E1a, D.E1b, D.E1c, D.E1d, D.E1e |
-| mk-omtrek-opp | MK.O1a–e, MK.A1a–e (e = a t/m d door elkaar, via `_mkDoorElkaar`) |
+| mk-omtrek-opp | MK.O1a–f, MK.A1a–f. c/d: soms halve/kwartcirkel of terugrekenen naar r of d. O1e = L- en trapfiguren + ontbrekende zijde bij gegeven omtrek; A1e = driehoek met basis/hoogte zelf zoeken (gedraaid, hoogte op andere zijde, rechthoekig, gelijkbenig met Pythagoras, rooster). f = a t/m e door elkaar (`_mkDoorElkaar`). Oude e-resultaten worden één keer naar f gezet (`MIGRATIES` in storage.js). |
 | mk-pythagoras | MK.P1a, MK.P1b, MK.P2a, MK.P2b |
 | mk-goniometrie | MK.G1a, MK.G2a, MK.G2b |
 | mk-sinus-cosinusregel | MK.S1a, MK.S1b, MK.S1c, MK.C1a, MK.C1b |

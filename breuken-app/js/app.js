@@ -325,8 +325,8 @@ const TOC_HOOFDSTUKKEN = [
       {
         id: 'mk-omtrek-opp', label: 'Omtrek en oppervlakte',
         items: [
-          { label: 'Omtrek',      knoppen: [{l:'a',id:'MK.O1a'},{l:'b',id:'MK.O1b'},{l:'c',id:'MK.O1c'},{l:'d',id:'MK.O1d'},{l:'e',id:'MK.O1e'}] },
-          { label: 'Oppervlakte', knoppen: [{l:'a',id:'MK.A1a'},{l:'b',id:'MK.A1b'},{l:'c',id:'MK.A1c'},{l:'d',id:'MK.A1d'},{l:'e',id:'MK.A1e'}] },
+          { label: 'Omtrek',      knoppen: [{l:'a',id:'MK.O1a'},{l:'b',id:'MK.O1b'},{l:'c',id:'MK.O1c'},{l:'d',id:'MK.O1d'},{l:'e',id:'MK.O1e'},{l:'f',id:'MK.O1f'}] },
+          { label: 'Oppervlakte', knoppen: [{l:'a',id:'MK.A1a'},{l:'b',id:'MK.A1b'},{l:'c',id:'MK.A1c'},{l:'d',id:'MK.A1d'},{l:'e',id:'MK.A1e'},{l:'f',id:'MK.A1f'}] },
         ]
       },
       {
@@ -2596,14 +2596,16 @@ function feedbackBoodschap(vraag, gegeven) {
     'D.E1e': 'Bepaal eerst welke regel je nodig hebt (som, product, quotiënt of ketting) en gebruik dan de afgeleiden van $e^{x}$, $g^{x}$, $\\ln(x)$ en ${}^{g}\\!\\log(x)$.',
     'MK.O1a': 'De omtrek is de lengte van de hele rand. Tel alle vier de zijden op.',
     'MK.O1b': 'Tel de drie zijden van de driehoek op.',
-    'MK.O1c': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Kijk of het getekende lijnstuk een straal of een middellijn is.',
-    'MK.O1d': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Laat $\\pi$ staan in je antwoord.',
-    'MK.O1e': 'Kijk eerst welke figuur het is. Rechthoek en driehoek: tel alle zijden op. Cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$.',
+    'MK.O1c': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Kijk of het getekende lijnstuk een straal of een middellijn is. Bij een halve of kwartcirkel telt de rechte rand ook mee. Is de omtrek gegeven? Los dan een vergelijking op.',
+    'MK.O1d': 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$. Laat $\\pi$ staan in je antwoord. Bij een halve of kwartcirkel telt de rechte rand ook mee.',
+    'MK.O1e': 'Zoek bij een zijde zonder maat de evenwijdige zijden: samen zijn ze even lang als de overkant. Is de omtrek gegeven? Schrijf dan een vergelijking op met de onbekende zijde erin.',
+    'MK.O1f': 'Kijk eerst welke figuur het is. Rechthoek en driehoek: tel alle zijden op. Cirkel: $2 \\cdot \\pi \\cdot r$ of $\\pi \\cdot d$.',
     'MK.A1a': 'Oppervlakte van een rechthoek: lengte keer breedte.',
-    'MK.A1e': 'Kijk eerst welke figuur het is. Rechthoek: lengte keer breedte. Driehoek: $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$. Cirkel: $\\pi \\cdot r^2$.',
+    'MK.A1e': 'Zoek eerst de hoogte: die staat loodrecht op de basis, en de basis hoeft niet onderaan te liggen. Bij een rechte hoek zijn de rechthoekszijden basis en hoogte. Op een rooster zonder zijde langs de lijnen: omsluitende rechthoek min de driehoeken eromheen.',
+    'MK.A1f': 'Kijk eerst welke figuur het is. Rechthoek: lengte keer breedte. Driehoek: $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$. Cirkel: $\\pi \\cdot r^2$.',
     'MK.A1b': 'Oppervlakte van een driehoek: $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$. De hoogte staat loodrecht op de basis.',
-    'MK.A1c': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Is de middellijn gegeven? Halveer die dan eerst.',
-    'MK.A1d': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Laat $\\pi$ staan in je antwoord.',
+    'MK.A1c': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Is de middellijn gegeven? Halveer die dan eerst. Is de oppervlakte gegeven? Deel door $\\pi$ en neem de wortel.',
+    'MK.A1d': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Laat $\\pi$ staan in je antwoord. Bij een halve of kwartcirkel neem je een deel van de hele cirkel.',
     'MK.P1a': 'De schuine zijde ligt tegenover de rechte hoek. Tel de kwadraten van de rechthoekszijden op en neem de wortel.',
     'MK.P1b': 'De gevraagde zijde is een rechthoekszijde: het kwadraat van de schuine zijde min het andere kwadraat, dan de wortel.',
     'MK.P2a': 'Bepaal het verschil in $x$ en in $y$. Dat zijn de rechthoekszijden; gebruik dan Pythagoras.',

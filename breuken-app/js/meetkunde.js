@@ -2,8 +2,11 @@
    MK – Meetkunde
    ═══════════════════════════════════════════════════════════════════════════
    Leerlijnen:
-     MK.O1  omtrek (rechthoek, driehoek, cirkel afgerond en exact in π)
-     MK.A1  oppervlakte (idem)
+     MK.O1  omtrek (rechthoek, driehoek, cirkel afgerond en exact in π; de
+            cirkel soms half, kwart of terugrekenen; e = L- en trapfiguren
+            en een ontbrekende zijde; f = a t/m e door elkaar)
+     MK.A1  oppervlakte (idem; e = driehoek waarbij je basis en hoogte zelf
+            moet zoeken; f = a t/m e door elkaar)
      MK.P1  Pythagoras: zijden in een rechthoekige driehoek
      MK.P2  Pythagoras: afstand in een assenstelsel en in een balk
      MK.G1  sin, cos, tan: hoek berekenen
@@ -133,6 +136,8 @@ function _mkLijn(a, b, { kleur = MK_KLEUR.lijn, stippel = false, dik = 2 } = {})
      zijden   [{ van, naar, tekst, kleur, ref }]  label naast een lijnstuk
      hoeken   [{ bij, van, naar, tekst, kleur, recht, bogen }]
      cirkels  [{ m, r, boog: [vanGraden, totGraden], stippel }]
+     krommen  [{ punten: [[x, y], ...], kleur, dik }]  open lijn door punten (boog van
+                                               een halve of kwartcirkel, zie _mkBoog)
      stippen  [punt]                           dikke stip (middelpunt)
      ref      referentiepunt (wiskundig) waar labels van weg wijzen         */
 function _mkFiguur(spec) {
@@ -151,6 +156,7 @@ function _mkFiguur(spec) {
     }
     bereik.push([mx - c.r, my - c.r], [mx + c.r, my + c.r]);
   }
+  for (const k of spec.krommen ?? []) bereik.push(...k.punten);
   const { s, f } = _mkSchaal(bereik, B, H, spec.marge ?? MK_MARGE);
   const S = {};
   for (const k of Object.keys(P)) S[k] = f(P[k]);
@@ -171,6 +177,12 @@ function _mkFiguur(spec) {
     } else {
       svg += `<circle cx="${_mkF(cx)}" cy="${_mkF(cy)}" r="${_mkF(r)}" fill="none" stroke="${c.kleur ?? MK_KLEUR.lijn}" stroke-width="2"${stip}/>`;
     }
+  }
+
+  for (const k of spec.krommen ?? []) {
+    const pts = k.punten.map(p => f(p)).map(([x, y]) => `${_mkF(x)},${_mkF(y)}`).join(' ');
+    svg += `<polyline points="${pts}" fill="none" stroke="${k.kleur ?? MK_KLEUR.lijn}" stroke-width="${k.dik ?? 2}"`
+      + ` stroke-linejoin="round" stroke-linecap="round"/>`;
   }
 
   for (const [p, q, o = {}] of spec.lijnen ?? []) svg += _mkLijn(S[p], S[q], o);
@@ -295,21 +307,25 @@ function _mkDriehoekG(P, [p, q, r]) {
 
 /* ═══ Omtrek ══════════════════════════════════════════════════════════════ */
 
-function _mkRechthoek() {
+/* gevraagd: 'l' of 'b' zet een vraagteken bij die zijde (MK.O1e). */
+function _mkRechthoek(gevraagd = null) {
   const l = rand(4, 15) + (Math.random() < 0.3 ? 0.5 : 0);
   let b;
   do { b = rand(2, 12); } while (b >= l - 0.5 || b < l / 4);   // geen vierkant, geen reep
   const namen = pick([['A', 'B', 'C', 'D'], ['P', 'Q', 'R', 'S'], ['K', 'L', 'M', 'N']]);
   const [A, B, C, D] = namen;
   const P = { [A]: [0, 0], [B]: [l, 0], [C]: [l, b], [D]: [0, b] };
+  const lab = (van, naar, maat, wat) => gevraagd === wat
+    ? { van, naar, tekst: '?', kleur: MK_KLEUR.gevraagd }
+    : { van, naar, tekst: _mkL(maat) };
   const svg = _mkFiguur({
     punten: P,
     lijnen: [[A, B], [B, C], [C, D], [D, A]],
     hoeken: namen.map((p, i) => ({ bij: p, van: namen[(i + 3) % 4], naar: namen[(i + 1) % 4], recht: true })),
-    zijden: [{ van: A, naar: B, tekst: _mkL(l) }, { van: B, naar: C, tekst: _mkL(b) }],
+    zijden: [lab(A, B, l, 'l'), lab(B, C, b, 'b')],
   });
   const g = _mkZijden(P, [[A, B], [B, C], [C, D], [D, A]]);
-  return { l, b, naam: namen.join(''), svg, g };
+  return { l, b, naam: namen.join(''), zl: _mkZ(A, B), zb: _mkZ(B, C), svg, g };
 }
 
 function genMKO1a() {
@@ -353,10 +369,9 @@ function genMKO1b() {
   });
 }
 
-/* Cirkel met middelpunt M; getekend is een straal of een middellijn. */
-function _mkCirkel() {
-  const diameter = Math.random() < 0.5;
-  const maat = diameter ? rand(3, 20) : rand(2, 12);
+/* Cirkel met middelpunt M; getekend is een straal of een middellijn. Met
+   gevraagd staat er een vraagteken bij in plaats van de maat (terugrekenen). */
+function _mkCirkel({ diameter = Math.random() < 0.5, maat = diameter ? rand(3, 20) : rand(2, 12), gevraagd = false } = {}) {
   const r = diameter ? maat / 2 : maat;
   const t = rand(0, 359);
   const dir = [Math.cos(_mkRad(t)), Math.sin(_mkRad(t))];
@@ -367,13 +382,23 @@ function _mkCirkel() {
     lijnen: [[diameter ? 'T' : 'M', 'S']],
     stippen: ['M'],
     // Ook bij een middellijn staat het label bij de helft M-S, niet op M.
-    zijden: [{ van: 'M', naar: 'S', tekst: _mkL(maat), ref: [-dir[1] * r, dir[0] * r] }],
+    zijden: [{ van: 'M', naar: 'S', tekst: gevraagd ? '?' : _mkL(maat), kleur: gevraagd ? MK_KLEUR.gevraagd : undefined,
+      ref: [-dir[1] * r, dir[0] * r] }],
     breedte: 260, hoogte: 220, marge: 20,
   });
   return { diameter, maat, r, svg };
 }
 
+/* MK.O1c/d en MK.A1c/d: meestal een hele cirkel, soms een halve of
+   kwartcirkel, soms terugrekenen van omtrek of oppervlakte naar r of d. */
 function _mkCirkelVraag(leerdoel, soort, exact) {
+  const vorm = pick(['heel', 'heel', 'deel', 'terug']);
+  if (vorm === 'deel') return _mkDeelCirkel(leerdoel, soort, exact);
+  if (vorm === 'terug') return _mkTerugCirkel(leerdoel, soort, exact);
+  return _mkHeleCirkel(leerdoel, soort, exact);
+}
+
+function _mkHeleCirkel(leerdoel, soort, exact) {
   let c, w, dec = null;
   do {
     c = _mkCirkel();
@@ -407,6 +432,143 @@ function _mkCirkelVraag(leerdoel, soort, exact) {
         : 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Gebruik de straal, niet de middellijn.',
       exact
         ? 'Exact betekent: laat $\\pi$ staan en schrijf het antwoord als getal maal $\\pi$, bijvoorbeeld $7\\pi$.'
+        : 'Gebruik de $\\pi$-knop van je rekenmachine en rond pas aan het eind af.',
+    ],
+    oplossing,
+  });
+}
+
+/* Punten langs een cirkelboog, van `van` tot `tot` graden. */
+function _mkBoog(m, r, van, tot, n = 48) {
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = _mkRad(van + (tot - van) * i / n);
+    return [m[0] + r * Math.cos(t), m[1] + r * Math.sin(t)];
+  });
+}
+
+/* Halve cirkel of kwartcirkel. De rechte rand is bij allebei samen 2r: de
+   middellijn of twee stralen. Een halve cirkel toont de middellijn (label op
+   de rechte rand) of een straal (een los lijnstuk vanuit M naar de boog); een
+   kwartcirkel altijd een straal. */
+function _mkDeelCirkel(leerdoel, soort, exact) {
+  const half = Math.random() < 0.5;
+  const deel = half ? 2 : 4;
+  const br = half ? '\\frac{1}{2}' : '\\frac{1}{4}';
+  let diameter, maat, r, w, dec = null;
+  do {
+    diameter = half && Math.random() < 0.5;
+    maat = diameter ? rand(4, 20) : rand(2, 12);
+    r = diameter ? maat / 2 : maat;
+    w = soort === 'omtrek' ? 2 * Math.PI * r / deel + 2 * r : Math.PI * r * r / deel;
+    if (!exact) dec = pick([1, 1, 2]);
+  } while (!exact && !_mkVeilig(w, dec));
+
+  const t = rand(0, 359), boog = 360 / deel;
+  const op = a => [r * Math.cos(_mkRad(a)), r * Math.sin(_mkRad(a))];
+  const P = { M: [0, 0], S: op(t), T: op(t + boog), U: op(t + boog / 2) };
+  const lijnen = [['M', 'S'], ['M', 'T']];
+  const zijden = [], hoeken = [], stippen = [];
+  if (!half) {
+    hoeken.push({ bij: 'M', van: 'S', naar: 'T', recht: true });
+    zijden.push({ van: 'M', naar: 'S', tekst: _mkL(maat), ref: P.T });
+  } else if (diameter) {
+    zijden.push({ van: 'S', naar: 'T', tekst: _mkL(maat), ref: P.U });
+  } else {
+    lijnen.push(['M', 'U', { dik: 1.5 }]);
+    stippen.push('M');
+    zijden.push({ van: 'M', naar: 'U', tekst: _mkL(maat), ref: P.S });
+  }
+  const svg = _mkFiguur({
+    punten: P, namen: [], lijnen, zijden, hoeken, stippen,
+    krommen: [{ punten: _mkBoog(P.M, r, t, t + boog) }],
+    breedte: 260, hoogte: 220, marge: 24,
+  });
+
+  const k = soort === 'omtrek' ? 2 * r / deel : r * r / deel;      // het deel met π
+  const piVorm = soort === 'omtrek' ? `${_mkT(k)}\\pi + ${_mkT(2 * r)}` : `${_mkT(k)}\\pi`;
+  const slot = exact ? piVorm : `${piVorm} \\approx ${_mkT(w, dec)}`;
+  const oplossing = [];
+  if (soort === 'omtrek') {
+    oplossing.push(diameter
+      ? `$\\text{omtrek} = \\frac{1}{2} \\cdot \\pi \\cdot d + d = \\frac{1}{2} \\cdot \\pi \\cdot ${maat} + ${maat} = ${slot}$`
+      : `$\\text{omtrek} = ${br} \\cdot 2 \\cdot \\pi \\cdot r + 2 \\cdot r = ${br} \\cdot 2 \\cdot \\pi \\cdot ${maat} + 2 \\cdot ${maat} = ${slot}$`);
+  } else {
+    if (diameter) oplossing.push(`$r = ${maat} \\div 2 = ${_mkT(r)}$`);
+    oplossing.push(`$\\text{oppervlakte} = ${br} \\cdot \\pi \\cdot r^2 = ${br} \\cdot \\pi \\cdot ${_mkT(r)}^2 = ${slot}$`);
+  }
+  const figuur = half ? 'halve cirkel' : 'kwartcirkel';
+  return _mkVraag(leerdoel, {
+    tekst: `Bereken de ${soort} van de ${figuur}. ${exact ? 'Geef je antwoord exact, met $\\pi$ erin.' : _mkRondTekst(dec)}`,
+    svg, sets: [{ waarde: w, g: { r, d: 2 * r } }], dec, exact: exact ? 'pi' : null,
+    tussen: [r, 2 * r, r * r, 2 * Math.PI * r / deel, Math.PI * r * r],
+    hints: [
+      `Een ${figuur} is ${half ? 'de helft' : 'een kwart'} van een hele cirkel. Kijk goed of de maat bij een straal of bij de middellijn staat.`,
+      soort === 'omtrek'
+        ? `De omtrek is de hele rand: de boog én de rechte ${half ? 'zijde' : 'zijden'}. De boog is ${half ? 'de helft' : 'een kwart'} van $2 \\cdot \\pi \\cdot r$.`
+        : `Neem ${half ? 'de helft' : 'een kwart'} van de oppervlakte van de hele cirkel, $\\pi \\cdot r^2$.`,
+      exact
+        ? (soort === 'omtrek'
+          ? 'Exact betekent: laat $\\pi$ staan. Je antwoord wordt een getal maal $\\pi$, plus een getal.'
+          : 'Exact betekent: laat $\\pi$ staan en schrijf het antwoord als getal maal $\\pi$, bijvoorbeeld $7\\pi$.')
+        : 'Gebruik de $\\pi$-knop van je rekenmachine en rond pas aan het eind af.',
+    ],
+    oplossing,
+  });
+}
+
+/* Terugrekenen: omtrek of oppervlakte gegeven, gevraagd de straal of de
+   middellijn. Exact: de gegeven waarde is een getal maal π en de straal komt
+   netjes uit (omtrek dπ, oppervlakte r²π). */
+function _mkTerugCirkel(leerdoel, soort, exact) {
+  const naam = Math.random() < 0.5 ? 'r' : 'd';
+  let gegeven, gegTekst, r, w, dec = null;
+  do {
+    if (exact && soort === 'omtrek') {
+      const d = rand(3, 24);
+      r = d / 2; gegeven = d * Math.PI; gegTekst = `${d}\\pi`;
+    } else if (exact) {
+      r = rand(2, 12); gegeven = Math.PI * r * r; gegTekst = `${r * r}\\pi`;
+    } else {
+      gegeven = soort === 'omtrek' ? rand(100, 900) / 10 : rand(200, 3000) / 10;
+      r = soort === 'omtrek' ? gegeven / (2 * Math.PI) : Math.sqrt(gegeven / Math.PI);
+      gegTekst = _mkT(gegeven);
+      dec = pick([1, 1, 2]);
+    }
+    w = naam === 'r' ? r : 2 * r;
+  } while (!exact && !_mkVeilig(w, dec));
+
+  const slot = exact ? `= ${_mkT(w)}` : `\\approx ${_mkT(w, dec)}`;
+  const oplossing = [];
+  if (soort === 'omtrek') {
+    oplossing.push(naam === 'r' ? `$2 \\cdot \\pi \\cdot r = ${gegTekst}$` : `$\\pi \\cdot d = ${gegTekst}$`);
+    oplossing.push(naam === 'r' ? `$r = \\frac{${gegTekst}}{2 \\cdot \\pi} ${slot}$` : `$d = \\frac{${gegTekst}}{\\pi} ${slot}$`);
+  } else {
+    oplossing.push(`$\\pi \\cdot r^2 = ${gegTekst}$`);
+    if (exact) {
+      oplossing.push(`$r^2 = ${r * r}$`, `$r = \\sqrt{${r * r}} = ${r}$`);
+      if (naam === 'd') oplossing.push(`$d = 2 \\cdot ${r} = ${2 * r}$`);
+    } else {
+      oplossing.push(`$r^2 = \\frac{${gegTekst}}{\\pi}$`);
+      oplossing.push(naam === 'r'
+        ? `$r = \\sqrt{\\frac{${gegTekst}}{\\pi}} ${slot}$`
+        : `$d = 2 \\cdot \\sqrt{\\frac{${gegTekst}}{\\pi}} ${slot}$`);
+    }
+  }
+  const c = _mkCirkel({ diameter: naam === 'd', maat: naam === 'd' ? 2 * r : r, gevraagd: true });
+  const wat = naam === 'r' ? 'de straal $r$' : 'de middellijn $d$';
+  return _mkVraag(leerdoel, {
+    tekst: `De ${soort} van de cirkel is $${gegTekst}$. Bereken ${wat}. ${exact ? 'Geef je antwoord exact.' : _mkRondTekst(dec)}`,
+    svg: c.svg, sets: [{ waarde: w, g: { r, d: 2 * r } }], naam, dec,
+    tussen: [r, 2 * r, r * r],
+    hints: [
+      soort === 'omtrek'
+        ? 'Omtrek van een cirkel: $2 \\cdot \\pi \\cdot r$, of $\\pi \\cdot d$. Zet de gegeven omtrek erachter met een $=$-teken: dat is een vergelijking.'
+        : 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Zet de gegeven oppervlakte erachter met een $=$-teken: dat is een vergelijking.',
+      soort === 'omtrek'
+        ? 'Los de vergelijking op door te delen door wat er bij de onbekende staat.'
+        : `Deel eerst door $\\pi$ en neem daarna de wortel.${naam === 'd' ? ' Zo vind je de straal; de middellijn is twee keer zo lang.' : ''}`,
+      exact
+        ? 'De $\\pi$ valt weg als je deelt. Je antwoord is een gewoon getal.'
         : 'Gebruik de $\\pi$-knop van je rekenmachine en rond pas aan het eind af.',
     ],
     oplossing,
@@ -476,15 +638,396 @@ function genMKA1b() {
 const genMKA1c = () => _mkCirkelVraag('MK.A1c', 'oppervlakte', false);
 const genMKA1d = () => _mkCirkelVraag('MK.A1d', 'oppervlakte', true);
 
-/* MK.O1e en MK.A1e: a t/m d door elkaar. De opgave komt van een van de
-   vier generators en krijgt het e-leerdoel, zodat het resultaat daar telt. */
+/* ═══ MK.A1e: oppervlakte van een driehoek, basis en hoogte zelf zoeken ═══ */
+
+const MK_HULPLIJN = { stippel: true, kleur: MK_KLEUR.hulp, dik: 1.5 };
+
+/* Driehoek met basis AB, top C en getekende hoogte CH, scheef op het scherm.
+   Bij andereZijde ligt AC of BC horizontaal, zodat de hoogte niet op de
+   onderste zijde staat. Die horizontale zijde krijgt een maat die je niet
+   nodig hebt. */
+function _mkA1eHoogte(andereZijde) {
+  const basis = rand(5, 14), hoogte = rand(3, Math.min(10, basis));
+  const stomp = Math.random() < 0.4;
+  const [A, B, C] = pick(MK_NAMEN);
+  const xTop = stomp ? basis + rand(1, 4) : rand(1, basis - 1);
+  const sx = Math.random() < 0.5 ? x => -x : x => x;
+  const ruw = { [A]: [sx(0), 0], [B]: [sx(basis), 0], [C]: [sx(xTop), hoogte], H: [sx(xTop), 0] };
+  const afleider = pick([[B, C], [C, A]]);
+  let draai;
+  if (andereZijde) {
+    const v = _mkV.min(ruw[afleider[1]], ruw[afleider[0]]);
+    draai = -_mkDeg(Math.atan2(v[1], v[0])) + pick([0, 180]);
+  } else {
+    draai = rand(25, 155) + pick([0, 180]);
+  }
+  // Het hoogtelabel komt aan de ruimste kant, weg van het dichtstbijzijnde
+  // hoekpunt van de basis. R1 en R2 zijn referentiepunten voor de labels.
+  const dichtbij = stomp || xTop > basis / 2 ? B : A;
+  const { R1, R2, ...P } = _mkTransformeer({ ...ruw, R1: ruw[dichtbij], R2: [sx(xTop), hoogte / 3] }, draai, false);
+  const lijnen = [[A, B], [B, C], [C, A], [C, 'H', MK_HULPLIJN]];
+  if (stomp) lijnen.push([B, 'H', MK_HULPLIJN]);
+  const lAfl = _mkRond(_mkV.lengte(_mkV.min(P[afleider[0]], P[afleider[1]])), 1);
+  const svg = _mkFiguur({
+    punten: P, namen: [A, B, C], lijnen,
+    zijden: [
+      { van: A, naar: B, tekst: _mkL(basis) },
+      { van: C, naar: 'H', tekst: _mkL(hoogte), ref: R1 },
+      { van: afleider[0], naar: afleider[1], tekst: _mkL(lAfl) },
+    ],
+    hoeken: [{ bij: 'H', van: C, naar: stomp ? B : A, recht: true }],
+    ref: R2,
+  });
+  const w = basis * hoogte / 2;
+  return _mkVraag('MK.A1e', {
+    tekst: `Bereken de oppervlakte van driehoek $${A}${B}${C}$.`, svg,
+    sets: [{ waarde: w, g: _mkDriehoekG(P, [A, B, C]) }], tussen: [basis * hoogte],
+    hints: [
+      'Zoek eerst de hoogte: de stippellijn met de rechte hoek.',
+      `De basis is de zijde waar die hoogte loodrecht op staat${stomp ? ', hier op het verlengde ervan' : ''}. Die hoeft niet onderaan te liggen.`,
+      'Een zijde waar geen hoogte op staat, heb je niet nodig. Gebruik daarna $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$.',
+    ],
+    oplossing: [`$\\text{oppervlakte} = \\frac{1}{2} \\cdot ${basis} \\cdot ${hoogte} = ${_mkT(w)}$`],
+  });
+}
+
+/* Rechthoekige driehoek zonder getekende hoogte, alle drie de zijden
+   gegeven. De rechthoekszijden zijn zelf basis en hoogte. */
+function _mkA1eRechthoekig() {
+  const [p, q, s] = pick([[3, 4, 5], [5, 12, 13], [8, 15, 17]]);
+  const k = p === 3 ? rand(1, 4) : 1;
+  const [a, b] = shuffle([p * k, q * k]);
+  const { X, R, Y, P, g } = _mkRechtDriehoek(a, b);
+  const svg = _mkFiguur({
+    punten: P, lijnen: [[X, R], [R, Y], [Y, X]],
+    hoeken: [{ bij: R, van: X, naar: Y, recht: true }],
+    zijden: [{ van: X, naar: R, tekst: _mkL(a) }, { van: R, naar: Y, tekst: _mkL(b) }, { van: X, naar: Y, tekst: _mkL(s * k) }],
+  });
+  const naam = [X, R, Y].sort().join('');
+  const w = a * b / 2;
+  return _mkVraag('MK.A1e', {
+    tekst: `Bereken de oppervlakte van driehoek $${naam}$.`, svg,
+    sets: [{ waarde: w, g }], tussen: [a * b],
+    hints: [
+      'Er is geen hoogte getekend. Kijk naar de rechte hoek.',
+      'De twee zijden bij de rechte hoek staan loodrecht op elkaar: de ene is de basis, de andere de hoogte.',
+      'De schuine zijde, tegenover de rechte hoek, heb je niet nodig.',
+    ],
+    oplossing: [`$\\text{oppervlakte} = \\frac{1}{2} \\cdot ${a} \\cdot ${b} = ${_mkT(w)}$`],
+  });
+}
+
+/* Gelijkbenige driehoek: basis en benen gegeven, de hoogte volgt met
+   Pythagoras (drietallen, dus de hoogte komt geheel uit). */
+function _mkA1eGelijkbenig() {
+  const [p, q, s] = pick([[3, 4, 5], [5, 12, 13], [8, 15, 17]]);
+  const k = p === 3 ? rand(1, 3) : 1;
+  const [half, h] = Math.random() < 0.5 ? [p * k, q * k] : [q * k, p * k];
+  const been = s * k;
+  const [A, B, C] = pick(MK_NAMEN);
+  const P = _mkTransformeer({ [A]: [-half, 0], [B]: [half, 0], [C]: [0, h], H: [0, 0] });
+  const svg = _mkFiguur({
+    punten: P, namen: [A, B, C, 'H'],
+    lijnen: [[A, B], [B, C], [C, A], [C, 'H', MK_HULPLIJN]],
+    hoeken: [{ bij: 'H', van: C, naar: B, recht: true }],
+    zijden: [{ van: A, naar: B, tekst: _mkL(2 * half) }, { van: B, naar: C, tekst: _mkL(been) }, { van: C, naar: A, tekst: _mkL(been) }],
+  });
+  const g = { ..._mkDriehoekG(P, [A, B, C]), ..._mkZijden(P, [[A, 'H'], [C, 'H']]) };
+  const AH = _mkZ(A, 'H'), CH = _mkZ(C, 'H'), AC = _mkZ(A, C);
+  const w = half * h;
+  return _mkVraag('MK.A1e', {
+    tekst: `Driehoek $${A}${B}${C}$ is gelijkbenig met $${AC} = ${_mkZ(B, C)}$. $H$ is het midden van $${_mkZ(A, B)}$. Bereken de oppervlakte van driehoek $${A}${B}${C}$.`,
+    svg, sets: [{ waarde: w, g }], tussen: [h, h * h, 2 * w],
+    hints: [
+      `Voor de oppervlakte heb je de hoogte $${CH}$ nodig. Die is niet gegeven.`,
+      `$${CH}$ verdeelt de driehoek in twee rechthoekige driehoeken. $${AH}$ is de helft van de basis.`,
+      `Bereken $${CH}$ met de stelling van Pythagoras in driehoek $${A}H${C}$. Gebruik daarna $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$.`,
+    ],
+    oplossing: [
+      `$${AH} = \\frac{1}{2} \\cdot ${2 * half} = ${half}$`,
+      `$${AH}^2 + ${CH}^2 = ${AC}^2$`,
+      `$${half}^2 + ${CH}^2 = ${been}^2$`,
+      `$${CH}^2 = ${been * been} - ${half * half} = ${h * h}$`,
+      `$${CH} = \\sqrt{${h * h}} = ${h}$`,
+      `$\\text{oppervlakte} = \\frac{1}{2} \\cdot ${2 * half} \\cdot ${h} = ${_mkT(w)}$`,
+    ],
+  });
+}
+
+/* Driehoek op een rooster van hokjes 1 bij 1, zonder maten. */
+function _mkRoosterSVG(P, namen) {
+  const CEL = 26, MARGE = 14;
+  const xs = namen.map(n => P[n][0]), ys = namen.map(n => P[n][1]);
+  const x0 = Math.min(...xs) - 1, x1 = Math.max(...xs) + 1;
+  const y0 = Math.min(...ys) - 1, y1 = Math.max(...ys) + 1;
+  const B = (x1 - x0) * CEL + 2 * MARGE, H = (y1 - y0) * CEL + 2 * MARGE;
+  const X = x => MARGE + (x - x0) * CEL, Y = y => MARGE + (y1 - y) * CEL;
+  let svg = '';
+  for (let i = x0; i <= x1; i++) svg += `<line x1="${X(i)}" y1="${Y(y0)}" x2="${X(i)}" y2="${Y(y1)}" stroke="#E2E6EA" stroke-width="1"/>`;
+  for (let j = y0; j <= y1; j++) svg += `<line x1="${X(x0)}" y1="${Y(j)}" x2="${X(x1)}" y2="${Y(j)}" stroke="#E2E6EA" stroke-width="1"/>`;
+  const pts = namen.map(n => `${X(P[n][0])},${Y(P[n][1])}`).join(' ');
+  svg += `<polygon points="${pts}" fill="none" stroke="${MK_KLEUR.lijn}" stroke-width="2" stroke-linejoin="round"/>`;
+  const m = _mkV.midden(namen.map(n => P[n]));
+  for (const n of namen) {
+    const u = _mkV.een(_mkV.min(P[n], m));
+    svg += `<circle cx="${X(P[n][0])}" cy="${Y(P[n][1])}" r="3" fill="${MK_KLEUR.lijn}"/>`;
+    svg += _mkTekst([X(P[n][0]) + u[0] * 15, Y(P[n][1]) - u[1] * 15], n, { cursief: true });
+  }
+  return `<svg viewBox="0 0 ${B} ${H}" width="${B}" height="${H}" xmlns="http://www.w3.org/2000/svg"`
+    + ` style="display:block;margin:8px auto;max-width:100%;height:auto" role="img" aria-label="rooster">${svg}</svg>`;
+}
+
+/* Draait roosterpunten een kwartslag of meer (en spiegelt ze soms), rondt
+   af op hele hokjes en schuift ze naar het eerste kwadrant. */
+function _mkRoosterStand(P) {
+  const T = _mkTransformeer(P, pick([0, 90, 180, 270]));
+  const minX = Math.min(...Object.values(T).map(p => Math.round(p[0])));
+  const minY = Math.min(...Object.values(T).map(p => Math.round(p[1])));
+  const uit = {};
+  for (const [k, [x, y]] of Object.entries(T)) uit[k] = [Math.round(x) - minX, Math.round(y) - minY];
+  return uit;
+}
+
+/* Op het rooster: één zijde loopt langs een roosterlijn (die is de basis),
+   of geen enkele (omsluitende rechthoek min drie rechthoekige driehoeken). */
+function _mkA1eRooster(omsluiten) {
+  const [A, B, C] = pick(MK_NAMEN);
+  let ruw, w, oplossing, hints;
+  if (!omsluiten) {
+    const basis = rand(3, 9), h = rand(2, 7), xTop = rand(-2, basis + 2);
+    ruw = { [A]: [0, 0], [B]: [basis, 0], [C]: [xTop, h] };
+    w = basis * h / 2;
+    oplossing = [`$\\text{oppervlakte} = \\frac{1}{2} \\cdot ${basis} \\cdot ${h} = ${_mkT(w)}$`];
+    hints = [
+      'Elk hokje is 1 bij 1. Zoek een zijde die precies langs een roosterlijn loopt: neem die als basis.',
+      'De hoogte is de afstand van het derde hoekpunt tot de lijn door de basis, loodrecht gemeten. Tel de hokjes.',
+      'Gebruik daarna $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$.',
+    ];
+  } else {
+    // A in een hoek van de rechthoek W × H, B op de overkant rechts, C op de bovenkant.
+    let W, H, yb, xc;
+    do {
+      W = rand(4, 9); H = rand(3, 7); yb = rand(1, H - 1); xc = rand(1, W - 1);
+      w = W * H - W * yb / 2 - (W - xc) * (H - yb) / 2 - xc * H / 2;
+    } while (w < 3);
+    ruw = { [A]: [0, 0], [B]: [W, yb], [C]: [xc, H] };
+    const t1 = W * yb / 2, t2 = (W - xc) * (H - yb) / 2, t3 = xc * H / 2;
+    oplossing = [`$\\text{oppervlakte} = ${W} \\cdot ${H} - \\frac{1}{2} \\cdot ${W} \\cdot ${yb} - \\frac{1}{2} \\cdot ${W - xc} \\cdot ${H - yb}`
+      + ` - \\frac{1}{2} \\cdot ${xc} \\cdot ${H} = ${W * H} - ${_mkT(t1)} - ${_mkT(t2)} - ${_mkT(t3)} = ${_mkT(w)}$`];
+    hints = [
+      'Geen enkele zijde loopt langs een roosterlijn. Teken een rechthoek om de driehoek heen, met zijden langs de roosterlijnen.',
+      'Om de driehoek heen liggen nu drie rechthoekige driehoeken. Hun oppervlakte kun je met de hokjes uitrekenen.',
+      'Oppervlakte driehoek = oppervlakte rechthoek min de drie driehoeken eromheen.',
+    ];
+  }
+  const P = _mkRoosterStand(ruw);
+  return _mkVraag('MK.A1e', {
+    tekst: `Bereken de oppervlakte van driehoek $${A}${B}${C}$. Elk hokje is $1$ bij $1$.`,
+    svg: _mkRoosterSVG(P, [A, B, C]),
+    sets: [{ waarde: w, g: _mkDriehoekG(P, [A, B, C]) }], tussen: [2 * w],
+    hints, oplossing,
+  });
+}
+
+function genMKA1e() {
+  return pick([
+    () => _mkA1eHoogte(false), () => _mkA1eHoogte(true), _mkA1eRechthoekig,
+    _mkA1eGelijkbenig, () => _mkA1eRooster(false), () => _mkA1eRooster(true),
+  ])();
+}
+
+/* ═══ MK.O1e: rechthoekige figuren en een ontbrekende zijde ═══════════════ */
+
+/* Labels voor de zijden van veelhoek P (hoekpunten in volgorde), aan de
+   buitenkant: ref ligt iets binnen de figuur, zodat het label naar buiten
+   wijst. labels[i] hoort bij zijde i → i+1; null = geen label. */
+function _mkBuitenLabels(P, volgorde, labels) {
+  const n = volgorde.length;
+  let opp = 0;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = P[volgorde[i]], [x2, y2] = P[volgorde[(i + 1) % n]];
+    opp += x1 * y2 - x2 * y1;
+  }
+  const z = [];
+  for (let i = 0; i < n; i++) {
+    if (labels[i] === null) continue;
+    const p = volgorde[i], q = volgorde[(i + 1) % n];
+    const r = _mkV.min(P[q], P[p]);
+    const buiten = _mkV.een(opp > 0 ? [r[1], -r[0]] : [-r[1], r[0]]);
+    const m = _mkV.maal(_mkV.plus(P[p], P[q]), 0.5);
+    z.push({ van: p, naar: q, tekst: labels[i], ref: _mkV.min(m, buiten) });
+  }
+  return z;
+}
+
+/* L-vorm (één trede) of trap (twee treden). De horizontale stukken samen
+   zijn even lang als de onderkant, de verticale samen even lang als de
+   linkerkant. Van elke richting mist één maat; die volgt uit de andere. */
+function _mkO1eTrap() {
+  const treden = pick([1, 2]);
+  const MIN_STUK = 4;          // bij kortere stukken botsen de labels rond een hoek
+  let W, H, xs, ys;
+  do {
+    W = rand(10, 18); H = rand(8, 14);
+    xs = Array.from({ length: treden }, () => rand(MIN_STUK, W - MIN_STUK)).sort((a, b) => b - a);   // aflopend
+    ys = Array.from({ length: treden }, () => rand(MIN_STUK, H - MIN_STUK)).sort((a, b) => a - b);   // oplopend
+  } while ([W, ...xs, 0].some((x, i, a) => i > 0 && a[i - 1] - x < MIN_STUK)
+        || [0, ...ys, H].some((y, i, a) => i > 0 && y - a[i - 1] < MIN_STUK));
+  // Hoekpunten tegen de klok in, vanaf linksonder.
+  const pts = [[0, 0], [W, 0]];
+  let vorigeX = W;
+  for (let i = 0; i < treden; i++) { pts.push([vorigeX, ys[i]], [xs[i], ys[i]]); vorigeX = xs[i]; }
+  pts.push([vorigeX, H], [0, H]);
+  const namen = 'ABCDEFGH'.slice(0, pts.length).split('');
+  const P = _mkTransformeer(Object.fromEntries(namen.map((n, i) => [n, pts[i]])), pick([0, 90, 180, 270]));
+  for (const k of Object.keys(P)) P[k] = P[k].map(v => _mkRond(v, 6));
+
+  const n = namen.length;
+  const lengtes = pts.map((p, i) => _mkV.lengte(_mkV.min(pts[(i + 1) % n], p)));
+  // Even zijden (0, 2, ...) zijn horizontaal, oneven verticaal (in de ruwe stand).
+  const kies = pariteit => pick(lengtes.map((_, i) => i).filter(i => i % 2 === pariteit));
+  const mist = [kies(0), kies(1)];
+  const labels = lengtes.map((l, i) => (mist.includes(i) ? null : _mkL(l)));
+  const zijNaam = i => _mkZ(namen[i], namen[(i + 1) % n]);
+
+  const oplossing = mist.map(i => {
+    const groep = lengtes.map((_, j) => j).filter(j => j % 2 === i % 2);
+    const totaal = i % 2 === 0 ? 0 : n - 1;     // onderkant of linkerkant: de hele breedte of hoogte
+    const rest = groep.filter(j => j !== i && j !== totaal);
+    const uitdr = i === totaal
+      ? rest.map(j => lengtes[j]).join(' + ')
+      : [lengtes[totaal], ...rest.map(j => lengtes[j])].join(' - ');
+    return `$${zijNaam(i)} = ${uitdr} = ${lengtes[i]}$`;
+  });
+  const w = 2 * (W + H);
+  oplossing.push(`$\\text{omtrek} = ${lengtes.join(' + ')} = ${w}$`);
+
+  // Een letter staat schuin van de hoek af, weg van beide zijden: bij een
+  // gewone hoek buiten de figuur, bij een binnenhoek erin (daar staan geen maten).
+  const naamRef = {};
+  namen.forEach((k, i) => {
+    const u1 = _mkV.een(_mkV.min(P[namen[(i + n - 1) % n]], P[k]));
+    const u2 = _mkV.een(_mkV.min(P[namen[(i + 1) % n]], P[k]));
+    naamRef[k] = _mkV.plus(P[k], _mkV.plus(u1, u2));
+  });
+  const g = _mkZijden(P, namen.map((p, i) => [p, namen[(i + 1) % n]]));
+  return _mkVraag('MK.O1e', {
+    tekst: `Alle hoeken van figuur $${namen.join('')}$ zijn recht. Bereken de omtrek van de figuur.`,
+    svg: _mkFiguur({
+      punten: P, lijnen: namen.map((p, i) => [p, namen[(i + 1) % n]]),
+      zijden: _mkBuitenLabels(P, namen, labels), naamRef,
+    }),
+    sets: [{ waarde: w, g }], tussen: [W + H],
+    hints: [
+      'De omtrek is de lengte van de hele rand. Je hebt dus van elke zijde de lengte nodig.',
+      'Twee zijden hebben geen maat. Kijk naar de zijden die evenwijdig zijn aan zo\'n zijde.',
+      'De stukken aan de ene kant van de figuur zijn samen even lang als de zijde aan de overkant.',
+    ],
+    oplossing,
+  });
+}
+
+/* Omtrek gegeven, één zijde onbekend: rechthoek, driehoek of gelijkbenige
+   driehoek. Uitwerking als vergelijking, stap voor stap. */
+function _mkO1eOntbrekend() {
+  const soort = pick(['rechthoek', 'driehoek', 'gelijkbenig']);
+  const T = _mkT;
+  if (soort === 'rechthoek') {
+    const vraagB = Math.random() < 0.5;
+    const r = _mkRechthoek(vraagB ? 'b' : 'l');
+    const O = 2 * (r.l + r.b);
+    const [bekend, onb, naam] = vraagB ? [r.l, r.b, r.zb] : [r.b, r.l, r.zl];
+    return _mkVraag('MK.O1e', {
+      tekst: `De omtrek van rechthoek $${r.naam}$ is $${T(O)}$. Bereken de lengte van $${naam}$.`, svg: r.svg,
+      sets: [{ waarde: onb, g: r.g }], naam, tussen: [O / 2, O - 2 * bekend],
+      hints: [
+        'Een rechthoek heeft twee keer de lengte en twee keer de breedte. Samen is dat de omtrek.',
+        `Schrijf de omtrek op met $${naam}$ erin en zet de gegeven omtrek erachter: dat is een vergelijking.`,
+        'Los de vergelijking op: haal eerst het bekende deel weg en deel daarna.',
+      ],
+      oplossing: [
+        `$2 \\cdot ${T(bekend)} + 2 \\cdot ${naam} = ${T(O)}$`,
+        `$${T(2 * bekend)} + 2 \\cdot ${naam} = ${T(O)}$`,
+        `$2 \\cdot ${naam} = ${T(O - 2 * bekend)}$`,
+        `$${naam} = ${T(onb)}$`,
+      ],
+    });
+  }
+
+  const [A, B, C] = pick(MK_NAMEN);
+  let a, b, c;                                  // a = BC, b = AC, c = AB
+  if (soort === 'gelijkbenig') {
+    do { a = rand(4, 13); c = rand(3, 16); } while (c >= 2 * a - 1 || c === a);
+    b = a;
+  } else {
+    do { c = rand(5, 14); a = rand(3, 12); b = rand(3, 12); }
+    while (a + b <= c + 1 || a + c <= b + 1 || b + c <= a + 1);
+    if (Math.random() < 0.3) c += 0.5;
+  }
+  const x = (b * b + c * c - a * a) / (2 * c);
+  const P = _mkTransformeer({ [A]: [0, 0], [B]: [c, 0], [C]: [x, Math.sqrt(b * b - x * x)] }, rand(-20, 20));
+  const g = _mkDriehoekG(P, [A, B, C]);
+  const AB = _mkZ(A, B), AC = _mkZ(A, C), BC = _mkZ(B, C);
+  const O = a + b + c;
+  const vraag = (van, naar) => ({ van, naar, tekst: '?', kleur: MK_KLEUR.gevraagd });
+
+  if (soort === 'gelijkbenig') {
+    return _mkVraag('MK.O1e', {
+      tekst: `Driehoek $${A}${B}${C}$ is gelijkbenig met $${AC} = ${BC}$. De omtrek is $${T(O)}$. Bereken de lengte van $${AC}$.`,
+      svg: _mkFiguur({
+        punten: P, lijnen: [[A, B], [B, C], [C, A]],
+        zijden: [{ van: A, naar: B, tekst: _mkL(c) }, vraag(C, A), vraag(B, C)],
+      }),
+      sets: [{ waarde: b, g }], naam: AC, tussen: [O - c],
+      hints: [
+        'De omtrek is de basis plus de twee benen. De benen zijn allebei onbekend, maar ze zijn even lang.',
+        `Schrijf de omtrek op met $${AC}$ erin en zet de gegeven omtrek erachter: dat is een vergelijking.`,
+        'Los de vergelijking op: haal eerst de basis weg en deel daarna.',
+      ],
+      oplossing: [
+        `$2 \\cdot ${AC} + ${T(c)} = ${T(O)}$`,
+        `$2 \\cdot ${AC} = ${T(O - c)}$`,
+        `$${AC} = ${T(b)}$`,
+      ],
+    });
+  }
+
+  // Gewone driehoek: één van de drie zijden is onbekend.
+  const zijden = [[A, B, c, AB], [B, C, a, BC], [C, A, b, AC]];
+  const iOnb = rand(0, 2);
+  const [, , onb, naam] = zijden[iOnb];
+  const bekend = zijden.filter((_, i) => i !== iOnb).map(z => z[2]);
+  return _mkVraag('MK.O1e', {
+    tekst: `De omtrek van driehoek $${A}${B}${C}$ is $${T(O)}$. Bereken de lengte van $${naam}$.`,
+    svg: _mkFiguur({
+      punten: P, lijnen: [[A, B], [B, C], [C, A]],
+      zijden: zijden.map(([p, q, l], i) => (i === iOnb ? vraag(p, q) : { van: p, naar: q, tekst: _mkL(l) })),
+    }),
+    sets: [{ waarde: onb, g }], naam, tussen: [bekend[0] + bekend[1]],
+    hints: [
+      'De omtrek is de som van de drie zijden.',
+      `Schrijf de omtrek op met $${naam}$ erin en zet de gegeven omtrek erachter: dat is een vergelijking.`,
+      'Los de vergelijking op: haal het bekende deel aan beide kanten weg.',
+    ],
+    oplossing: [
+      `$${T(bekend[0])} + ${T(bekend[1])} + ${naam} = ${T(O)}$`,
+      `$${T(bekend[0] + bekend[1])} + ${naam} = ${T(O)}$`,
+      `$${naam} = ${T(onb)}$`,
+    ],
+  });
+}
+
+const genMKO1e = () => (Math.random() < 0.5 ? _mkO1eTrap() : _mkO1eOntbrekend());
+
+/* MK.O1f en MK.A1f: a t/m e door elkaar. De opgave komt van een van de
+   vijf generators en krijgt het f-leerdoel, zodat het resultaat daar telt. */
 function _mkDoorElkaar(leerdoel, generators) {
   const v = pick(generators)();
   v.leerdoel = leerdoel;
   return v;
 }
-const genMKO1e = () => _mkDoorElkaar('MK.O1e', [genMKO1a, genMKO1b, genMKO1c, genMKO1d]);
-const genMKA1e = () => _mkDoorElkaar('MK.A1e', [genMKA1a, genMKA1b, genMKA1c, genMKA1d]);
+const genMKO1f = () => _mkDoorElkaar('MK.O1f', [genMKO1a, genMKO1b, genMKO1c, genMKO1d, genMKO1e]);
+const genMKA1f = () => _mkDoorElkaar('MK.A1f', [genMKA1a, genMKA1b, genMKA1c, genMKA1d, genMKA1e]);
 
 /* ═══ Rechthoekige driehoek (Pythagoras en goniometrie) ═══════════════════
    X = hoekpunt van de scherpe hoek waar het om draait, R = rechte hoek,
@@ -1317,8 +1860,10 @@ function _mkKetenKlopt(delen, set, naam) {
   return w.every(v => _mkDichtbij(v, w[0]));
 }
 
+/* Een getal maal π, eventueel plus een getal (omtrek van een halve of
+   kwartcirkel: 5π + 10 of 10 + 5π). */
 function _mkIsPiVorm(s) {
-  const t = s.replace(/\s+/g, '');
+  const t = s.replace(/\s+/g, '').replace(/^\d+(?:[.,]\d+)?\+|\+\d+(?:[.,]\d+)?$/, '');
   return (t.match(/\\pi/g) || []).length === 1 && !/[+\-^]|\\sqrt|\\cdot|\\times/.test(t);
 }
 

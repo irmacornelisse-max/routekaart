@@ -2,13 +2,34 @@
 
 const STORAGE_KEY = 'bf_v1';
 
+/* Hernoemde leerdoelen. Elke migratie draait één keer (de id komt in
+   data.migraties), zodat nieuwe resultaten onder de oude naam blijven staan.
+   mk-door-elkaar-f: de gemengde omtrek- en oppervlakte-opgaven schoven van
+   e naar f; e is nu een nieuw soort opgave. */
+const MIGRATIES = [
+  { id: 'mk-door-elkaar-f', hernoem: { 'MK.O1e': 'MK.O1f', 'MK.A1e': 'MK.A1f' } },
+];
+
+function _migreer(data) {
+  data.migraties = data.migraties || [];
+  let gewijzigd = false;
+  for (const m of MIGRATIES) {
+    if (data.migraties.includes(m.id)) continue;
+    data.resultaten = data.resultaten.map(r => (m.hernoem[r.leerdoel] ? { ...r, leerdoel: m.hernoem[r.leerdoel] } : r));
+    data.migraties.push(m.id);
+    gewijzigd = true;
+  }
+  if (gewijzigd) saveData(data);
+  return data;
+}
+
 function loadData() {
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { studenten: [], resultaten: [] };
     data.resultaten = data.resultaten.map(r =>
       r.staat ? r : { ...r, staat: r.goed ? 'goed' : 'fout' }
     );
-    return data;
+    return _migreer(data);
   } catch {
     return { studenten: [], resultaten: [] };
   }
