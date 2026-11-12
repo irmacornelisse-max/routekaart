@@ -637,7 +637,7 @@ function genG8() {
   else if (type === 1) { a = rand(1, 15); b = -rand(1, 15); }
   else { a = -rand(1, 15); b = -rand(1, 15); }
   const res = a + b;
-  const bStr = b < 0 ? `(${b})` : `${b}`;
+  const bStr = `${b}`;
   return {
     id: uid(), leerdoel: 'G.8',
     vraag: `Bereken: $${a} + ${bStr}$`,
@@ -659,14 +659,14 @@ function genG9() {
   else if (type === 1) { a = -rand(1, 10); b = rand(1, 15); }      // neg - pos
   else { a = -rand(1, 10); b = -rand(1, 15); }                      // neg - neg
   const res = a - b;
-  const bStr = b < 0 ? `(${b})` : `${b}`;
+  const bStr = `${b}`;
   return {
     id: uid(), leerdoel: 'G.9',
     vraag: `Bereken: $${a} - ${bStr}$`,
     antwoordType: 'integer', antwoord: { waarde: res }, data: { a, b },
     hints: [
       'Aftrekken van een negatief getal is hetzelfde als optellen van het positieve getal.',
-      `$${a} - ${bStr} = ${a} + ${b < 0 ? Math.abs(b) : `(${-b})`} = ${res}$`
+      `$${a} - ${bStr} = ${a} + ${-b} =${res}$`
     ],
     oplossing: `$${a} - ${bStr} = ${res}$`
   };
@@ -679,8 +679,8 @@ function genG10() {
   if (type === 0) { a = -rand(2, 10); b = rand(2, 10); }   // neg × pos
   else { a = -rand(2, 10); b = -rand(2, 10); }              // neg × neg
   const res = a * b;
-  const bStr = b < 0 ? `(${b})` : `${b}`;
-  const aStr = a < 0 ? `(${a})` : `${a}`;
+  const bStr = `${b}`;
+  const aStr = `${a}`;
   return {
     id: uid(), leerdoel: 'G.10',
     vraag: `Bereken: $${aStr} \\times ${bStr}$`,
@@ -702,7 +702,7 @@ function genG11() {
   if (type === 0) { a = -(d * q); b = d; }    // neg ÷ pos
   else { a = -(d * q); b = -d; }               // neg ÷ neg
   const res = a / b;
-  const bStr = b < 0 ? `(${b})` : `${b}`;
+  const bStr = `${b}`;
   return {
     id: uid(), leerdoel: 'G.11',
     vraag: `Bereken: $${a} \\div ${bStr}$`,
@@ -727,12 +727,12 @@ function genG12() {
     vraag: `Bereken: $${baseStr}^2$`,
     antwoordType: 'integer', antwoord: { waarde: n * n }, data: { n, neg },
     hints: [
-      neg ? `$(-${n})^2 = (-${n}) \\times (-${n})$.`
+      neg ? `$(-${n})^2 = -${n} \\times -${n}$.`
           : `$${n}^2 = ${n} \\times ${n}$.`,
-      neg ? `Negatief × negatief = positief: $(-${n}) \\times (-${n}) = ${n * n}$`
+      neg ? `Negatief × negatief = positief: $-${n} \\times -${n} = ${n * n}$`
           : `$${n} \\times ${n} = ${n * n}$`
     ],
-    oplossing: `$${baseStr}^2 = ${baseStr} \\times ${baseStr} = ${n * n}$`
+    oplossing: `$${baseStr}^2 = ${base} \\times ${base} = ${n * n}$`
   };
 }
 
@@ -776,7 +776,7 @@ function genG15() {
         ? `Een negatief getal tot een **even** macht is altijd positief.`
         : `Een negatief getal tot een **oneven** macht is altijd negatief.`
     ],
-    oplossing: `$${baseStr}^${exp} = ${Array(exp).fill(baseStr).join(' \\times ')} = ${res}$`
+    oplossing: `$${baseStr}^${exp} = ${Array(exp).fill(base).join(' \\times ')} = ${res}$`
   };
 }
 
@@ -890,7 +890,7 @@ function _genNegTerm(inclSqrt, inclPow) {
   const type = pick(types);
   if (type === 'neg') {
     const n = rand(1, 12);
-    return { val: -n, tex: `(-${n})` };
+    return { val: -n, tex: `-${n}` };
   }
   if (type === 'pos') {
     const n = rand(2, 12);
@@ -1104,7 +1104,7 @@ function genC_negGetallen() {
     const op = pick(ops);
     const result = op === '+' ? v1 + v2 : v1 - v2;
     if (Math.abs(result) > 100) continue;
-    const v2Str = v2 < 0 ? `(${v2})` : `${v2}`;
+    const v2Str = `${v2}`;
     return {
       id: uid(), leerdoel: 'C.negGetallen',
       vraag: `Bereken stap voor stap:\n$\\bigl(${g1.vraag.replace('Bereken: $','').replace('$','')}\\bigr) ${op === '+' ? '+' : '-'} ${v2Str}$`,
@@ -7432,6 +7432,7 @@ const LEERDOELEN = [
   { id: 'MK.V1d', titel: 'Gelijkvormigheid: alle figuren door elkaar',       groep: 'Meetkunde', gen: genMKV1d },
   { id: 'MK.P1a', titel: 'Pythagoras: schuine zijde berekenen',             groep: 'Meetkunde', gen: genMKP1a },
   { id: 'MK.P1b', titel: 'Pythagoras: rechthoekszijde berekenen',            groep: 'Meetkunde', gen: genMKP1b },
+  { id: 'MK.P1c', titel: 'Pythagoras: hoogte en oppervlakte gelijkbenige driehoek', groep: 'Meetkunde', gen: genMKP1c },
   { id: 'MK.P2a', titel: 'Pythagoras: afstand tussen twee punten',           groep: 'Meetkunde', gen: genMKP2a },
   { id: 'MK.P2b', titel: 'Pythagoras: lichaamsdiagonaal van een balk',       groep: 'Meetkunde', gen: genMKP2b },
   { id: 'MK.G1a', titel: 'Sin, cos, tan: hoek berekenen',                    groep: 'Meetkunde', gen: genMKG1a },

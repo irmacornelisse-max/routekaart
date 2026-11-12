@@ -338,7 +338,7 @@ const TOC_HOOFDSTUKKEN = [
       {
         id: 'mk-pythagoras', label: 'Stelling van Pythagoras',
         items: [
-          { label: 'Zijden berekenen',  knoppen: [{l:'a',id:'MK.P1a'},{l:'b',id:'MK.P1b'}] },
+          { label: 'Zijden berekenen',  knoppen: [{l:'a',id:'MK.P1a'},{l:'b',id:'MK.P1b'},{l:'c',id:'MK.P1c'}] },
           { label: 'Afstand berekenen', knoppen: [{l:'a',id:'MK.P2a'},{l:'b',id:'MK.P2b'}] },
         ]
       },
@@ -2608,6 +2608,7 @@ function feedbackBoodschap(vraag, gegeven) {
     'MK.A1d': 'Oppervlakte van een cirkel: $\\pi \\cdot r^2$. Laat $\\pi$ staan in je antwoord. Bij een halve of kwartcirkel neem je een deel van de hele cirkel.',
     'MK.P1a': 'De schuine zijde ligt tegenover de rechte hoek. Tel de kwadraten van de rechthoekszijden op en neem de wortel.',
     'MK.P1b': 'De gevraagde zijde is een rechthoekszijde: het kwadraat van de schuine zijde min het andere kwadraat, dan de wortel.',
+    'MK.P1c': 'De hoogte verdeelt de gelijkbenige driehoek in twee rechthoekige driehoeken. Bereken de hoogte met Pythagoras en gebruik dan $\\frac{1}{2} \\cdot \\text{basis} \\cdot \\text{hoogte}$.',
     'MK.P2a': 'Bepaal het verschil in $x$ en in $y$. Dat zijn de rechthoekszijden; gebruik dan Pythagoras.',
     'MK.P2b': 'Gebruik twee keer Pythagoras: eerst de diagonaal van het grondvlak, dan de lichaamsdiagonaal.',
     'MK.G1a': 'Kies sin, cos of tan bij de twee gegeven zijden en gebruik de inverse. Staat je rekenmachine in graden?',

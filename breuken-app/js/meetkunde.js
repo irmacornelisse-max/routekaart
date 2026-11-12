@@ -7,7 +7,8 @@
             en een ontbrekende zijde; f = a t/m e door elkaar)
      MK.A1  oppervlakte (idem; e = driehoek waarbij je basis en hoogte zelf
             moet zoeken; f = a t/m e door elkaar)
-     MK.P1  Pythagoras: zijden in een rechthoekige driehoek
+     MK.P1  Pythagoras: zijden in een rechthoekige driehoek; c = hoogte en
+            oppervlakte van een gelijkbenige driehoek
      MK.P2  Pythagoras: afstand in een assenstelsel en in een balk
      MK.G1  sin, cos, tan: hoek berekenen
      MK.G2  sin, cos, tan: zijde berekenen (in de teller of in de noemer)
@@ -389,11 +390,12 @@ function _mkCirkel({ diameter = Math.random() < 0.5, maat = diameter ? rand(3, 2
   return { diameter, maat, r, svg };
 }
 
-/* MK.O1c/d en MK.A1c/d: meestal een hele cirkel, soms een halve of
-   kwartcirkel, soms terugrekenen van omtrek of oppervlakte naar r of d. */
+/* MK.O1c/d en MK.A1c/d: elk een kwart van de opgaven een hele cirkel, een
+   halve cirkel, een kwartcirkel of terugrekenen van omtrek of oppervlakte
+   naar r of d. */
 function _mkCirkelVraag(leerdoel, soort, exact) {
-  const vorm = pick(['heel', 'heel', 'deel', 'terug']);
-  if (vorm === 'deel') return _mkDeelCirkel(leerdoel, soort, exact);
+  const vorm = pick(['heel', 'half', 'kwart', 'terug']);
+  if (vorm === 'half' || vorm === 'kwart') return _mkDeelCirkel(leerdoel, soort, exact, vorm === 'half');
   if (vorm === 'terug') return _mkTerugCirkel(leerdoel, soort, exact);
   return _mkHeleCirkel(leerdoel, soort, exact);
 }
@@ -450,8 +452,7 @@ function _mkBoog(m, r, van, tot, n = 48) {
    middellijn of twee stralen. Een halve cirkel toont de middellijn (label op
    de rechte rand) of een straal (een los lijnstuk vanuit M naar de boog); een
    kwartcirkel altijd een straal. */
-function _mkDeelCirkel(leerdoel, soort, exact) {
-  const half = Math.random() < 0.5;
+function _mkDeelCirkel(leerdoel, soort, exact, half) {
   const deel = half ? 2 : 4;
   const br = half ? '\\frac{1}{2}' : '\\frac{1}{4}';
   let diameter, maat, r, w, dec = null;
@@ -717,9 +718,10 @@ function _mkA1eRechthoekig() {
   });
 }
 
-/* Gelijkbenige driehoek: basis en benen gegeven, de hoogte volgt met
-   Pythagoras (drietallen, dus de hoogte komt geheel uit). */
-function _mkA1eGelijkbenig() {
+/* MK.P1c (staat hier bij de andere oppervlakten van driehoeken): gelijkbenige
+   driehoek, basis en benen gegeven, de hoogte volgt met Pythagoras
+   (drietallen, dus de hoogte komt geheel uit). */
+function genMKP1c() {
   const [p, q, s] = pick([[3, 4, 5], [5, 12, 13], [8, 15, 17]]);
   const k = p === 3 ? rand(1, 3) : 1;
   const [half, h] = Math.random() < 0.5 ? [p * k, q * k] : [q * k, p * k];
@@ -739,7 +741,7 @@ function _mkA1eGelijkbenig() {
   const g = { ..._mkDriehoekG(P, [A, B, C]), ..._mkZijden(P, [[A, 'H'], [C, 'H']]) };
   const AH = _mkZ(A, 'H'), CH = _mkZ(C, 'H'), AC = _mkZ(A, C);
   const w = half * h;
-  return _mkVraag('MK.A1e', {
+  return _mkVraag('MK.P1c', {
     tekst: `Driehoek $${A}${B}${C}$ is gelijkbenig met $${AC} = ${_mkZ(B, C)}$. $H$ is het midden van $${_mkZ(A, B)}$. Bereken de oppervlakte van driehoek $${A}${B}${C}$.`,
     svg, sets: [{ waarde: w, g }], tussen: [h, h * h, 2 * w],
     hints: [
@@ -836,7 +838,7 @@ function _mkA1eRooster(omsluiten) {
 function genMKA1e() {
   return pick([
     () => _mkA1eHoogte(false), () => _mkA1eHoogte(true), _mkA1eRechthoekig,
-    _mkA1eGelijkbenig, () => _mkA1eRooster(false), () => _mkA1eRooster(true),
+    () => _mkA1eRooster(false), () => _mkA1eRooster(true),
   ])();
 }
 
@@ -1023,15 +1025,31 @@ function _mkO1eOntbrekend() {
 
 const genMKO1e = () => (Math.random() < 0.5 ? _mkO1eTrap() : _mkO1eOntbrekend());
 
-/* MK.O1f en MK.A1f: a t/m e door elkaar. De opgave komt van een van de
-   vijf generators en krijgt het f-leerdoel, zodat het resultaat daar telt. */
-function _mkDoorElkaar(leerdoel, generators) {
-  const v = pick(generators)();
+/* MK.O1f, MK.A1f en MK.V1d: alles door elkaar. De opgave komt van een van de
+   generators en krijgt het gemengde leerdoel, zodat het resultaat daar telt.
+   gewichten: hoe vaak elke generator relatief voorkomt (standaard gelijk).
+   Dezelfde generator komt nooit twee keer achter elkaar. */
+const _mkVorigeBron = new Map();
+function _mkDoorElkaar(leerdoel, generators, gewichten = generators.map(() => 1)) {
+  const vorige = _mkVorigeBron.get(leerdoel);
+  const kandidaten = generators.map((_, i) => i).filter(i => i !== vorige);
+  const totaal = kandidaten.reduce((s, i) => s + gewichten[i], 0);
+  let lot = Math.random() * totaal, keuze = kandidaten[kandidaten.length - 1];
+  for (const i of kandidaten) {
+    lot -= gewichten[i];
+    if (lot < 0) { keuze = i; break; }
+  }
+  _mkVorigeBron.set(leerdoel, keuze);
+  const v = generators[keuze]();
   v.leerdoel = leerdoel;
   return v;
 }
-const genMKO1f = () => _mkDoorElkaar('MK.O1f', [genMKO1a, genMKO1b, genMKO1c, genMKO1d, genMKO1e]);
-const genMKA1f = () => _mkDoorElkaar('MK.A1f', [genMKA1a, genMKA1b, genMKA1c, genMKA1d, genMKA1e]);
+/* a (rechthoek) en b (driehoek) zijn eenvoudig en weinig gevarieerd; c, d en e
+   hebben elk meerdere soorten en tellen zwaarder. Zo is ongeveer 1 op de 5
+   opgaven een a of b. */
+const MK_GEWICHT_GEMENGD = [1, 1, 2.5, 2.5, 3];
+const genMKO1f = () => _mkDoorElkaar('MK.O1f', [genMKO1a, genMKO1b, genMKO1c, genMKO1d, genMKO1e], MK_GEWICHT_GEMENGD);
+const genMKA1f = () => _mkDoorElkaar('MK.A1f', [genMKA1a, genMKA1b, genMKA1c, genMKA1d, genMKA1e], MK_GEWICHT_GEMENGD);
 
 /* ═══ Rechthoekige driehoek (Pythagoras en goniometrie) ═══════════════════
    X = hoekpunt van de scherpe hoek waar het om draait, R = rechte hoek,
