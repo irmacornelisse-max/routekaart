@@ -1008,9 +1008,11 @@ function formuleTekst(a) {
 
 /* ── Afgeleiden ───────────────────────────────────────────────────────────
    Elke juiste vorm van f'(x) is goed: haakjes wegwerken of herleiden hoeft
-   niet. Schrijft de leerling eerst f(x) anders op (als macht, of met de
-   haakjes uitgewerkt), dan is dat een tussenstap. Een regel mag beginnen met
-   f'(x) = of f(x) =, en mag een keten A = B zijn; elk deel moet dan kloppen.
+   niet. Het eindantwoord moet wel met f'(x) = beginnen; een juiste afgeleide
+   zonder f'(x) = ervoor is een tussenstap (zie afgZonderPrefix). Schrijft de
+   leerling eerst f(x) anders op (als macht, of met de haakjes uitgewerkt), dan
+   is dat een tussenstap. Een regel mag beginnen met f'(x) = of f(x) =, en mag
+   een keten A = B zijn; elk deel moet dan kloppen.
 
    De testwaarden komen uit de opgave zelf (`testX`): die liggen binnen het
    domein van f, zodat een wortel of ln nooit buiten zijn domein wordt
@@ -1030,18 +1032,36 @@ function _afgWaardeGelijk(gegeven, verwacht, testX) {
   return getoetst >= 3;
 }
 
-function checkAfgeleide(gegeven, correct) {
+function _afgLees(gegeven) {
   const delen = (gegeven || '').replace(/\\left\(/g, '(').replace(/\\right\)/g, ')').split('=');
   let claim = null;                                 // 'afgeleide' | 'functie' | null
   if (delen.length > 1 && _AFG_LHS.test(delen[0])) {
     claim = /'|\\prime/.test(delen[0]) ? 'afgeleide' : 'functie';
     delen.shift();
   }
+  return { delen, claim };
+}
+
+function _afgAllemaal(delen, doel, testX) {
+  return delen.every(d => _afgWaardeGelijk(d, doel, testX));
+}
+
+function checkAfgeleide(gegeven, correct) {
+  const { delen, claim } = _afgLees(gegeven);
   if (!delen.length || delen.some(d => !d.trim())) return 'fout';
-  const allemaal = doel => delen.every(d => _afgWaardeGelijk(d, doel, correct.testX));
-  if (claim !== 'functie' && allemaal(correct.expr)) return 'goed';
-  if (claim !== 'afgeleide' && allemaal(correct.functie)) return 'tussenstap';
+  if (claim !== 'functie' && _afgAllemaal(delen, correct.expr, correct.testX)) {
+    return claim === 'afgeleide' ? 'goed' : 'tussenstap';
+  }
+  if (claim !== 'afgeleide' && _afgAllemaal(delen, correct.functie, correct.testX)) return 'tussenstap';
   return 'fout';
+}
+
+/* Juiste afgeleide, maar zonder f'(x) = ervoor? Dan vraagt de feedback
+   alleen nog om die notatie. */
+function afgZonderPrefix(gegeven, correct) {
+  const { delen, claim } = _afgLees(gegeven);
+  return claim === null && delen.length > 0 && delen.every(d => d.trim())
+    && _afgAllemaal(delen, correct.expr, correct.testX);
 }
 
 function isAlgebraGefactoriseerd(latex) {

@@ -190,7 +190,9 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
 - **Antwoordcontrole** (`vorm: 'afgeleide'`, `checkAfgeleide` in utils.js):
   elke juiste vorm van f'(x) is goed, herleiden hoeft niet. f(x) anders
   opschrijven (als macht, haakjes weg) is een tussenstap. `f'(x) =` vooraan
-  mag. Getoetst op de punten `testX` uit de opgave: binnen het domein (wortels,
+  is verplicht (afspraak met Irma): een juiste afgeleide zonder is een
+  tussenstap met de melding "schrijf er nog f'(x) = voor" (`afgZonderPrefix`).
+  Getoetst op de punten `testX` uit de opgave: binnen het domein (wortels,
   ln) en niet vlak bij een pool.
 - **Parser:** `_algEval` kent nu `e`, `\ln`, `\log` (grondtal 10) en
   `\log_{g}`. Nederlandse notatie: een macht **zonder grondtal** vlak voor

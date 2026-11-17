@@ -770,7 +770,7 @@ function renderOefenen(leerdoelId) {
       : isMeetkunde && vraag.antwoord.sets.length > 1
       ? ' &nbsp;·&nbsp; <strong>v</strong> knop voor meer waarden: getal <strong>v</strong> getal'
       : isAfgeleide
-      ? ' &nbsp;·&nbsp; <em>f\'(x) =</em> hoef je niet te typen &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
+      ? ' &nbsp;·&nbsp; begin je antwoord met <em>f\'(x) =</em> &nbsp;·&nbsp; <kbd>ln</kbd> en <kbd>log</kbd> typ je gewoon; voor <sup>2</sup>log: knop <sup>g</sup>log, dan <kbd>2</kbd> en <kbd>→</kbd>'
       : '';
     antwoordInhoud = `<div class="stap-lijst" id="stap-lijst"></div>
     <div class="stap-hint">Typ <kbd>3</kbd><kbd>/</kbd><kbd>4</kbd> voor een breuk &nbsp;·&nbsp; <kbd>→</kbd> om verder &nbsp;·&nbsp; <kbd>↑</kbd> om vorige te kopiëren${extraTip}${isLog ? logTip : ''}${vraag.logToetsen === 'ook-log' ? logTipBreuk : ''}</div>`;
@@ -1375,6 +1375,10 @@ function tussenstapBoodschap(gegeven) {
   }
   if (APP.huidigVraag?.antwoord?.vorm === 'formule-om') {
     return formuleTekst(APP.huidigVraag.antwoord) ?? 'Goed, ga door!';
+  }
+  if (APP.huidigVraag?.antwoord?.vorm === 'afgeleide'
+      && afgZonderPrefix(gegeven?.latex, APP.huidigVraag.antwoord)) {
+    return 'Goed, ga door! Dit klopt, maar schrijf er nog $f\'(x) =$ voor. Zo laat je zien dat dit de afgeleide is.';
   }
   if (APP.huidigVraag?.antwoord?.vorm === 'log-a-plus') {
     return 'Goed, ga door! Dit klopt, maar het is nog niet de gevraagde vorm. Kan $a$ nog groter, en is alles uitgerekend?';
