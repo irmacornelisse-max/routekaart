@@ -281,3 +281,18 @@ Nieuwe `vorm`-waarden vereisen een nieuwe check-functie (zie `checkAlgebraAntwoo
   precies kloppen. Zonder die vlag telt alleen dat elke oplossing gedekt is —
   nodig bij G.V2d en verwanten, waar een verworpen schijnoplossing juist in de
   tussenstap thuishoort.
+
+## Breuken en de routekaart (Omvat)
+
+In de routekaart telt de check van een hogere trede ook voor de treden eronder
+(kolom Omvat in `Database_routekaart_v5.xlsx`). Daarvoor zijn twee regels nodig:
+
+- **Gemengd getal verplicht.** Bij `antwoordType: 'mixed'` is een onechte breuk
+  met de juiste waarde (7/4 voor 1 3/4) een **tussenstap** met de melding "schrijf
+  je antwoord nog als gemengd getal" (`_isOnechteBreuk` in app.js). Zo telt de
+  check van B.6, B.8, B.10 en B.12 ook voor gemengd vereenvoudigen (B.2).
+- **Vereenvoudigen in elke reeks van 5.** De generators van B.5 t/m B.12 zetten
+  `vereenvoudigen: true/false` in de vraag. `generateVraag()` houdt per leerdoel bij
+  hoeveel opgaven op rij niet vereenvoudigd hoefden te worden; na 4 trekt hij opnieuw
+  (`MAX_ZONDER_VEREENVOUDIGEN`). Zo telt elke bewerking ook voor vereenvoudigen (B.1).
+  Een nieuwe breukgenerator moet deze vlag ook zetten. C.allBreuk doet nog niet mee.

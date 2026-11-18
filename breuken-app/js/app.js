@@ -1383,6 +1383,8 @@ function tussenstapBoodschap(gegeven) {
   if (APP.huidigVraag?.antwoord?.vorm === 'log-a-plus') {
     return 'Goed, ga door! Dit klopt, maar het is nog niet de gevraagde vorm. Kan $a$ nog groter, en is alles uitgerekend?';
   }
+  if (APP.huidigVraag?.antwoordType === 'mixed' && _isOnechteBreuk(gegeven?.latex))
+    return 'Goed, ga door! Dit klopt, maar schrijf je antwoord nog als gemengd getal.';
   if (_bevatVerworpen(gegeven?.latex))
     return 'Goed, ga door! Controleer nu of elke oplossing voldoet: het getal achter log moet positief zijn.';
   const soort = _uitrekenbaarInRegel(gegeven?.latex);
@@ -1987,7 +1989,17 @@ function checkAntwoord(vraag, gegeven) {
   }
 
   if (Math.abs(sv - cv) > 1e-9) return 'fout';
+  // Bij een gemengd antwoord is een onechte breuk (7/4 in plaats van 1 3/4)
+  // nog geen eindantwoord: zo telt de check ook voor gemengd vereenvoudigen (B.2).
+  if (type === 'mixed' && _isOnechteBreuk(gegeven.latex)) return 'tussenstap';
   return isEindvorm(gegeven.latex) ? 'goed' : 'tussenstap';
+}
+
+/* Een kale breuk met een teller die minstens zo groot is als de noemer. */
+function _isOnechteBreuk(latex) {
+  const s = (latex || '').replace(/\\[ ,;!]/g, '').trim();
+  const m = s.match(/^\\d?frac\{(\d+)\}\{(\d+)\}$/);
+  return !!m && +m[2] > 0 && +m[1] >= +m[2];
 }
 
 /* ── Breuk-vereenvoudiging helpers ─────────────────────────────────────── */

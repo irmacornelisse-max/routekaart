@@ -193,6 +193,7 @@ function genB5() {
   const [w, rn, rd] = improperToMixed(sn, sd);
   return {
     id: uid(), leerdoel: 'B.5',
+    vereenvoudigen: sn !== sumN || sd !== L,
     vraag: `Bereken en vereenvoudig: $\\dfrac{${n1}}{${d1}} + \\dfrac{${n2}}{${d2}}$`,
     antwoordType: isImproper ? 'mixed' : 'fraction',
     antwoord: isImproper ? { geheel: w, teller: rn, noemer: rd } : { teller: sn, noemer: sd },
@@ -222,6 +223,7 @@ function genB6() {
   const [w, rn, rd] = improperToMixed(sn, sd);
   return {
     id: uid(), leerdoel: 'B.6',
+    vereenvoudigen: sn !== sumN || sd !== L,
     vraag: `Bereken: $${fmtMixed(w1,n1,d1)} + ${fmtMixed(w2,n2,d2)}$`,
     antwoordType: 'mixed',
     antwoord: { geheel: w, teller: rn, noemer: rd },
@@ -244,6 +246,7 @@ function genB7() {
   const [sn, sd] = simplifyFrac(diff, L);
   return {
     id: uid(), leerdoel: 'B.7',
+    vereenvoudigen: sn !== diff || sd !== L,
     vraag: `Bereken en vereenvoudig: $\\dfrac{${n1}}{${d1}} - \\dfrac{${n2}}{${d2}}$`,
     antwoordType: 'fraction',
     antwoord: { teller: sn, noemer: sd },
@@ -275,6 +278,7 @@ function genB8() {
   const [w, rn, rd] = improperToMixed(sn, sd);
   return {
     id: uid(), leerdoel: 'B.8',
+    vereenvoudigen: sn !== diff || sd !== L,
     vraag: `Bereken: $${fmtMixed(w1,n1,d1)} - ${fmtMixed(w2,n2,d2)}$`,
     antwoordType: rn === 0 ? 'integer' : 'mixed',
     antwoord: rn === 0 ? { waarde: w } : { geheel: w, teller: rn, noemer: rd },
@@ -295,6 +299,7 @@ function genB9() {
   const [sn, sd] = simplifyFrac(prodN, prodD);
   return {
     id: uid(), leerdoel: 'B.9',
+    vereenvoudigen: sn !== prodN || sd !== prodD,
     vraag: `Bereken en vereenvoudig: $\\dfrac{${n1}}{${d1}} \\times \\dfrac{${n2}}{${d2}}$`,
     antwoordType: 'fraction',
     antwoord: { teller: sn, noemer: sd },
@@ -319,6 +324,7 @@ function genB10() {
   const [w,rn,rd] = improperToMixed(sn,sd);
   return {
     id: uid(), leerdoel: 'B.10',
+    vereenvoudigen: sn !== prodN || sd !== prodD,
     vraag: `Bereken: $${fmtMixed(w1,n1,d1)} \\times ${fmtMixed(w2,n2,d2)}$`,
     antwoordType: rn===0 ? 'integer' : 'mixed',
     antwoord: rn===0 ? {waarde:w} : {geheel:w,teller:rn,noemer:rd},
@@ -342,6 +348,7 @@ function genB11() {
   const [w,rmn,rmd] = improperToMixed(sn,sd);
   return {
     id: uid(), leerdoel: 'B.11',
+    vereenvoudigen: sn !== rn || sd !== rd,
     vraag: `Bereken en vereenvoudig: $\\dfrac{${n1}}{${d1}} \\div \\dfrac{${n2}}{${d2}}$`,
     antwoordType: isImproper ? 'mixed' : 'fraction',
     antwoord: isImproper ? {geheel:w,teller:rmn,noemer:rmd} : {teller:sn,noemer:sd},
@@ -366,6 +373,7 @@ function genB12() {
   const [w,rmn,rmd] = improperToMixed(sn,sd);
   return {
     id: uid(), leerdoel: 'B.12',
+    vereenvoudigen: sn !== rn || sd !== rd,
     vraag: `Bereken: $${fmtMixed(w1,n1,d1)} \\div ${fmtMixed(w2,n2,d2)}$`,
     antwoordType: rmn===0 ? 'integer' : 'mixed',
     antwoord: rmn===0 ? {waarde:w} : {geheel:w,teller:rmn,noemer:rmd},
@@ -771,7 +779,7 @@ function genG15() {
     vraag: `Bereken: $${baseStr}^${exp}$`,
     antwoordType: 'integer', antwoord: { waarde: res }, data: { base, exp },
     hints: [
-      `$${baseStr}^${exp}$ betekent $${baseStr}$ tot de macht ${exp}.`,
+      `$${baseStr}^${exp}$ betekent $${base}$ tot de macht ${exp}.`,
       exp % 2 === 0
         ? `Een negatief getal tot een **even** macht is altijd positief.`
         : `Een negatief getal tot een **oneven** macht is altijd negatief.`
@@ -7458,6 +7466,14 @@ const _recenteVragen = new Map();     // leerdoelId -> array met vraagsleutels
 const RECENT_ONTHOUDEN = 5;
 const MAX_TREKPOGINGEN = 30;
 
+/* Breukbewerkingen (B.5 t/m B.12) tellen in de routekaart ook als bewijs voor
+   vereenvoudigen (B.1). Dan moet een reeks van 5 goed ook echt een opgave
+   bevatten waarbij je moet vereenvoudigen. Een generator zet daarvoor
+   `vereenvoudigen: true/false` in de vraag. Na hoogstens 4 opgaven zonder
+   vereenvoudigen trekt generateVraag opnieuw tot er een komt die het wel vraagt. */
+const _zonderVereenvoudigen = new Map();  // leerdoelId -> aantal opgaven op rij zonder vereenvoudigen
+const MAX_ZONDER_VEREENVOUDIGEN = 4;
+
 /* De vraagtekst plus de data en het antwoord identificeren een opgave.
    Het id niet meenemen: dat is per definitie uniek. */
 function _vraagSleutel(v) {
@@ -7530,9 +7546,16 @@ function generateVraag(leerdoelId) {
   if (!ld) throw new Error('Onbekend leerdoel: ' + leerdoelId);
 
   const recent = _recenteVragen.get(leerdoelId) ?? [];
+  const zonder = _zonderVereenvoudigen.get(leerdoelId) ?? 0;
+  const moetVereenvoudigen = zonder >= MAX_ZONDER_VEREENVOUDIGEN;
+  const afgekeurd = v => recent.includes(_vraagSleutel(v))
+    || (moetVereenvoudigen && v.vereenvoudigen === false);
   let vraag = ld.gen();
-  for (let i = 0; i < MAX_TREKPOGINGEN && recent.includes(_vraagSleutel(vraag)); i++) {
+  for (let i = 0; i < MAX_TREKPOGINGEN && afgekeurd(vraag); i++) {
     vraag = ld.gen();
+  }
+  if (vraag.vereenvoudigen !== undefined) {
+    _zonderVereenvoudigen.set(leerdoelId, vraag.vereenvoudigen ? 0 : zonder + 1);
   }
 
   recent.push(_vraagSleutel(vraag));
